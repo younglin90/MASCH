@@ -1,0 +1,12 @@
+supinlet {
+	type = fixedValue;
+	value = (1.0 0.0 0.0);
+}
+
+invwall {
+	type = slip;
+}
+
+viswall {
+	type = noSlip;
+}

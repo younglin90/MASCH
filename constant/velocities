@@ -1,0 +1,41 @@
+//============================================
+// velocities (x, y, z) conditions
+//============================================
+initialField
+{
+        type	fixedValue;
+        value	(0 0 0);
+}
+
+
+
+boundaryField
+{
+	suboutlet
+	{
+		type	zeroGradient;
+	}
+
+	invwall
+	{
+		type	slip;
+	}
+
+	viswall
+	{
+		type	noSlip;
+	}
+	
+	gasinlet
+	{
+		type	surfaceNormalFixedValue;
+		value	-12.18;
+	}
+
+	liqinlet
+	{
+		type	surfaceNormalFixedValue;
+		value	-1.69;
+	}
+	
+}

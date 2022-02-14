@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+ <VTKFile type="UnstructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">
+  <UnstructuredGrid>
+   <Piece NumberOfPoints="0" NumberOfCells="0">
+    <PointData>
+    </PointData>
+    <CellData>
+    </CellData>
+    <Points>
+     <DataArray type="Float64" Name="NodeCoordinates" NumberOfComponents="3" format="ascii">
+    </DataArray>
+   </Points>
+   <Cells>
+    <DataArray type="Int64" Name="connectivity" format="ascii">
+    </DataArray>
+    <DataArray type="Int64" Name="offsets" format="ascii">
+
+    </DataArray>
+    <DataArray type="UInt8" Name="types" format="ascii">
+
+    </DataArray>
+    <DataArray type="Int64" IdType="1" Name="faces" format="ascii">
+    </DataArray>
+    <DataArray type="Int64" IdType="1" Name="faceoffsets" format="ascii">
+
+    </DataArray>
+   </Cells>
+  </Piece>
+ </UnstructuredGrid>
+ <DataArray type="Int32" Name="owner" format="ascii">
+
+ </DataArray>
+ <DataArray type="Int32" Name="neighbour" format="ascii">
+
+ </DataArray>
+ <DataArray type="Char" Name="bcName" format="ascii">
+invwall outlet supinlet viswall 
+ </DataArray>
+ <DataArray type="Int32" Name="bcStartFace" format="ascii">
+0 0 0 0 
+ </DataArray>
+ <DataArray type="Int32" Name="bcNFaces" format="ascii">
+0 0 0 0 
+ </DataArray>
+ <DataArray type="Int32" Name="bcNeighbProcNo" format="ascii">
+-1 -1 -1 -1 
+ </DataArray>
+ <DataArray type="Int32" Name="connPoints" format="ascii">
+
+ </DataArray>
+</VTKFile>

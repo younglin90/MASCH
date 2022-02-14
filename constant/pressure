@@ -1,0 +1,40 @@
+//============================================
+// Pressure conditions
+//============================================
+initialField
+{
+	type	fixedValue;
+	value	101325.0;
+}
+
+
+
+boundaryField
+{
+	suboutlet
+	{
+		type	fixedValue;
+		value	101325.0;
+	}
+
+	invwall
+	{
+		type	zeroGradient;
+	}
+
+	viswall
+	{
+		type	zeroGradient;
+	}
+	
+	gasinlet
+	{
+		type	zeroGradient;
+	}
+
+	liqinlet
+	{
+		type	zeroGradient;
+	}
+	
+}

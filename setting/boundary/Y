@@ -1,0 +1,15 @@
+supinlet {
+	type = fixedValue;
+	value {
+		water = 1.0;
+		air = 0.0;
+	}
+}
+
+invwall {
+	type = zeroGradient;
+}
+
+viswall {
+	type = zeroGradient;
+}

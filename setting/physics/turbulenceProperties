@@ -1,0 +1,9 @@
+type = none;
+
+LES {
+	LESModel = WALE;
+}
+
+RANS {
+	RANSModel = kEpsilon;
+}

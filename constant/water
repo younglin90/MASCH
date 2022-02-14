@@ -1,0 +1,41 @@
+//============================================
+// volume fraction - 0 conditions
+//============================================
+initialField
+{
+	type	fixedValue;
+	value	1.0;
+}
+
+
+
+boundaryField
+{
+	suboutlet
+	{
+		type	inletOutlet;
+		value	0.0;
+	}
+
+	invwall
+	{
+		type	zeroGradient;
+	}
+
+	viswall
+	{
+		type	zeroGradient;
+	}
+
+	gasinlet
+	{
+		type	fixedValue;
+		value	0.0;
+	}
+
+	liqinlet
+	{
+		type	fixedValue;
+		value	1.0;
+	}
+}

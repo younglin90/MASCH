@@ -1,0 +1,15 @@
+// AMR
+AMR {
+	refine {
+		interval = 100;
+		maxLevel = 2;
+		indicator = (5.0 50.0);
+		bufferLayer = 2;
+		maxCells = 20000;
+		minVolume = 1.e-18;
+	}
+
+	unrefine {
+		interval = 100;
+	}
+}

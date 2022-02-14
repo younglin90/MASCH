@@ -1,0 +1,23 @@
+// 분할 솔버 (segregated solver)
+segregated {
+	nCorrectors = (10 10(1 1));
+	relaxationFactors = (0.7 (0.7 0.3));
+}
+
+// 커플 솔버 (coupled solver)
+coupled {
+	nCorrectors = 5;
+	relaxationFactors = 0.9;
+}
+
+// 셀값 리미터
+limiterCellVar {
+	p = (1.e-5 1.e12);
+	u = (-1.e12 1.e12);
+	v = (-1.e12 1.e12);
+	w = (-1.e12 1.e12);
+	T = (-1.e12 1.e12);
+	Y = (0.0 1.0);
+	Zs = (0.0 1.0);
+	alpha = (0.0 1.0);
+}

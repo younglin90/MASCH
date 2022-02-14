@@ -1,0 +1,14 @@
+// 시간에 따른 셀 값 추출
+fieldDatas = ();
+averageDatas = ();
+cellDataNames = (cell1 cell2);
+cellDataTargets = ();
+
+cell1 {
+	center = (1.0 0.0 0.0);
+	radius = 1.0;
+}
+cell2 {
+	center = (0.0 0.0 0.0);
+	radius = 2.0;
+}

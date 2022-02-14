@@ -1,0 +1,80 @@
+// 실제 시간항 (real-time term)
+dt(scalar) {
+	all = Euler;
+	rho*Zs = BackwardEuler;
+	rho*alpha = CrankNicolson; 
+	rho*alpha("water") = SecondUpwindEuler;
+	rho*alpha("N2") = RungeKutta2nd;
+}
+
+// 가상 시간항 (pseudo-time term)
+dtau(scalar) { 
+}
+
+// 수송항 (convective term)
+// U=(u v w), i=(1.0 0.0 0.0), j=(0.0 1.0 0.0), k=(0.0 0.0 1.0)
+div(scalar,transVec) {
+	highOrderScheme {
+		p = linear limited venka;
+		u, v, w {
+			limiter = NVD vanleer skewCorr;
+		}
+		T {
+			limiter = NVD minmod;
+		}
+		Zs, k, Y = NVD minmod;
+		alpha {
+			name = "H2O" "N2";
+			limiter = NVD MSTACS;
+		}
+		alpha {
+			name = "O2" "CO2" "CO";
+			limiter = NVD minmod;
+		}
+		rho, c, H = fromThermo;
+		
+	}
+
+	faceVarScheme {
+		all = AUSM+;
+		p = central distWeighting;
+		U = central distWeighting skewCorr RhieChowCorr gCorr sigmaCorr dtCorr;
+	}
+}
+
+
+// 점성항 (diffusion term)
+// laplacian(s0,s1) = div(s0*div(s1))
+laplacian(scalarCoeff,scalar) {
+	scalarCoeff {
+		mu = central arithmetic;
+	}
+	scalar {
+		u = nonOrthoCoeff 0.1;
+		v = nonOrthoCoeff 0.1;
+		w = nonOrthoCoeff 0.1;
+	}
+}
+// non-라플라시안
+// div(mu*(gradx(u)*i+gradx(v)*j+gradx(w)*k) - 2/3*mu*(gradx(u)+grady(v)+gradz(w))*i),
+// div(mu*(grady(u)*i+grady(v)*j+grady(w)*k) - 2/3*mu*(gradx(u)+grady(v)+gradz(w))*j),
+// div(mu*(gradz(u)*i+gradz(v)*j+gradz(w)*k) - 2/3*mu*(gradx(u)+grady(v)+gradz(w))*k)
+div(scalarCoeff,tensor) {
+	scalarCoeff {
+		mu = central arithmetic;
+	}
+}
+
+// 소스항 (source term)
+source {
+	gravity = surfaceGravity;
+	surfaceTension = CSF;
+}
+
+// 구배 (gradient)
+grad(scalar) {
+	scalar {
+		all = leastSquare vertex 1.0;
+		p = greenGauss;
+	}
+}

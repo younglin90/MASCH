@@ -1,0 +1,12 @@
+supinlet {
+	type = fixedValue;
+	value = 26691.0;
+}
+
+invwall {
+	type = zeroGradient;
+}
+
+viswall {
+	type = zeroGradient;
+}
