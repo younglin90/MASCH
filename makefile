@@ -141,6 +141,8 @@ SOURCES_PARTITION = src/utility/partition.cpp\
                     src/controls/controls.cpp\
                     src/mesh/mesh.cpp\
                     src/mesh/geometric.cpp\
+                    src/mesh/partition/partition.cpp\
+                    src/mesh/partition/parMetis.cpp\
                     src/math/math.cpp\
                     src/math/gradient.cpp\
                     src/mpi/mpi.cpp\
@@ -167,6 +169,8 @@ SOURCES_CombineMesh = src/test/combineMesh.cpp\
                     src/controls/controls.cpp\
                     src/mesh/mesh.cpp\
                     src/mesh/geometric.cpp\
+                    src/mesh/partition/partition.cpp\
+                    src/mesh/partition/parMetis.cpp\
                     src/math/math.cpp\
                     src/math/gradient.cpp\
                     src/mpi/mpi.cpp\

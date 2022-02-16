@@ -2,14 +2,15 @@
 #include "load.h" 
 
 void SEMO_Mesh_Load::OpenFoam(SEMO_Mesh_Builder &mesh, string folder){
-	
+	// cout << "AAAAAAAAAAA" << endl;
 	int rank = MPI::COMM_WORLD.Get_rank();
 	int size = MPI::COMM_WORLD.Get_size();
 
 	if(rank==0) cout << "┌────────────────────────────────────────────────────" << endl;
 	if(rank==0) cout << "| execute load OpenFoam files ... ";
 	
-	if(rank == 0){
+	// if(rank == 0)
+	{
 		
 		string gridFolderName = folder;
 		string pointsName = "points";
@@ -345,6 +346,19 @@ void SEMO_Mesh_Load::OpenFoam(SEMO_Mesh_Builder &mesh, string folder){
 		}
 	}
 	
+	
+	if(rank!=0){
+		mesh.points.clear();
+		mesh.faces.clear();
+		mesh.cells.clear();
+		for (int i=0; i<mesh.boundary.size(); ++i) {
+			mesh.boundary[i].nFaces = 0;
+			mesh.boundary[i].startFace = 0;
+		}
+		
+	}
+	
+	
 	if(rank==0) cout << "-> completed" << endl;
 	if(rank==0) cout << "└────────────────────────────────────────────────────" << endl;
 	
@@ -365,11 +379,13 @@ void SEMO_Mesh_Load::OpenFoam(SEMO_Mesh_Builder &mesh, string folder){
 	
 	mesh.connectCelltoPoints();
 	
+	mesh.setCountsProcFaces();
+	mesh.setDisplsProcFaces();
+		// cout << mesh.countsProcFaces.size() << endl;
+	
 	mesh.cellsGlobal();
 		
 	mesh.informations();
-		
-		
 		
 	// mesh.checkQualities();
 	
@@ -434,7 +450,8 @@ void MASCH_Mesh_Load::OpenFoam(string folder, MASCH_Mesh &mesh){
 	if(rank==0) cout << "┌────────────────────────────────────────────────────" << endl;
 	if(rank==0) cout << "| execute load OpenFoam files ... ";
 	
-	if(rank == 0){
+	// if(rank == 0)
+	{
 		
 		string gridFolderName = folder;
 		string pointsName = "points";
@@ -735,6 +752,17 @@ void MASCH_Mesh_Load::OpenFoam(string folder, MASCH_Mesh &mesh){
 		}
 	}
 	
+	if(rank!=0){
+		mesh.points.clear();
+		mesh.faces.clear();
+		mesh.cells.clear();
+		for (int i=0; i<mesh.boundaries.size(); ++i) {
+			mesh.boundaries[i].nFaces = 0;
+			mesh.boundaries[i].startFace = 0;
+		}
+	}
+	
+	
 	if(rank==0) cout << "-> completed" << endl;
 	if(rank==0) cout << "└────────────────────────────────────────────────────" << endl;
 	
@@ -745,6 +773,8 @@ void MASCH_Mesh_Load::OpenFoam(string folder, MASCH_Mesh &mesh){
 	mesh.connectFacetoPointsCells();
 	mesh.connectCelltoFaces();
 	mesh.connectCelltoPoints();
+	mesh.setCountsProcFaces();
+	mesh.setDisplsProcFaces();
 	mesh.cellsGlobal();
 	mesh.informations();
 	

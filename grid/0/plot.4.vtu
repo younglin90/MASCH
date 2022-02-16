@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+ <VTKFile type="UnstructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">
+  <UnstructuredGrid>
+   <Piece NumberOfPoints="18" NumberOfCells="3">
+    <PointData>
+    </PointData>
+    <CellData>
+    </CellData>
+    <Points>
+     <DataArray type="Float64" Name="NodeCoordinates" NumberOfComponents="3" format="ascii">
+3.33333333333333425852e-01 6.66666666666666740682e-01 0.00000000000000000000e+00
+3.33333333333333425852e-01 3.33333333333333425852e-01 0.00000000000000000000e+00
+3.33333333333333425852e-01 0.00000000000000000000e+00 0.00000000000000000000e+00
+6.66666666666666851704e-01 6.66666666666666740682e-01 0.00000000000000000000e+00
+6.66666666666666740682e-01 3.33333333333333425852e-01 0.00000000000000000000e+00
+6.66666666666666740682e-01 0.00000000000000000000e+00 0.00000000000000000000e+00
+3.33333333333333425852e-01 6.66666666666666740682e-01 3.33333333333333425852e-01
+3.33333333333333203807e-01 3.33333333333333592385e-01 3.33333333333333425852e-01
+3.33333333333333425852e-01 0.00000000000000000000e+00 3.33333333333333425852e-01
+6.66666666666666851704e-01 6.66666666666666740682e-01 3.33333333333333425852e-01
+6.66666666666666407615e-01 3.33333333333333314830e-01 3.33333333333333425852e-01
+6.66666666666666740682e-01 0.00000000000000000000e+00 3.33333333333333425852e-01
+1.00000000000000000000e+00 6.66666666666666740682e-01 3.33333333333333425852e-01
+1.00000000000000000000e+00 3.33333333333333425852e-01 3.33333333333333425852e-01
+6.66666666666666740682e-01 6.66666666666666407615e-01 6.66666666666666740682e-01
+6.66666666666666629659e-01 3.33333333333333314830e-01 6.66666666666666740682e-01
+1.00000000000000000000e+00 6.66666666666666629659e-01 6.66666666666666740682e-01
+1.00000000000000000000e+00 3.33333333333333425852e-01 6.66666666666666740682e-01
+    </DataArray>
+   </Points>
+   <Cells>
+    <DataArray type="Int64" Name="connectivity" format="ascii">
+4 10 7 1 3 0 9 6 
+4 10 7 1 5 2 11 8 
+12 16 17 13 9 10 15 14 
+    </DataArray>
+    <DataArray type="Int64" Name="offsets" format="ascii">
+8 16 24 
+    </DataArray>
+    <DataArray type="UInt8" Name="types" format="ascii">
+42 42 42 
+    </DataArray>
+    <DataArray type="Int64" IdType="1" Name="faces" format="ascii">
+6
+4 4 10 7 1 
+4 3 4 1 0 
+4 7 10 9 6 
+4 3 9 10 4 
+4 0 1 7 6 
+4 3 0 6 9 
+6
+4 4 10 7 1 
+4 4 5 2 1 
+4 5 11 8 2 
+4 4 10 11 5 
+4 1 2 8 7 
+4 8 11 10 7 
+6
+4 12 16 17 13 
+4 9 10 15 14 
+4 12 9 14 16 
+4 10 9 12 13 
+4 13 17 15 10 
+4 15 17 16 14 
+    </DataArray>
+    <DataArray type="Int64" IdType="1" Name="faceoffsets" format="ascii">
+31 62 93 
+    </DataArray>
+   </Cells>
+  </Piece>
+ </UnstructuredGrid>
+ <DataArray type="Int32" Name="owner" format="ascii">
+0 1 0 1 2 0 2 2 0 1 2 2 0 0 2 1 1 
+ </DataArray>
+ <DataArray type="Int32" Name="neighbour" format="ascii">
+1 
+ </DataArray>
+ <DataArray type="Char" Name="bcName" format="ascii">
+invwall procBoundary4to0 procBoundary4to1 procBoundary4to3 procBoundary4to5 procBoundary4to7 
+ </DataArray>
+ <DataArray type="Int32" Name="bcStartFace" format="ascii">
+1 5 8 12 14 15 
+ </DataArray>
+ <DataArray type="Int32" Name="bcNFaces" format="ascii">
+4 3 4 2 1 2 
+ </DataArray>
+ <DataArray type="Int32" Name="bcNeighbProcNo" format="ascii">
+-1 0 1 3 5 7 
+ </DataArray>
+ <DataArray type="Int32" Name="connPoints" format="ascii">
+0 3 4 1 3 5 1 7 2 2 7 3 3 3 7 3 0 1 3 1 0 4 1 1 5 1 2 6 3 12 6 2 5 6 0 4 7 3 13 7 7 6 7 2 6 7 0 5 8 7 7 8 2 7 9 3 15 9 0 7 9 1 6 10 1 7 10 0 8 10 7 8 11 1 8 11 7 9 12 0 10 12 1 9 13 1 10 14 3 19 14 0 14 14 5 5 14 6 3 15 0 15 15 7 14 15 1 12 15 6 4 15 5 6 16 0 17 16 5 7 17 1 14 17 5 8 17 6 6 
+ </DataArray>
+</VTKFile>

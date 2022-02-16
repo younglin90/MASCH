@@ -30,6 +30,8 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh);
 void MASCH_Gatherv(vector<int>& my_value, vector<int>& value, vector<int>& displs);
 void MASCH_Gatherv(vector<double>& my_value, vector<double>& value, vector<int>& displs);
 
+int iteeeer = 0;
+
 int main(int argc, char* argv[]) {
 	
 
@@ -88,15 +90,39 @@ int main(int argc, char* argv[]) {
 	
 	// idBlockCell[0] = 1;
 
+		
+		// for(auto& item : idBlockCell){
+			// item = rank;
+		// }
+		// // // idBlockCell[1] = 1;
+		// // if(rank==0){
+			// // for(auto& item : idBlockCell){
+				// // item = 0;
+			// // }
+		// // }
+		// // // idBlockCell[2] = 3;
+		
 		// if(rank==0) idBlockCell[0] = 1;
-		// if(rank==0) idBlockCell[1] = 2;
-		// if(rank==0) idBlockCell[2] = 3;
-		// // idBlockCell[2] = 3;
+		// // if(rank==0) idBlockCell[1] = 1;
+		// if(rank==1) idBlockCell[0] = 0;
+		// // if(rank==1) idBlockCell[1] = 0;
+		// combineMesh(idBlockCell, mesh);
+		
+		// idBlockCell.resize(mesh.cells.size());
+		// for(auto& item : idBlockCell){
+			// item = rank;
+		// }
+		// if(rank==0) idBlockCell[0] = 1;
+		// // if(rank==0) idBlockCell[1] = 1;
+		// if(rank==1) idBlockCell[0] = 0;
+		// // if(rank==1) idBlockCell[1] = 0;
 		// combineMesh(idBlockCell, mesh);
 	
-	for(int iter=0; iter<100; ++iter){
+	for(int iter=0; iter<200; ++iter){
 	
+		idBlockCell.resize(mesh.cells.size());
 		for(auto& item : idBlockCell){
+			// item = rank;
 			item = distr_int(eng);
 		}
 		
@@ -106,32 +132,18 @@ int main(int argc, char* argv[]) {
 	
 	
 		// for(auto& item : idBlockCell){
-			// item = 0;
+			// item = distr_int(eng);
 		// }
 		
 		// combineMesh(idBlockCell, mesh);
-	
+		
+		// ++iteeeer;
+		
+		// idBlockCell.resize(mesh.cells.size());
 		// for(auto& item : idBlockCell){
-			// item = 1;
+			// item = distr_int(eng);
 		// }
 		
-		// combineMesh(idBlockCell, mesh);
-	
-		// for(auto& item : idBlockCell){
-			// item = 2;
-		// }
-		
-		// combineMesh(idBlockCell, mesh);
-	
-		// for(auto& item : idBlockCell){
-			// item = 3;
-		// }
-		
-		// combineMesh(idBlockCell, mesh);
-	
-		// for(auto& item : idBlockCell){
-			// item = 0;
-		// }
 		// combineMesh(idBlockCell, mesh);
 
 	// vector<int> idBlockCell(static_cast<int>(mesh.cells.size()),0);
@@ -152,16 +164,18 @@ int main(int argc, char* argv[]) {
 		// }
 	// }
 
-	// cout.precision(20);
-	// for(int ip=0; ip<nBlocks; ++ip){
+	cout.precision(20);
+	// for(int ip=0; ip<nBlocks; ++ip)
+	{
 
-		// // SEMO_Utility_Math math;
-		// // SEMO_Mesh_Geometric geometric;
-		// // geometric.init(newMesh[ip]);
+		// SEMO_Utility_Math math;
+		// SEMO_Mesh_Geometric geometric;
+		// geometric.init(newMesh[ip]);
 		
-		// MASCH_Mesh_Save save;
-		// save.vtu("./grid/0/", ip, newMesh[ip]);
-	// }
+		MASCH_Mesh_Save save;
+		save.vtu("./grid/test/", rank, mesh);
+	}
+
 
 	MPI::Finalize();
 	return EXIT_SUCCESS;
@@ -1416,6 +1430,110 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
 	
 	
+	
+	
+	// {
+		// vector<double> send_x0,send_y0,send_z0;
+		// vector<double> send_x1,send_y1,send_z1;
+		// vector<double> send_x2,send_y2,send_z2;
+		// vector<double> send_x3,send_y3,send_z3;
+		// for(int i=0; i<mesh.faces.size(); ++i){
+			// auto& face = mesh.faces[i];
+			// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// send_x0.push_back(mesh.points[face.ipoints[0]].x);
+				// send_y0.push_back(mesh.points[face.ipoints[0]].y);
+				// send_z0.push_back(mesh.points[face.ipoints[0]].z);
+				// send_x1.push_back(mesh.points[face.ipoints[1]].x);
+				// send_y1.push_back(mesh.points[face.ipoints[1]].y);
+				// send_z1.push_back(mesh.points[face.ipoints[1]].z);
+				// send_x2.push_back(mesh.points[face.ipoints[2]].x);
+				// send_y2.push_back(mesh.points[face.ipoints[2]].y);
+				// send_z2.push_back(mesh.points[face.ipoints[2]].z);
+				// send_x3.push_back(mesh.points[face.ipoints[3]].x);
+				// send_y3.push_back(mesh.points[face.ipoints[3]].y);
+				// send_z3.push_back(mesh.points[face.ipoints[3]].z);
+			// }
+		// }
+		// vector<double> recv_x0,recv_y0,recv_z0;
+		// vector<double> recv_x1,recv_y1,recv_z1;
+		// vector<double> recv_x2,recv_y2,recv_z2;
+		// vector<double> recv_x3,recv_y3,recv_z3;
+		// recv_x0.resize(send_x0.size());
+		// recv_y0.resize(send_y0.size());
+		// recv_z0.resize(send_z0.size());
+		// recv_x1.resize(send_x1.size());
+		// recv_y1.resize(send_y1.size());
+		// recv_z1.resize(send_z1.size());
+		// recv_x2.resize(send_x2.size());
+		// recv_y2.resize(send_y2.size());
+		// recv_z2.resize(send_z2.size());
+		// recv_x3.resize(send_x3.size());
+		// recv_y3.resize(send_y3.size());
+		// recv_z3.resize(send_z3.size());
+		// MPI_Alltoallv( send_x0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_x0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_y0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_y0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_z0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_z0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+					   
+		// MPI_Alltoallv( send_x1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_x1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_y1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_y1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_z1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_z1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+					   
+		// MPI_Alltoallv( send_x2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_x2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_y2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_y2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_z2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_z2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+					   
+		// MPI_Alltoallv( send_x3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_x3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_y3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_y3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_z3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_z3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+					   
+
+		// for(int i=0, ip=0; i<mesh.faces.size(); ++i){
+			// auto& face = mesh.faces[i];
+			// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// if(rank==0){
+				// cout << send_x0[ip] << " " << send_y0[ip] << " " << send_z0[ip] << endl;
+				// cout << recv_x0[ip] << " " << recv_y0[ip] << " " << recv_z0[ip] << endl;
+				// }
+				
+				// ++ip;
+			// }
+		// }
+		
+		// cout << endl;
+		// cout << endl;
+		// cout << endl;
+		
+	// }
+	
+	
+	
+	
+	
+	
 	vector<MASCH_Mesh> meshNew;
 	MASCH_Mesh meshComb;
 	
@@ -1446,7 +1564,6 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 	
 	
 	
-	
 	int PR2IN = -1;
 	int BC2BC = -2;
 	int IN2PR = -4;
@@ -1454,11 +1571,11 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 	vector<int> face_state;
 	
 	
-	MASCH_Load_Balancing_Inform LBI;
 	
-	
+	// 포인트
 	{
 		
+		// 넘길 포인트 process 정립
 		vector<vector<int>> send_localPoint_proc(mesh.points.size());
 		for(int i=0, ip=0; i<mesh.cells.size(); ++i){
 			int proc = idBlockCell[i];
@@ -1471,26 +1588,7 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		}
 		
 		
-		vector<pair<int,int>> send_localCell_proc_id;
-		vector<vector<int>> send_localCell_id(size);
-		vector<int> send_localCell_n(size,0);
-		for(int i=0, ip=0; i<mesh.cells.size(); ++i){
-			int proc = idBlockCell[i];
-			int tmp_nCell = send_localCell_n[proc]++;
-			send_localCell_proc_id.push_back(make_pair(proc,tmp_nCell));
-			send_localCell_id[proc].push_back(tmp_nCell);
-		}
-		vector<vector<int>> recv_localCell_id;
-		MASCH_MPI_Alltoallv(send_localCell_id, recv_localCell_id);
-		vector<int> nCells_local(size+1,0);
-		for(int ip=0; ip<size; ++ip){
-			nCells_local[ip+1] = recv_localCell_id[ip].size();
-		}
-		for(int ip=0; ip<size; ++ip){
-			nCells_local[ip+1] = nCells_local[ip+1] + nCells_local[ip];
-		}
-		
-		
+		// 옮겨질 포인트 정보들 정리
 		vector<vector<double>> send_localPoint_xyz(size);
 		vector<vector<pair<int,int>>> send_localPoint_proc_id(mesh.points.size());
 		vector<int> send_localPoint_n(size,0);
@@ -1504,8 +1602,32 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 			}
 		}
 		
+		// 포인트 x,y,z 옮기기
+		vector<vector<double>> recv_localPoint_xyz;
+		MASCH_MPI_Alltoallv(send_localPoint_xyz, recv_localPoint_xyz);
+		
+		// 옮겨진 포인트 x,y,z 넣기
+		vector<int> str_points_glo(size+1,0);
+		for(int ip=0, iter_glob=0; ip<size; ++ip){
+			int tmp_size = recv_localPoint_xyz[ip].size()/3;
+			str_points_glo[ip+1] = tmp_size;
+			for(int i=0, iter=0, iter2=0; i<tmp_size; ++i){
+				meshComb.addPoint();
+				meshComb.points.back().x = recv_localPoint_xyz[ip][iter++];
+				meshComb.points.back().y = recv_localPoint_xyz[ip][iter++];
+				meshComb.points.back().z = recv_localPoint_xyz[ip][iter++];
+				
+			}
+		}
+		// 각 proc에 대한 포인트 시작지점
+		for(int ip=0; ip<size; ++ip){
+			str_points_glo[ip+1] = str_points_glo[ip+1] + str_points_glo[ip];
+		}
 		
 		
+		
+		//========================================================
+		// connPoints 대한 정보들 
 		vector<vector<int>> send_localPoint_connId(size);
 		for(int i=0, ip=0; i<mesh.points.size(); ++i){
 			auto& point = mesh.points[i];
@@ -1519,190 +1641,579 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				}
 			}
 		}
+		
+		// connPoints 대한 정보들 넘기기 
 		vector<vector<int>> recv_localPoint_connId;
 		MASCH_MPI_Alltoallv(send_localPoint_connId, recv_localPoint_connId);
+		
+		// 받은 connPoints 대한 정보들에 대해서, 같은 proc으로 이동하는 포인트들 정보 입력 
 		vector<vector<int>> send_localPoint_toProc_toId(size);
-		vector<vector<int>> send_globalPoint_toProc_toId(size);
+		// vector<vector<int>> send_globalPoint_toProc_toId(size);
 		for(int ip=0; ip<size; ++ip){
 			for(int i=0; i<recv_localPoint_connId[ip].size(); ++i){
 				int ipoint = recv_localPoint_connId[ip][i];
 				int right_i = recv_localPoint_connId[ip][++i];
 				int tmp_size = recv_localPoint_connId[ip][++i];
-				auto& point = send_localPoint_proc[ipoint];
 				for(int j=0; j<tmp_size; ++j){
 					int tmp_proc = recv_localPoint_connId[ip][++i];
 					int tmp_id_local = recv_localPoint_connId[ip][++i];
 					for(auto& [proc, id] : send_localPoint_proc_id[ipoint]){
 						if(proc==tmp_proc){
-							send_localPoint_toProc_toId[proc].push_back(id); // proc 블록 에서 자신의 local id  
-							send_localPoint_toProc_toId[proc].push_back(ip); // proc 블록 에서 자신과 중복한 포인트의 local proc
-							send_localPoint_toProc_toId[proc].push_back(tmp_id_local); // proc 블록 에서 자신과 중복한 포인트의 local id
-						}
-						// connPoints 에 저장할 것
-						else{
-							send_globalPoint_toProc_toId[proc].push_back(id); // proc 블록 에서 자신의 local id  
-							send_globalPoint_toProc_toId[proc].push_back(tmp_proc); // right 블록의 global proc 넘버
-							send_globalPoint_toProc_toId[proc].push_back(ip); // right 블록 에서 자신과 중복한 포인트의 local proc
-							send_globalPoint_toProc_toId[proc].push_back(tmp_id_local); // right 블록의 자신과 중복한 포인트의 local id 넘버
+							// if(n_tmp_nnnn2[ipoint] == 1){
+								// if(rank==0) cout << ipoint << " " << proc << " " << id << " " << ip << " " << tmp_id_local << endl;
+								send_localPoint_toProc_toId[proc].push_back(id); // proc 블록 에서 자신의 local id  
+								send_localPoint_toProc_toId[proc].push_back(ip); // proc 블록 에서 자신과 중복한 포인트의 local proc
+								send_localPoint_toProc_toId[proc].push_back(tmp_id_local); // proc 블록 에서 자신과 중복한 포인트의 local id
+							// }
 						}
 					}
 				}
 			}
 		}
+		
+		// 같은 proc으로 이동하는 포인트들 정보 넘기기
 		vector<vector<int>> recv_localPoint_toProc_toId;
 		MASCH_MPI_Alltoallv(send_localPoint_toProc_toId, recv_localPoint_toProc_toId);
-		vector<vector<int>> recv_globalPoint_toProc_toId;
-		MASCH_MPI_Alltoallv(send_globalPoint_toProc_toId, recv_globalPoint_toProc_toId);
-		
-		vector<vector<double>> recv_localPoint_xyz;
-		MASCH_MPI_Alltoallv(send_localPoint_xyz, recv_localPoint_xyz);
 		
 		
-		vector<int> nPoints_local(size+1,0);
-		for(int ip=0, iter_glob=0; ip<size; ++ip){
-			int tmp_size = recv_localPoint_xyz[ip].size()/3;
-			nPoints_local[ip+1] = tmp_size;
-			for(int i=0, iter=0; i<tmp_size; ++i){
-				meshComb.addPoint();
-				meshComb.points.back().x = recv_localPoint_xyz[ip][iter++];
-				meshComb.points.back().y = recv_localPoint_xyz[ip][iter++];
-				meshComb.points.back().z = recv_localPoint_xyz[ip][iter++];
-				
-				// points_id_local2global[ip].push_back(iter_glob++);
-			}
-			// int str = iter_glob-tmp_size;
-			// for(int i=0, iter=0; i<recv_globalPoint_toProc_toId[ip].size()/4; ++i){
-				// int my_id_local = recv_globalPoint_toProc_toId[ip][iter++];
-				// int rightProc_global = recv_globalPoint_toProc_toId[ip][iter++];
-				// int rightProc_local = recv_globalPoint_toProc_toId[ip][iter++];
-				// int rightId_local = recv_globalPoint_toProc_toId[ip][iter++];
-				// int id_global = str + my_id_local;
-				// // cout << rightProc_global <<endl;
-				// // meshComb.points[id_global].connPoints.push_back(make_pair(rightProc_global,));
-			// }
-		}
-		for(int ip=0; ip<size; ++ip){
-			nPoints_local[ip+1] = nPoints_local[ip+1] + nPoints_local[ip];
-		}
-		vector<bool> deletePoints(nPoints_local[size],false);
-		vector<vector<int>> vec_rightProcNo_local(size);
-		vector<vector<int>> vec_rightId_local(size);
+		// 삭제되는 중복 포인트들 찾기
+		vector<bool> deletePoints(str_points_glo[size],false);
+		vector<vector<int>> reorder_my_id_local(str_points_glo[size]);
+		vector<vector<int>> reorder_rightProcNo_local(str_points_glo[size]);
+		vector<vector<int>> reorder_rightId_local(str_points_glo[size]);
+		vector<vector<int>> reorder_rightId_global(str_points_glo[size]);
 		{
 			for(int ip=0; ip<size; ++ip){
-				int str = nPoints_local[ip];
-				int end = nPoints_local[ip+1];
-				for(int i=str; i<end; ++i){
-					vec_rightProcNo_local[ip].push_back(-1);
-					vec_rightId_local[ip].push_back(-1);
-				}
-				for(int i=0, iter=0; i<recv_localPoint_toProc_toId[ip].size()/3; ++i){
-					int my_id_local = recv_localPoint_toProc_toId[ip][iter++];
-					int my_id_global = nPoints_local[ip] + my_id_local;
-					int rightProc_local = recv_localPoint_toProc_toId[ip][iter++];
-					int rightId_local = recv_localPoint_toProc_toId[ip][iter++];
-					int rightId_global = nPoints_local[rightProc_local] + rightId_local;
-					
-					vec_rightProcNo_local[ip][my_id_local] = rightProc_local;
-					vec_rightId_local[ip][my_id_local] = rightId_local;
-					// 중복 및 삭제
-					if(rightProc_local<ip){
-						deletePoints[my_id_global] = true;
-					}
-				}
-			}
-		}
-		vector<int> tmp_point_global_id(size+1,0);
-		vector<vector<int>> points_id_local2global(size);
-		vector<vector<int>> delete_total_front_points(size);
-		for(int ip=0, iter=0, before_nd=0, tmp_glob=0; ip<size; ++ip){
-			int str = nPoints_local[ip];
-			int end = nPoints_local[ip+1];
-			for(int i=str; i<end; ++i){
-				points_id_local2global[ip].push_back(tmp_glob);
-				delete_total_front_points[ip].push_back(before_nd);
-				if(deletePoints[i]==false) {
-					++tmp_glob;
-				}
-				else{
-					++before_nd;
-				}
-			}
-			tmp_point_global_id[ip+1] = tmp_glob;
-		}
-		
-		{
-			for(int ip=0; ip<size; ++ip){
-				int str = nPoints_local[ip];
-				int end = nPoints_local[ip+1];
-				// for(int i=str, iter=0; i<end; ++i){
+				int str = str_points_glo[ip];
+				int end = str_points_glo[ip+1];
 				for(int i=0, iter=0; i<recv_localPoint_toProc_toId[ip].size()/3; ++i){
 					int my_id_local = recv_localPoint_toProc_toId[ip].at(iter++);
-					int my_id_global = nPoints_local[ip] + my_id_local;
+					int my_id_global = str_points_glo[ip] + my_id_local;
 					int rightProc_local = recv_localPoint_toProc_toId[ip].at(iter++);
 					int rightId_local = recv_localPoint_toProc_toId[ip].at(iter++);
-					int rightId_global = nPoints_local[rightProc_local] + rightId_local;
+					int rightId_global = str_points_glo[rightProc_local] + rightId_local;
 					
-					// int new_id_global = tmp_point_global_id[rightProc_local] + rightId_local - 
-											// delete_total_front_points[rightProc_local][rightId_local];
+					reorder_my_id_local[my_id_global].push_back(my_id_local);
+					reorder_rightProcNo_local[my_id_global].push_back(rightProc_local);
+					reorder_rightId_local[my_id_global].push_back(rightId_local);
+					reorder_rightId_global[my_id_global].push_back(rightId_global);
+					
 					// 중복 및 삭제
-					if(rightProc_local<ip){
-						bool continueCalc = true;
-						int new_id_global = -1;
-						while(continueCalc){
-							new_id_global = points_id_local2global[rightProc_local][rightId_local];
-							my_id_global = nPoints_local[rightProc_local] + rightId_local;
-							int tmp_rightProc_local = vec_rightProcNo_local[rightProc_local][rightId_local];
-							int tmp_rightId_local = vec_rightId_local[rightProc_local][rightId_local];
-							rightProc_local = tmp_rightProc_local;
-							rightId_local = tmp_rightId_local;
-							if(deletePoints[my_id_global]==false) continueCalc=false;
-						}
-											
-						// if(deletePoints[my_id_global]!=true) cout << "ERROR33" << endl;
-						// if(deletePoints[rightId_global]==true) cout << "ERROR34" << endl;
-						// points_id_local2global[ip][rightId_local] = rightId_global;
-						points_id_local2global[ip][my_id_local] = new_id_global;
-						// deletePoints[my_id_global] = true;
+					if(rightId_global<my_id_global){
+						deletePoints.at(my_id_global) = true;
 					}
-				}
-			}			
-		}
-		for(int ip=0; ip<size; ++ip){
-			int str = nPoints_local[ip];
-			int end = nPoints_local[ip+1];
-			// for(int i=str, iter=0; i<end; ++i){
-			for(int i=0, iter=0; i<recv_localPoint_toProc_toId[ip].size()/3; ++i){
-				int my_id_local = recv_localPoint_toProc_toId[ip].at(iter++);
-				int my_id_global = nPoints_local[ip] + my_id_local;
-				int rightProc_local = recv_localPoint_toProc_toId[ip].at(iter++);
-				int rightId_local = recv_localPoint_toProc_toId[ip].at(iter++);
-				int rightId_global = nPoints_local[rightProc_local] + rightId_local;
-				
-				// int new_id_global = tmp_point_global_id[rightProc_local] + rightId_local - 
-										// delete_total_front_points[rightProc_local][rightId_local];
-				// 중복 및 삭제
-				if(rightProc_local<ip){
-					int new_id_global = points_id_local2global[rightProc_local][rightId_local];
-										
-					if(deletePoints[my_id_global]!=true) cout << "ERROR33" << endl;
-					if(deletePoints[rightId_global]==true) cout << "ERROR34" << endl;
-					// points_id_local2global[ip][rightId_local] = rightId_global;
-					points_id_local2global[ip][my_id_local] = new_id_global;
-					// deletePoints[my_id_global] = true;
 				}
 			}
 		}
 		
-		// for(int ip=0, iter=0, nDelete=0; ip<size; ++ip){
-			// for(int i=0; i<points_id_local2global[ip].size(); ++i){
-				// if(deletePoints[iter++]==true) {
-					// points_id_local2global[ip][i] -= (nDelete++);
+		
+		// 로컬 포인트 id -> 글로벌 포인트 id
+		vector<vector<int>> points_id_local2global(size);
+		{
+			for(int ip=0, iter=0, before_nd=0, tmp_glob=0; ip<size; ++ip){
+				int str = str_points_glo[ip];
+				int end = str_points_glo[ip+1];
+				for(int i=str; i<end; ++i){
+					points_id_local2global[ip].push_back(tmp_glob);
+					if(deletePoints[i]==false) {
+						++tmp_glob;
+					}
+					else{
+						++before_nd;
+					}
+				}
+			}
+			for(int ip=0; ip<size; ++ip){
+				int str = str_points_glo[ip];
+				int end = str_points_glo[ip+1];
+				for(int i=str, iter=0; i<end; ++i){
+					int iter = 0;
+					int my_id_global = i;
+					int min_rightId_global = str_points_glo[size];
+					
+					// if(rank==0){
+						// cout << i << endl;
+						// cout << 
+						// meshComb.points[i].x << " " <<
+						// meshComb.points[i].y << " " <<
+						// meshComb.points[i].z << " " <<
+						// endl;
+					// }
+					
+					for(auto& my_id_local : reorder_my_id_local[i]){
+						
+						int rightProc_local = reorder_rightProcNo_local[i][iter];
+						int rightId_local = reorder_rightId_local[i][iter];
+						int rightId_global = reorder_rightId_global[i][iter];
+						
+						int copy_tmp = points_id_local2global[ip][my_id_local];
+						// if(rank==0) cout << i << " " << rightId_global << " " << copy_tmp << endl;
+						// if(rank==0) cout << "Delete = " << deletePoints[i] << endl;
+						if(rightId_global>i){
+							// if(rank==0){
+								// cout << 
+								// meshComb.points[rightId_global].x << " " <<
+								// meshComb.points[rightId_global].y << " " <<
+								// meshComb.points[rightId_global].z << " " <<
+								// endl;
+							// }
+							// if(rank==0) cout << i << " " << rightId_global << " " << copy_tmp << endl;
+							points_id_local2global[rightProc_local][rightId_local] = copy_tmp;
+						}
+						
+						++iter;
+					}
+				}
+			}
+		}
+		
+		
+		// // 디버그
+		// {
+		
+			// for(int ip=0; ip<size; ++ip){
+				// int str = str_points_glo[ip];
+				// int end = str_points_glo[ip+1];
+				// for(int i=str, iter=0; i<end; ++i){
+					// int id_glo = points_id_local2global[ip][i-str];
+					// if(rank==0){
+						// cout << 
+						// i << " " <<
+						// id_glo << " " <<
+						// meshComb.points[i].x << " " <<
+						// meshComb.points[i].y << " " <<
+						// meshComb.points[i].z << " " <<
+						// endl;
+					// }
+					
+				// }
+			// }
+		
+		
+		
+		// }
+		
+		//========================================================
+		
+		
+		// vector<vector<int>> send_localPoint_connId(size);
+		// for(int i=0, ip=0; i<mesh.points.size(); ++i){
+			// auto& point = mesh.points[i];
+			// for(auto& [proc, id] : point.connPoints){
+				// send_localPoint_connId[proc].push_back(id);
+				// send_localPoint_connId[proc].push_back(i);
+				// send_localPoint_connId[proc].push_back(send_localPoint_proc_id[i].size());
+				// for(auto& [tmp_proc, tmp_id_local] : send_localPoint_proc_id[i]){
+					// send_localPoint_connId[proc].push_back(tmp_proc);
+					// send_localPoint_connId[proc].push_back(tmp_id_local);
 				// }
 			// }
 		// }
 		
-		// cout << meshComb.points.size() << endl;
+		// connPoints 대한 정보들 
+		vector<vector<int>> send_conn_proc2(size);
+		for(int i=0, ip=0; i<mesh.points.size(); ++i){
+			auto& point = mesh.points[i];
+			for(auto& [proc, id] : point.connPoints){
+				send_conn_proc2[proc].push_back(id);
+				send_conn_proc2[proc].push_back(send_localPoint_proc_id[i].size());
+				for(auto& [tmp_proc, tmp_id_local] : send_localPoint_proc_id[i]){
+					send_conn_proc2[proc].push_back(tmp_proc);
+					send_conn_proc2[proc].push_back(rank);
+					send_conn_proc2[proc].push_back(tmp_id_local);
+				}
+			}
+		}
 		
+		// connPoints 대한 정보들 넘기기
+		vector<vector<int>> recv_conn_proc2;
+		MASCH_MPI_Alltoallv(send_conn_proc2, recv_conn_proc2);
+		
+		
+		// 각 포인트에 대한, 넘겨진 포인트의 옆 proc_glo, proc_loc, id_loc 저장
+		vector<vector<int>> connPoints_all_send_procNo_glo(mesh.points.size());
+		vector<vector<int>> connPoints_all_send_procNo_loc(mesh.points.size());
+		vector<vector<int>> connPoints_all_send_id_loc(mesh.points.size());
+		for(int ip=0, id=0; ip<size; ++ip){
+			int iter=0;
+			while(iter<recv_conn_proc2[ip].size()){
+				int id_glo = recv_conn_proc2[ip][iter++];
+				int tmp_size = recv_conn_proc2[ip][iter++];
+				for(int i=0; i<tmp_size; ++i){
+					int rightProcNo_glo = recv_conn_proc2[ip][iter++];
+					int rightProcNo_loc = recv_conn_proc2[ip][iter++];
+					int rightId_loc = recv_conn_proc2[ip][iter++];
+					
+					connPoints_all_send_procNo_glo[id_glo].push_back(rightProcNo_glo);
+					connPoints_all_send_procNo_loc[id_glo].push_back(rightProcNo_loc);
+					connPoints_all_send_id_loc[id_glo].push_back(rightId_loc);
+					
+				}
+			}
+		}
+		
+		// 각 포인트에 대한, 자기 자신 포인트의 옆 proc_glo, proc_loc, id_loc 저장
+		for(int i=0, ip=0; i<mesh.points.size(); ++i){
+			auto& point = mesh.points[i];
+			for(auto& [tmp_proc, tmp_id_local] : send_localPoint_proc_id[i]){
+				connPoints_all_send_procNo_glo[i].push_back(tmp_proc);
+				connPoints_all_send_procNo_loc[i].push_back(rank);
+				connPoints_all_send_id_loc[i].push_back(tmp_id_local);
+			}
+			
+		}
+		
+		// for(int i=0, ip=0; i<mesh.points.size(); ++i){
+			// if(rank==0){
+				// int iter=0;
+				// for(auto& item : connPoints_all_send_procNo_glo[i]){
+					// cout << 
+					// connPoints_all_send_procNo_glo[i][iter] << " " <<
+					// connPoints_all_send_procNo_loc[i][iter] << " " <<
+					// connPoints_all_send_id_loc[i][iter] << " " << 
+					// endl;
+					// ++iter;
+				// }
+			// }
+		// }
+		
+		// cout << endl;
+		// cout << endl;
+		// cout << endl;
+		// cout << endl;
+		
+		// for(int i=0, ip=0; i<mesh.points.size(); ++i){
+			// if(rank==1){
+				// int iter=0;
+				// for(auto& item : connPoints_all_send_procNo_glo[i]){
+					// cout << 
+					// connPoints_all_send_procNo_glo[i][iter] << " " <<
+					// connPoints_all_send_procNo_loc[i][iter] << " " <<
+					// connPoints_all_send_id_loc[i][iter] << " " << 
+					// endl;
+					// ++iter;
+				// }
+			// }
+		// }
+		
+		
+		
+		
+		
+		
+		vector<vector<int>> connPoints_all_send_id_glo(mesh.points.size());
+		{
+			vector<vector<int>> send_debug_procNo_loc(size);
+			vector<vector<int>> send_debug_id_loc(size);
+			vector<vector<double>> send_debug_8x(size);
+			vector<vector<double>> send_debug_8y(size);
+			vector<vector<double>> send_debug_8z(size);
+			for(int i=0, ip=0; i<mesh.points.size(); ++i){
+				auto& point = mesh.points[i];
+				int iter=0;
+				for(auto& proc : connPoints_all_send_procNo_glo[i]){
+					int procNo_loc = connPoints_all_send_procNo_loc[i][iter];
+					int id_loc = connPoints_all_send_id_loc[i][iter];
+					
+					send_debug_procNo_loc[proc].push_back(procNo_loc);
+					send_debug_id_loc[proc].push_back(id_loc);
+					
+					send_debug_8x[proc].push_back(mesh.points[i].x);
+					send_debug_8y[proc].push_back(mesh.points[i].y);
+					send_debug_8z[proc].push_back(mesh.points[i].z);
+					
+					// if(rank==0 && proc==1){
+						// cout << 
+						// point.x << " " <<
+						// point.y << " " <<
+						// point.z << " " <<
+						// endl;
+					// }
+					
+					++iter;
+				}
+				
+			}
+			vector<vector<int>> recv_debug_procNo_loc;
+			MASCH_MPI_Alltoallv(send_debug_procNo_loc, recv_debug_procNo_loc);
+			vector<vector<int>> recv_debug_id_loc;
+			MASCH_MPI_Alltoallv(send_debug_id_loc, recv_debug_id_loc);
+			// vector<vector<int>> recv_debug_id_glo;
+			// MASCH_MPI_Alltoallv(send_debug_id_glo, recv_debug_id_glo);
+			
+			vector<vector<double>> recv_debug_8x;
+			MASCH_MPI_Alltoallv(send_debug_8x, recv_debug_8x);
+			vector<vector<double>> recv_debug_8y;
+			MASCH_MPI_Alltoallv(send_debug_8y, recv_debug_8y);
+			vector<vector<double>> recv_debug_8z;
+			MASCH_MPI_Alltoallv(send_debug_8z, recv_debug_8z);
+			
+			// cout << endl;
+			// cout << endl;
+			// cout << endl;
+	// MPI_Barrier(MPI_COMM_WORLD);
+				
+			vector<vector<int>> send_debug_id_glo(size);
+			for(int ip=0; ip<size; ++ip){
+				for(int i=0; i<recv_debug_procNo_loc[ip].size(); ++i){
+					int procNo_loc = recv_debug_procNo_loc[ip][i];
+					int id_loc = recv_debug_id_loc[ip][i];
+					
+					if(rank==1 && ip==0){
+						// if(rank==1){
+						// cout <<
+						// recv_debug_8x[ip][i] << " " <<
+						// recv_debug_8y[ip][i] << " " <<
+						// recv_debug_8z[ip][i] << " " <<
+						// endl;
+						
+						// cout <<
+						// recv_localPoint_xyz[procNo_loc][3*id_loc] << " " <<
+						// recv_localPoint_xyz[procNo_loc][3*id_loc+1] << " " <<
+						// recv_localPoint_xyz[procNo_loc][3*id_loc+2] << " " <<
+						// endl;
+					}
+					
+					int id_glo = points_id_local2global[procNo_loc][id_loc];
+					send_debug_id_glo[ip].push_back(id_glo);
+					
+					auto& point = meshComb.points[str_points_glo[procNo_loc]+id_loc];
+					// if(rank==1 && ip==0){
+						// cout << 
+						// point.x << " " <<
+						// point.y << " " <<
+						// point.z << " " <<
+						// endl;
+					// }
+					
+				}
+			}
+			vector<vector<int>> recv_debug_id_glo;
+			MASCH_MPI_Alltoallv(send_debug_id_glo, recv_debug_id_glo);
+			
+			// cout << endl;
+			// cout << endl;
+			// cout << endl;
+	// MPI_Barrier(MPI_COMM_WORLD);
+			
+			vector<int> iter_tmp_n(size,0);
+			for(int i=0; i<mesh.points.size(); ++i){
+				auto& point = mesh.points[i];
+				int iter=0;
+				for(auto& proc : connPoints_all_send_procNo_glo[i]){
+					int procNo_loc = connPoints_all_send_procNo_loc[i][iter];
+					int id_loc = connPoints_all_send_id_loc[i][iter];
+					
+					int id_glo = recv_debug_id_glo[proc].at(iter_tmp_n[proc]);
+					connPoints_all_send_id_glo[i].push_back(id_glo);
+					
+					// if(rank==0 && proc==1){
+						// cout << 
+						// point.x << " " <<
+						// point.y << " " <<
+						// point.z << " " <<
+						// endl;
+					// }
+					
+					++iter_tmp_n[proc];
+					++iter;
+				}
+				
+			}
+			// for(int i=0, ip=0; i<mesh.points.size(); ++i){
+				// auto& point = mesh.points[i];
+				// int iter=0;
+				// for(auto& proc : connPoints_all_send_procNo_glo[i]){
+					// int procNo_loc = connPoints_all_send_procNo_loc[i][iter];
+					// int id_loc = connPoints_all_send_id_loc[i][iter];
+					
+					// // send_debug_procNo_loc[proc].push_back(procNo_loc);
+					// // send_debug_id_loc[proc].push_back(id_loc);
+					
+					// // send_debug_8x[proc].push_back(mesh.points[i].x);
+					// // send_debug_8y[proc].push_back(mesh.points[i].y);
+					// // send_debug_8z[proc].push_back(mesh.points[i].z);
+					
+					// if(rank==0 && proc==1){
+						// cout << 
+						// point.x << " " <<
+						// point.y << " " <<
+						// point.z << " " <<
+						// endl;
+					// }
+					
+					// ++iter;
+				// }
+				
+			// }
+				
+		}
+		
+	
+		
+		
+		// // 디버그
+		// {
+			// vector<vector<int>> send_debug_tmp_size(size);
+			// vector<vector<int>> send_debug_procNo_glo(size);
+			// vector<vector<int>> send_debug_procNo_loc(size);
+			// vector<vector<int>> send_debug_id_loc(size);
+			// vector<vector<int>> send_debug_id_glo(size);
+			// for(int i=0, ip=0; i<mesh.points.size(); ++i){
+				// auto& point = mesh.points[i];
+				// for(auto& proc : send_localPoint_proc[i]){
+					// int tmp_size = connPoints_all_send_procNo_glo[i].size();
+					// send_debug_tmp_size[proc].push_back(tmp_size);
+					// for(int j=0; j<tmp_size; ++j){
+						// send_debug_procNo_glo[proc].push_back(connPoints_all_send_procNo_glo[i].at(j));
+						// send_debug_procNo_loc[proc].push_back(connPoints_all_send_procNo_loc[i].at(j));
+						// send_debug_id_loc[proc].push_back(connPoints_all_send_id_loc[i].at(j));
+						// send_debug_id_glo[proc].push_back(connPoints_all_send_id_glo[i].at(j));
+						
+						// // if(rank==0 && proc==1 && connPoints_all_send_procNo_glo[i].at(j) == 1){
+							// // cout <<
+							// // point.x << " " <<
+							// // point.y << " " <<
+							// // point.z << " " <<
+							// // endl;
+						// // }
+					// }
+				// }
+			// }
+			// vector<vector<int>> recv_debug_tmp_size;
+			// MASCH_MPI_Alltoallv(send_debug_tmp_size, recv_debug_tmp_size);
+			// vector<vector<int>> recv_debug_procNo_glo;
+			// MASCH_MPI_Alltoallv(send_debug_procNo_glo, recv_debug_procNo_glo);
+			// vector<vector<int>> recv_debug_procNo_loc;
+			// MASCH_MPI_Alltoallv(send_debug_procNo_loc, recv_debug_procNo_loc);
+			// vector<vector<int>> recv_debug_id_loc;
+			// MASCH_MPI_Alltoallv(send_debug_id_loc, recv_debug_id_loc);
+			// vector<vector<int>> recv_debug_id_glo;
+			// MASCH_MPI_Alltoallv(send_debug_id_glo, recv_debug_id_glo);
+			
+			// cout << endl;
+			// cout << endl;
+			// cout << endl;
+			
+			
+			// for(int ip=0, iter_glob=0; ip<size; ++ip){
+				// int tmp_size = recv_debug_tmp_size[ip].size();
+				// for(int i=0, iter=0, iter2=0; i<tmp_size; ++i){
+					// int tmp2_size = recv_debug_tmp_size[ip][i];
+					// for(int j=0; j<tmp2_size; ++j){
+						// int procNo_glo = recv_debug_procNo_glo[ip][iter];
+						// int procNo_loc = recv_debug_procNo_loc[ip][iter];
+						// int id_loc = recv_debug_id_loc[ip][iter];
+						// int id_glo = recv_debug_id_glo[ip][iter];
+						
+						// // if(rank==1 && ip==0 && procNo_glo==1){
+							// // cout << "AA = " <<
+							// // meshComb.points[id_glo].x << " " <<
+							// // meshComb.points[id_glo].y << " " <<
+							// // meshComb.points[id_glo].z << " " <<
+							// // endl;
+							// // // cout << "BB = " <<
+							// // // recv_localPoint_xyz[procNo_loc][3*id_loc] << " " <<
+							// // // recv_localPoint_xyz[procNo_loc][3*id_loc+1] << " " <<
+							// // // recv_localPoint_xyz[procNo_loc][3*id_loc+2] << " " <<
+							// // // endl;
+						// // }
+						
+						// if(rank!=procNo_glo){
+							// auto& connPoints = meshComb.points.at(iter_glob).connPoints;
+							// bool thereProc = false;
+							// for(auto& [proc, id] : connPoints){
+								// if(proc==procNo_glo) thereProc = true;
+							// }
+							// if(thereProc==false) 
+								// connPoints.push_back(make_pair(procNo_glo,id_glo));
+						// }
+						
+						
+						
+						// ++iter;
+					// }
+					
+					
+					// ++iter_glob;
+					
+				// }
+			// }
+			
+			
+			
+			
+		// }
+		
+		
+			
+			// // 포인트 삭제
+			// {
+				// int numN = 0;
+				// meshComb.points.erase( std::remove_if( meshComb.points.begin(), meshComb.points.end(), 
+					// [&deletePoints, &numN](MASCH_Point const& v) { 
+					// return deletePoints[numN++]; 
+					// }), meshComb.points.end());
+			// }
+			
+		
+		
+		// // 디버그
+		// {
+			// vector<vector<int>> send_debug_tmp_size(size);
+			// for(int i=0, ip=0; i<mesh.points.size(); ++i){
+				// auto& point = mesh.points[i];
+				// int iter=0;
+				// for(auto& proc : connPoints_all_send_procNo_glo[i]){
+					// // if(rank==0) cout << "proc1 = " << proc << endl;
+					// if(rank==0 && proc==1){
+						// cout << 
+						// point.x << " " <<
+						// point.y << " " <<
+						// point.z << " " <<
+						// endl;
+					// }
+					// send_debug_tmp_size[proc].push_back(connPoints_all_send_id_glo[i][iter]);
+					
+					// ++iter;
+				// }
+					
+				// // for(auto& proc : send_localPoint_proc[i]){
+					// // if(rank==0) cout << "proc2 = " << proc << endl;
+				// // }
+			// }
+			
+			// vector<vector<int>> recv_debug_tmp_size;
+			// MASCH_MPI_Alltoallv(send_debug_tmp_size, recv_debug_tmp_size);
+			
+			// cout << endl;
+			// cout << endl;
+			// cout << endl;
+			
+			
+			// for(int ip=0, iter_glob=0; ip<size; ++ip){
+				// int tmp_size = recv_debug_tmp_size[ip].size();
+				// for(int i=0, iter=0, iter2=0; i<tmp_size; ++i){
+					// int id_glo = recv_debug_tmp_size[ip][i];
+					// auto& point = meshComb.points[id_glo];
+					// if(rank==1 && ip==0){
+						// cout << 
+						// point.x << " " <<
+						// point.y << " " <<
+						// point.z << " " <<
+						// endl;
+					// }
+				// }
+			// }
+		// }
+		
+		
+		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
+		
+			
 		// 포인트 삭제
 		{
 			int numN = 0;
@@ -1711,9 +2222,355 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				return deletePoints[numN++]; 
 				}), meshComb.points.end());
 		}
+			
+		
+
+		
+		{
+			vector<vector<int>> send_debug_tmp_size(size);
+			vector<vector<int>> send_debug_procNo_glo(size);
+			vector<vector<int>> send_debug_procNo_loc(size);
+			vector<vector<int>> send_debug_id_loc(size);
+			vector<vector<int>> send_debug_id_glo(size);
+			for(int i=0; i<mesh.points.size(); ++i){
+				auto& point = mesh.points[i];
+				for(auto& proc : send_localPoint_proc[i]){
+					int tmp_size = connPoints_all_send_procNo_glo[i].size();
+					send_debug_tmp_size[proc].push_back(tmp_size);
+					for(int j=0; j<tmp_size; ++j){
+						send_debug_procNo_glo[proc].push_back(connPoints_all_send_procNo_glo[i].at(j));
+						send_debug_procNo_loc[proc].push_back(connPoints_all_send_procNo_loc[i].at(j));
+						send_debug_id_loc[proc].push_back(connPoints_all_send_id_loc[i].at(j));
+						send_debug_id_glo[proc].push_back(connPoints_all_send_id_glo[i].at(j));
+						
+					}
+				}
+			}
+			vector<vector<int>> recv_debug_tmp_size;
+			MASCH_MPI_Alltoallv(send_debug_tmp_size, recv_debug_tmp_size);
+			vector<vector<int>> recv_debug_procNo_glo;
+			MASCH_MPI_Alltoallv(send_debug_procNo_glo, recv_debug_procNo_glo);
+			vector<vector<int>> recv_debug_procNo_loc;
+			MASCH_MPI_Alltoallv(send_debug_procNo_loc, recv_debug_procNo_loc);
+			vector<vector<int>> recv_debug_id_loc;
+			MASCH_MPI_Alltoallv(send_debug_id_loc, recv_debug_id_loc);
+			vector<vector<int>> recv_debug_id_glo;
+			MASCH_MPI_Alltoallv(send_debug_id_glo, recv_debug_id_glo);
+			
+			
+			
+			for(int ip=0; ip<size; ++ip){
+				int tmp_size = recv_debug_tmp_size[ip].size();
+				for(int i=0, iter=0, iter2=0; i<tmp_size; ++i){
+					
+					int tmp2_size = recv_debug_tmp_size[ip][i];
+					int llll=0;
+					int iter_glob_tmp = -1;
+					for(int j=0; j<tmp2_size; ++j){
+						int procNo_glo = recv_debug_procNo_glo[ip][iter];
+						int procNo_loc = recv_debug_procNo_loc[ip][iter];
+						int id_loc = recv_debug_id_loc[ip][iter];
+						int id_glo = recv_debug_id_glo[ip][iter];
+						if(rank==procNo_glo){
+							iter_glob_tmp = id_glo;
+							// if(rank==0) cout << procNo_glo << " " << procNo_loc << " " << id_loc << " " << id_glo << " " << iter_glob << endl;
+							// ++llll;
+						}
+						++iter;
+					}
+					for(int j=0; j<tmp2_size; ++j){
+						int procNo_glo = recv_debug_procNo_glo[ip][iter2];
+						int procNo_loc = recv_debug_procNo_loc[ip][iter2];
+						int id_loc = recv_debug_id_loc[ip][iter2];
+						int id_glo = recv_debug_id_glo[ip][iter2];
+						if(rank!=procNo_glo){
+							auto& connPoints = meshComb.points.at(iter_glob_tmp).connPoints;
+							bool thereProc = false;
+							for(auto& [proc, id] : connPoints){
+								if(proc==procNo_glo) thereProc = true;
+							}
+							if(thereProc==false) 
+								connPoints.push_back(make_pair(procNo_glo,id_glo));
+						}
+						++iter2;
+					}
+					
+					
+					
+				}
+				
+			}
+			
+			
+			
+			
+			
+				
+			
+			
+			// 디;버그
+			{
+		
+				MPI_Barrier(MPI_COMM_WORLD);
+				vector<vector<int>> send_test1(size);
+				vector<vector<double>> send_test2(size);
+				int iter=0;
+				for(auto& point : meshComb.points){
+					auto& connPoints = point.connPoints;
+					for(auto& [proc, id] : connPoints){
+						// if(rank==0){
+							// cout << 
+							// iter << " " <<
+							// proc << " " <<
+							// id << " " <<
+							// endl;
+						// }
+						// if(rank==0 && proc==1){
+							// cout << 
+							// point.x << " " <<
+							// point.y << " " <<
+							// point.z << " " <<
+							// endl;
+						// }
+						send_test1[proc].push_back(id);
+						send_test2[proc].push_back(point.x);
+						send_test2[proc].push_back(point.y);
+						send_test2[proc].push_back(point.z);
+					}
+					++iter;
+				}
+				
+				vector<vector<int>> recv_test1;
+				MASCH_MPI_Alltoallv(send_test1, recv_test1);
+				vector<vector<double>> recv_test2;
+				MASCH_MPI_Alltoallv(send_test2, recv_test2);
+				
+				// cout << endl;
+				// cout << endl;
+				// cout << endl;
+				
+				for(int ip=0; ip<size; ++ip){
+					int iter2 = 0;
+					for(auto& ipoint : recv_test1[ip]){
+						auto& point = meshComb.points[ipoint];
+						
+						// if(rank==1 && ip==0){
+							// cout << 
+							// point.x << " " <<
+							// point.y << " " <<
+							// point.z << " " <<
+							// endl;
+						// }
+						
+						// if(rank==0) cout << ipoint << endl;
+						double resi = 0.0;
+						resi += abs(point.x-recv_test2[ip][iter2++]);
+						resi += abs(point.y-recv_test2[ip][iter2++]);
+						resi += abs(point.z-recv_test2[ip][iter2++]);
+						if(rank==0) {
+							if(resi>1.e-16){
+								cout << "NONON " << resi << endl;
+							}
+						}
+					}
+				}
+				
+				
+			}
+			
+		
+			
+			
+			// {
+				// // conn 융합
+				// for(int ip=0; ip<size; ++ip){
+					// int str = str_points_glo[ip];
+					// int end = str_points_glo[ip+1];
+					// for(int i=str; i<end; ++i){
+						// int id_loc = i-str;
+						// auto& overlab_connPoints = meshComb.points.at(i).connPoints;
+						
+						// if(deletePoints[i]==true){
+							// int original_id_glo = points_id_local2global[ip][id_loc];
+							// auto& original_connPoints = meshComb.points.at(original_id_glo).connPoints;
+							
+							// for(auto& [over_proc, over_id] : overlab_connPoints){
+								// bool thereProc = false;
+								// for(auto& [proc, id] : original_connPoints){
+									// if(proc==over_proc) thereProc = true;
+								// }
+								// if(thereProc==false) {
+									// original_connPoints.push_back(make_pair(over_proc,over_id));
+								// }
+							// }
+						// }
+					// }
+				// }
+						
+			// }
+		
+		
+			
+			// // 포인트 삭제
+			// {
+				// int numN = 0;
+				// meshComb.points.erase( std::remove_if( meshComb.points.begin(), meshComb.points.end(), 
+					// [&deletePoints, &numN](MASCH_Point const& v) { 
+					// return deletePoints[numN++]; 
+					// }), meshComb.points.end());
+			// }
+			
+				
+			
+			
+			
+		}
+
+		
+			
+		
+		// {
+			// int iter = 0;
+			// for(auto& point : meshComb.points){
+				
+				// auto& connPoints = point.connPoints;
+				
+				// for(auto& [proc, id] : connPoints){
+					
+					// // if(rank==1) cout << iter << " " << proc << " " << id << endl;
+				// }
+				// ++iter;
+			// }
+		// }
+	
+	
+		
+		// {
+			
+			// vector<vector<double>> send_test1(size);
+			// int iter = 0;
+			// for(auto& point : meshComb.points){
+				
+				// auto& connPoints = point.connPoints;
+				// if(connPoints.size()==0){
+					// if(rank==0){
+						// send_test1[1].push_back(point.x);
+						// send_test1[1].push_back(point.y);
+						// send_test1[1].push_back(point.z);
+					// }
+					// else{
+						// send_test1[0].push_back(point.x);
+						// send_test1[0].push_back(point.y);
+						// send_test1[0].push_back(point.z);
+					// }
+				// }
+			// }
+			// vector<vector<double>> recv_test1;
+			// MASCH_MPI_Alltoallv(send_test1, recv_test1);
+			
+			// for(int ip=0, iter2=0; ip<size; ++ip){
+				// int tmp_size = recv_test1[ip].size();
+				// for(int i=0, iter3=0; i<tmp_size/3; ++i){
+					// double x_tmp = recv_test1[ip][iter3++];
+					// double y_tmp = recv_test1[ip][iter3++];
+					// double z_tmp = recv_test1[ip][iter3++];
+					
+					// for(auto& point : meshComb.points){
+						// double resi = 0.0;
+						// resi += abs(point.x-x_tmp);
+						// resi += abs(point.y-y_tmp);
+						// resi += abs(point.z-z_tmp);
+						
+						// if(resi<1.e-8){
+							// cout << resi << endl;
+						// }
+					// }
+					
+					
+				// }
+				
+			// }
+			
+		// }
+			
+		
+		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
+		// // 디;버그
+		// {
+			// vector<vector<int>> send_test1(size);
+			// vector<vector<double>> send_test2(size);
+			// int iter=0;
+			// for(auto& point : meshComb.points){
+				// auto& connPoints = point.connPoints;
+				
+				// // if(rank==0) cout << iter << endl;
+				// // if(rank==0) cout << point.x << " " << point.y << " " << point.z << endl;
+				// for(auto& [proc, id] : connPoints){
+					// send_test1[proc].push_back(id);
+					// send_test2[proc].push_back(point.x);
+					// send_test2[proc].push_back(point.y);
+					// send_test2[proc].push_back(point.z);
+				// }
+				// ++iter;
+			// }
+			
+			// vector<vector<int>> recv_test1;
+			// MASCH_MPI_Alltoallv(send_test1, recv_test1);
+			// vector<vector<double>> recv_test2;
+			// MASCH_MPI_Alltoallv(send_test2, recv_test2);
+			
+			// for(int ip=0, iter2=0; ip<size; ++ip){
+				// for(auto& ipoint : recv_test1[ip]){
+					// auto& point = meshComb.points[ipoint];
+					// // if(rank==0) cout << ipoint << endl;
+					// double resi = 0.0;
+					// resi += abs(point.x-recv_test2[ip][iter2++]);
+					// resi += abs(point.y-recv_test2[ip][iter2++]);
+					// resi += abs(point.z-recv_test2[ip][iter2++]);
+					// if(rank==0) {
+						// if(resi>1.e-8){
+							// cout << "NONON " << resi << endl;
+						// }
+					// }
+				// }
+			// }
+			
+			
+		// }
+		
 		
 		
 		//======================================
+		
+
+		
+		vector<pair<int,int>> send_localCell_proc_id;
+		vector<vector<int>> send_localCell_id(size);
+		vector<int> send_localCell_n(size,0);
+		for(int i=0, ip=0; i<mesh.cells.size(); ++i){
+			int proc = idBlockCell[i];
+			int tmp_nCell = send_localCell_n.at(proc)++;
+			send_localCell_proc_id.push_back(make_pair(proc,tmp_nCell));
+			send_localCell_id[proc].push_back(tmp_nCell);
+		}
+		
+		
+		vector<vector<int>> recv_localCell_id;
+		MASCH_MPI_Alltoallv(send_localCell_id, recv_localCell_id);
+		vector<int> nCells_local(size+1,0);
+		for(int ip=0; ip<size; ++ip){
+			nCells_local[ip+1] = recv_localCell_id[ip].size();
+		}
+		for(int ip=0; ip<size; ++ip){
+			nCells_local[ip+1] = nCells_local[ip+1] + nCells_local[ip];
+		}
+		
+		
+		
+		
 		
 		vector<int> boundary_type(mesh.faces.size(),0);
 		int nbc=0;
@@ -1728,6 +2585,101 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				}
 			}
 		}
+		
+		
+		
+		// processor 페이스 고유 번호 부여
+		vector<int> proc_numbering;
+		{
+			int maxProcFaceNum = 0;
+			for(int ip=rank; ip<size; ++ip){
+				maxProcFaceNum += mesh.countsProcFaces[ip];
+			}
+			// if(rank==0) cout << maxProcFaceNum << endl;
+			vector<int> tmp_maxProcFaceNum(size);
+			MPI_Allgather(&maxProcFaceNum, 1, MPI_INT, tmp_maxProcFaceNum.data(), 1, MPI_INT, MPI_COMM_WORLD);
+			
+			vector<int> str_proc_numbering(size+1,0);
+			for(int ip=0; ip<size; ++ip){
+				str_proc_numbering[ip+1] = str_proc_numbering[ip] + tmp_maxProcFaceNum[ip];
+			}
+			
+			
+			// vector<int> send_proc_numbering;
+			// for(int i=0, ip=0; i<mesh.faces.size(); ++i){
+				// auto& face = mesh.faces[i];
+				// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+					// int tmp_num = str_proc_numbering[rank] + ip;
+					// send_proc_numbering.push_back(tmp_num);
+					// ++ip;
+				// }
+			// }
+			
+			
+			
+			
+			vector<int> send_proc_numbering;
+			for(int ip=0, numbering=0; ip<rank; ++ip){
+				int str=mesh.displsProcFaces[ip];
+				int end=str+mesh.countsProcFaces[ip];
+				for(int i=str; i<end; ++i){
+					send_proc_numbering.push_back(-1);
+				}
+			}
+			for(int ip=rank, numbering=0; ip<size; ++ip){
+				int str=mesh.displsProcFaces[ip];
+				int end=str+mesh.countsProcFaces[ip];
+				for(int i=str; i<end; ++i){
+					send_proc_numbering.push_back(str_proc_numbering[rank] + i - mesh.displsProcFaces[rank]);
+				}
+			}
+			vector<int> recv_proc_numbering;
+			recv_proc_numbering.resize(send_proc_numbering.size());
+			MPI_Alltoallv( send_proc_numbering.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+						   recv_proc_numbering.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+						   MPI_COMM_WORLD);
+				
+			
+			for(int ip=0, numbering=0; ip<rank; ++ip){
+				int str=mesh.displsProcFaces[ip];
+				int end=str+mesh.countsProcFaces[ip];
+				for(int i=str; i<end; ++i){
+					proc_numbering.push_back(recv_proc_numbering[i]);
+				}
+			}
+			for(int ip=rank, numbering=0; ip<size; ++ip){
+				int str=mesh.displsProcFaces[ip];
+				int end=str+mesh.countsProcFaces[ip];
+				for(int i=str; i<end; ++i){
+					proc_numbering.push_back(send_proc_numbering[i]);
+				}
+			}
+			 
+
+
+		
+	// MPI_Barrier(MPI_COMM_WORLD);
+			// for(int ip=0, numbering=0; ip<size; ++ip){
+				// int str=mesh.displsProcFaces[ip];
+				// int end=str+mesh.countsProcFaces[ip];
+				// for(int i=str; i<end; ++i){
+					// // if(rank==1) cout << rank << " " << proc_numbering[i] << endl;
+					// cout << rank << " " << proc_numbering[i] << endl;
+				// }
+			// }
+					
+			// // mesh.displsProcFaces[rank]
+		}
+	
+		
+		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
+		
+		
+		
 		
 	
 		
@@ -1747,6 +2699,7 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		vector<vector<int>> send_localFace_PR2IN_toProc(size);
 		vector<vector<int>> send_localFace_PR2IN_ipoints(size);
 		
+		vector<vector<int>> send_localFace_PR2PR_procFaceNum(size);
 		vector<vector<int>> send_localFace_PR2PR_iL(size);
 		vector<vector<int>> send_globalFace_PR2PR_toProc(size);
 		vector<vector<int>> send_localFace_PR2PR_ipoints(size);
@@ -1838,6 +2791,30 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				int ipR = recv_idBlockCell[ip];
 				int rightProcNo = recv_rank[ip];
 				
+				// // if(rank==0) cout << ipR << " " << rightProcNo << endl;
+				// if(rank==0){
+					// if(ipL==ipR){
+						// // for(auto& iface : face.ifaces)
+						// {
+							// // auto& face = mesh.faces[iface];
+							// // cout << face_state[iface] << endl;
+							// cout << "(" << mesh.points[face.ipoints[0]].x << " " <<
+							// mesh.points[face.ipoints[0]].y << " " <<
+							// mesh.points[face.ipoints[0]].z << ") ";
+							// cout << "(" << mesh.points[face.ipoints[1]].x << " " <<
+							// mesh.points[face.ipoints[1]].y << " " <<
+							// mesh.points[face.ipoints[1]].z << ") ";
+							// cout << "(" << mesh.points[face.ipoints[2]].x << " " <<
+							// mesh.points[face.ipoints[2]].y << " " <<
+							// mesh.points[face.ipoints[2]].z << ") ";
+							// cout << "(" << mesh.points[face.ipoints[3]].x << " " <<
+							// mesh.points[face.ipoints[3]].y << " " <<
+							// mesh.points[face.ipoints[3]].z << ") " << endl;
+						// }
+						
+					// }
+				// }
+				
 				if(ipL==ipR){
 					
 					send_localFace_PR2IN_iL[ipL].push_back(iL_local);
@@ -1854,9 +2831,15 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				}
 				else{
 					
+					send_localFace_PR2PR_procFaceNum[ipL].push_back(proc_numbering[ip]);
+					
 					send_localFace_PR2PR_iL[ipL].push_back(iL_local);
 					send_globalFace_PR2PR_toProc[ipL].push_back(ipR);
-					send_localFace_PR2PR_ipoints[ipL].push_back(face.ipoints.size());
+					send_localFace_PR2PR_ipoints[ipL].push_back(face.ipoints.size());						
+					double avgx = 0.0;
+					double avgy = 0.0;
+					double avgz = 0.0;
+					int tmp_size = face.ipoints.size();
 					for(auto& item : face.ipoints) {
 						int ipoint_local = -1;
 						int l=0;
@@ -1870,7 +2853,22 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 						if(l>1) cout << "ERROR 55" << endl;
 						// cout << l << endl;
 						send_localFace_PR2PR_ipoints[ipL].push_back(ipoint_local);
+						
+						avgx += mesh.points[item].x/(double)tmp_size;
+						avgy += mesh.points[item].y/(double)tmp_size;
+						avgz += mesh.points[item].z/(double)tmp_size;
 					}
+					
+					// if(ipL==0 && ipR==1){
+						// cout << rank << " " << proc_numbering[ip] << endl;
+						// cout << avgx << " " << avgy << " " << avgz << endl;
+						
+					// }
+					// if(ipL==1 && ipR==0){
+						// cout << rank << " " << proc_numbering[ip] << endl;
+						// cout << avgx << " " << avgy << " " << avgz << endl;
+						
+					// }
 				}
 				++ip;
 			}
@@ -1890,6 +2888,7 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		vector<vector<int>> recv_localFace_PR2IN_iL;
 		vector<vector<int>> recv_localFace_PR2IN_toProc;
 		vector<vector<int>> recv_localFace_PR2IN_ipoints;
+		vector<vector<int>> recv_localFace_PR2PR_procFaceNum;
 		vector<vector<int>> recv_localFace_PR2PR_iL;
 		vector<vector<int>> recv_globalFace_PR2PR_toProc;
 		vector<vector<int>> recv_localFace_PR2PR_ipoints;
@@ -1911,6 +2910,7 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		MASCH_MPI_Alltoallv(send_localFace_PR2IN_toProc, recv_localFace_PR2IN_toProc);
 		MASCH_MPI_Alltoallv(send_localFace_PR2IN_ipoints, recv_localFace_PR2IN_ipoints);
 		
+		MASCH_MPI_Alltoallv(send_localFace_PR2PR_procFaceNum, recv_localFace_PR2PR_procFaceNum);
 		MASCH_MPI_Alltoallv(send_localFace_PR2PR_iL, recv_localFace_PR2PR_iL);
 		MASCH_MPI_Alltoallv(send_globalFace_PR2PR_toProc, recv_globalFace_PR2PR_toProc);
 		MASCH_MPI_Alltoallv(send_localFace_PR2PR_ipoints, recv_localFace_PR2PR_ipoints);
@@ -2007,16 +3007,21 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		vector<int> nFaces_boundary(nbc,0);
 		
 		vector<vector<pair<int,int>>> reorder_procFace_BC2BC_proc_id(nbc);
+		vector<vector<int>> reorder_procFace_BC2BC_strId(nbc);
 		for(int ip=0; ip<size; ++ip){
 			for(int i=0, iter=0; i<recv_localFace_BC2BC_BCType[ip].size(); ++i){
 				int ibc = recv_localFace_BC2BC_BCType[ip][i];
 				reorder_procFace_BC2BC_proc_id[ibc].push_back(make_pair(ip,i));
+				reorder_procFace_BC2BC_strId[ibc].push_back(iter);
+				int tmp_size = recv_localFace_BC2BC_ipoints[ip].at(iter++);
+				for(int j=0; j<tmp_size; ++j) iter++;
 			}
 		}
 			
 		vector<int> iter_BC2BC(size,0);
 		for(int ibc=0; ibc<nbc; ++ibc){
 			int str_size = meshComb.faces.size();
+			int iter=0;
 			for(auto& [ip, i] : reorder_procFace_BC2BC_proc_id[ibc]){
 				
 				face_state.push_back(BC2BC);
@@ -2028,12 +3033,21 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 					int id_global = nCells_local[ip] + id_local;
 					meshComb.faces.back().iL = id_global;
 				}
-				int tmp_size = recv_localFace_BC2BC_ipoints[ip].at(iter_BC2BC[ip]++);
+				int strId = reorder_procFace_BC2BC_strId[ibc][iter];
+				int tmp_size = recv_localFace_BC2BC_ipoints[ip].at(strId++);
 				for(int j=0; j<tmp_size; ++j){
-					int ipoint = recv_localFace_BC2BC_ipoints[ip].at(iter_BC2BC[ip]++);
+					int ipoint = recv_localFace_BC2BC_ipoints[ip].at(strId++);
 					int id_global = points_id_local2global[ip].at(ipoint);
 					meshComb.faces.back().ipoints.push_back(id_global);
 				}
+						
+				// int tmp_size = recv_localFace_BC2BC_ipoints[ip].at(iter_BC2BC[ip]++);
+				// for(int j=0; j<tmp_size; ++j){
+					// int ipoint = recv_localFace_BC2BC_ipoints[ip].at(iter_BC2BC[ip]++);
+					// int id_global = points_id_local2global[ip].at(ipoint);
+					// meshComb.faces.back().ipoints.push_back(id_global);
+				// }
+				++iter;
 			}
 			nFaces_boundary[ibc] = meshComb.faces.size() - str_size;
 		}
@@ -2045,29 +3059,150 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 			// IN2PR
 			vector<vector<pair<int,int>>> reorder_procFace_IN2PR_proc_id(size);
 			vector<vector<int>> reorder_procFace_IN2PR_strId(size);
+			// for(int ip=size-1; ip>=0; --ip){
 			for(int ip=0; ip<size; ++ip){
-				// cout << recv_localFace_IN2PR_iL[ip].size() << " " <<  recv_globalFace_IN2PR_toProc[ip].size() << endl;
 				for(int i=0, iter=0; i<recv_localFace_IN2PR_iL[ip].size(); ++i){
 					int rightProc_global = recv_globalFace_IN2PR_toProc[ip][i];
-					reorder_procFace_IN2PR_proc_id[rightProc_global].push_back(make_pair(ip,i));
-					reorder_procFace_IN2PR_strId[rightProc_global].push_back(iter);
-					int tmp_size = recv_localFace_IN2PR_ipoints[ip].at(iter++);
-					for(int j=0; j<tmp_size; ++j) iter++;
+					// if(rightProc_global<rank)
+					{
+						reorder_procFace_IN2PR_proc_id[rightProc_global].push_back(make_pair(ip,i));
+						reorder_procFace_IN2PR_strId[rightProc_global].push_back(iter);
+						int tmp_size = recv_localFace_IN2PR_ipoints[ip].at(iter++);
+						for(int j=0; j<tmp_size; ++j) iter++;
+					}
 				}
 			}
 			
 			// PR2PR
+			vector<vector<int>> reorder_procFace_PR2PR_procFaceNum(size);
 			vector<vector<pair<int,int>>> reorder_procFace_PR2PR_proc_id(size);
 			vector<vector<int>> reorder_procFace_PR2PR_strId(size);
+			vector<vector<vector<int>>> reorder_procFace_PR2PR_ipoints(size);
 			for(int ip=0; ip<size; ++ip){
-				for(int i=0, iter=0; i<recv_localFace_PR2PR_iL[ip].size(); ++i){
-					int rightProc_global = recv_globalFace_PR2PR_toProc[ip][i];
-					reorder_procFace_PR2PR_proc_id[rightProc_global].push_back(make_pair(ip,i));
-					reorder_procFace_PR2PR_strId[rightProc_global].push_back(iter);
-					int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(iter++);
-					for(int j=0; j<tmp_size; ++j) iter++;
+				for(int i=0, iter=0, iter2=0; i<recv_localFace_PR2PR_iL[ip].size(); ++i){
+					// if(rank==0) cout << recv_localFace_PR2PR_iL[ip][i] << " " << i << endl;
+					int procFaceNum = recv_localFace_PR2PR_procFaceNum[ip].at(i);
+					
+					int rightProc_global = recv_globalFace_PR2PR_toProc[ip].at(i);
+					// if(rightProc_global!=rank)
+					{
+						reorder_procFace_PR2PR_procFaceNum[rightProc_global].push_back(procFaceNum);
+						reorder_procFace_PR2PR_proc_id[rightProc_global].push_back(make_pair(ip,i));
+						reorder_procFace_PR2PR_strId[rightProc_global].push_back(iter);
+						int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(iter++);
+						double avgx = 0.0;
+						double avgy = 0.0;
+						double avgz = 0.0;
+						vector<int> tmp;
+						for(int j=0; j<tmp_size; ++j) {
+							int id_local = recv_localFace_PR2PR_ipoints[ip].at(iter);
+							int id_global = points_id_local2global[ip].at(id_local);
+							tmp.push_back(id_global);
+							avgx += meshComb.points[id_global].x/(double)tmp_size;
+							avgy += meshComb.points[id_global].y/(double)tmp_size;
+							avgz += meshComb.points[id_global].z/(double)tmp_size;
+							iter++;
+						}
+						reorder_procFace_PR2PR_ipoints[rightProc_global].push_back(tmp);
+						
+						// if(rank==0 && rightProc_global==1){
+							// cout << rank << " " << procFaceNum << endl;
+							// cout << avgx << " " << avgy << " " << avgz << endl;
+							
+						// }
+						// if(rank==1 && rightProc_global==0){
+							// cout << rank << " " << procFaceNum << endl;
+							// cout << avgx << " " << avgy << " " << avgz << endl;
+							
+						// }
+					}
 				}
 			}
+			
+	
+			
+			// face 번호로 리오더
+			for(int ip=0; ip<size; ++ip){
+				int tmp_size = reorder_procFace_PR2PR_procFaceNum[ip].size();
+				vector<int> v_procFaceNum = reorder_procFace_PR2PR_procFaceNum[ip];
+				sort(v_procFaceNum.begin(), v_procFaceNum.end());
+				// reverse(v_procFaceNum.begin(), v_procFaceNum.end());
+				
+				vector<pair<int,int>> tmp_v1(tmp_size);
+				vector<int> tmp_v2(tmp_size);
+				vector<vector<int>> tmp_v3(tmp_size);
+				for(int i=0; i<tmp_size; ++i){
+					int procFaceNum = reorder_procFace_PR2PR_procFaceNum[ip].at(i);
+					// if(rank==1) cout << rank << " " << ip << " " << v_procFaceNum[i] << endl;
+					// if(rank==1) cout << ip << " " << v_procFaceNum[i] << " " << procFaceNum << endl;
+					auto it = find (v_procFaceNum.begin(), v_procFaceNum.end(), procFaceNum);
+					
+					int order = (it - v_procFaceNum.begin());
+					// if(rank==1) cout << ip << " " << order << endl;
+					
+					tmp_v1[order] = (reorder_procFace_PR2PR_proc_id[ip][i]);
+					tmp_v2[order] = (reorder_procFace_PR2PR_strId[ip][i]);
+					tmp_v3[order] = (reorder_procFace_PR2PR_ipoints[ip][i]);
+					
+				}
+				
+				reorder_procFace_PR2PR_procFaceNum[ip].clear();
+				reorder_procFace_PR2PR_proc_id[ip].clear();
+				reorder_procFace_PR2PR_strId[ip].clear();
+				reorder_procFace_PR2PR_ipoints[ip].clear();
+				for(int i=0; i<tmp_size; ++i){
+					reorder_procFace_PR2PR_proc_id[ip].push_back(tmp_v1[i]);
+					reorder_procFace_PR2PR_strId[ip].push_back(tmp_v2[i]);
+					reorder_procFace_PR2PR_procFaceNum[ip].push_back(v_procFaceNum[i]);
+					reorder_procFace_PR2PR_ipoints[ip].push_back(tmp_v3[i]);
+				}
+				
+				
+			}
+			
+			
+			// // 디버그
+			// for(int proc=0; proc<size; ++proc){
+				// int iter=0;
+				// int tmp2_size = reorder_procFace_PR2PR_proc_id[proc].size();
+				// for(int ii=0; ii<tmp2_size; ++ii){
+				// // for(auto& [ip, i] : reorder_procFace_PR2PR_proc_id[proc]){
+					// auto& [ip, i] = reorder_procFace_PR2PR_proc_id[proc][ii];
+					// int strId = reorder_procFace_PR2PR_strId[proc][ii];
+					// int procFaceNum = reorder_procFace_PR2PR_procFaceNum[proc][ii];
+					// vector<int> ipoints = reorder_procFace_PR2PR_ipoints[proc][ii];
+			
+					// double avgx = 0.0;
+					// double avgy = 0.0;
+					// double avgz = 0.0;
+					// // int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(strId++);
+					// int tmp_size = ipoints.size();
+					// for(auto& ipoint : ipoints){
+						// // int id_loc = recv_localFace_PR2PR_ipoints[ip].at(strId++);
+						// // int id_glo = points_id_local2global[ip].at(id_loc);
+						// avgx += meshComb.points[ipoint].x/(double)tmp_size;
+						// avgy += meshComb.points[ipoint].y/(double)tmp_size;
+						// avgz += meshComb.points[ipoint].z/(double)tmp_size;
+					// }
+					
+					// if(rank==0 && proc==1){
+						// cout << rank << " " << procFaceNum << endl;
+						// cout << avgx << " " << avgy << " " << avgz << endl;
+						
+					// }
+					// if(rank==1 && proc==0){
+						// cout << rank << " " << procFaceNum << endl;
+						// cout << avgx << " " << avgy << " " << avgz << endl;
+						
+					// }
+				// }
+			// }
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
+			
 			
 		
 			vector<int> iter_IN2PR(size,0);
@@ -2103,27 +3238,93 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				}
 				// PR2PR
 				{
+					
 					int iter=0;
-					for(auto& [ip, i] : reorder_procFace_PR2PR_proc_id[proc]){
-				
+					int tmp2_size = reorder_procFace_PR2PR_proc_id[proc].size();
+					for(int ii=0; ii<tmp2_size; ++ii){
+						
 				face_state.push_back(PR2PR);
 				
 						meshComb.addFace();
 						meshComb.faces.back().setType(MASCH_Face_Types::PROCESSOR);
-						{
-							int id_local = recv_localFace_PR2PR_iL[ip].at(i);
-							int id_global = nCells_local[ip] + id_local;
-							meshComb.faces.back().iL = id_global;
+						
+						auto& [ip, i] = reorder_procFace_PR2PR_proc_id[proc][ii];
+						int id_local = recv_localFace_PR2PR_iL[ip].at(i);
+						int id_global = nCells_local[ip] + id_local;
+						meshComb.faces.back().iL = id_global;
+						
+						int strId = reorder_procFace_PR2PR_strId[proc][ii];
+						int procFaceNum = reorder_procFace_PR2PR_procFaceNum[proc][ii];
+						vector<int> ipoints = reorder_procFace_PR2PR_ipoints[proc][ii];
+				
+						double avgx = 0.0;
+						double avgy = 0.0;
+						double avgz = 0.0;
+						// int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(strId++);
+						int tmp_size = ipoints.size();
+						for(auto& ipoint : ipoints){
+							// int id_loc = recv_localFace_PR2PR_ipoints[ip].at(strId++);
+							// int id_glo = points_id_local2global[ip].at(id_loc);
+							meshComb.faces.back().ipoints.push_back(ipoint);
+							avgx += meshComb.points[ipoint].x/(double)tmp_size;
+							avgy += meshComb.points[ipoint].y/(double)tmp_size;
+							avgz += meshComb.points[ipoint].z/(double)tmp_size;
 						}
-						int strId = reorder_procFace_PR2PR_strId[proc].at(iter);
-						int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(strId++);
-						for(int j=0; j<tmp_size; ++j){
-							int ipoint = recv_localFace_PR2PR_ipoints[ip].at(strId++);
-							int id_global = points_id_local2global[ip].at(ipoint);
-							meshComb.faces.back().ipoints.push_back(id_global);
-						}
-						++iter;
+						
+						// if(rank==0 && proc==1){
+							// cout << rank << " " << procFaceNum << endl;
+							// cout << avgx << " " << avgy << " " << avgz << endl;
+							
+						// }
+						// if(rank==1 && proc==0){
+							// cout << rank << " " << procFaceNum << endl;
+							// cout << avgx << " " << avgy << " " << avgz << endl;
+							
+						// }
 					}
+					
+					
+					// int iter=0;
+					// for(auto& [ip, i] : reorder_procFace_PR2PR_proc_id[proc]){
+				
+				// face_state.push_back(PR2PR);
+				
+						// meshComb.addFace();
+						// meshComb.faces.back().setType(MASCH_Face_Types::PROCESSOR);
+						// {
+							// int id_local = recv_localFace_PR2PR_iL[ip].at(i);
+							// int id_global = nCells_local[ip] + id_local;
+							// meshComb.faces.back().iL = id_global;
+						// }
+						// int procFaceNum = reorder_procFace_PR2PR_procFaceNum[proc].at(iter);
+						// double avgx = 0.0;
+						// double avgy = 0.0;
+						// double avgz = 0.0;
+						// int strId = reorder_procFace_PR2PR_strId[proc].at(iter);
+						// int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(strId++);
+						// for(int j=0; j<tmp_size; ++j){
+							// int ipoint = recv_localFace_PR2PR_ipoints[ip].at(strId++);
+							// int id_global = points_id_local2global[ip].at(ipoint);
+							// meshComb.faces.back().ipoints.push_back(id_global);
+							// avgx += meshComb.points[id_global].x/(double)tmp_size;
+							// avgy += meshComb.points[id_global].y/(double)tmp_size;
+							// avgz += meshComb.points[id_global].z/(double)tmp_size;
+						// }
+						// ++iter;
+						
+						
+						
+						// // if(rank==0 && proc==1){
+							// // cout << rank << " " << procFaceNum << endl;
+							// // cout << avgx << " " << avgy << " " << avgz << endl;
+							
+						// // }
+						// // if(rank==1 && proc==0){
+							// // cout << rank << " " << procFaceNum << endl;
+							// // cout << avgx << " " << avgy << " " << avgz << endl;
+							
+						// // }
+					// }
 				}
 				nFaces_processor[proc] = meshComb.faces.size() - str_size;
 			}
@@ -2152,6 +3353,8 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 				meshComb.boundaries.back().name = bcnames;
 				meshComb.boundaries.back().setType(MASCH_Face_Types::PROCESSOR);
 				meshComb.boundaries.back().nFaces = nFaces_processor[ip];
+				meshComb.boundaries.back().myProcNo = rank;
+				meshComb.boundaries.back().rightProcNo = ip;
 			}
 		}
 		
@@ -2163,63 +3366,70 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		}
 		 
 		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		
-		// connPoints (접촉하는 포인트 옆 포인트가 뭔지 저장)
-		vector<vector<int>> send_rightProcNo_rightId_loc(size);
-		for(int ip=0; ip<size; ++ip){
-			for(int i=0, iter=0; i<recv_globalPoint_toProc_toId[ip].size()/4; ++i){
-				int my_id_loc = recv_globalPoint_toProc_toId[ip][iter++]; // 자신의 local id  
-				int rightProcNo_glo = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 global proc 넘버
-				int rightProcNo_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록 에서 자신과 중복한 포인트의 local proc
-				int rightId_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 자신과 중복한 포인트의 local id 넘버
+		// // connPoints (접촉하는 포인트 옆 포인트가 뭔지 저장)
+		// vector<vector<int>> send_rightProcNo_rightId_loc(size);
+		// for(int ip=0; ip<size; ++ip){
+			// // cout << recv_globalPoint_toProc_toId[ip].size()/4 << endl;
+			// for(int i=0, iter=0; i<recv_globalPoint_toProc_toId[ip].size()/4; ++i){
+				// int my_id_loc = recv_globalPoint_toProc_toId[ip][iter++]; // 자신의 local id  
+				// int rightProcNo_glo = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 global proc 넘버
+				// int rightProcNo_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록 에서 자신과 중복한 포인트의 local proc
+				// int rightId_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 자신과 중복한 포인트의 local id 넘버
 				
-				// cout << rightProcNo_glo << endl;
-				send_rightProcNo_rightId_loc[rightProcNo_glo].push_back(rightProcNo_loc);
-				send_rightProcNo_rightId_loc[rightProcNo_glo].push_back(rightId_loc);
+				// // cout << rank << " " << rightProcNo_glo << endl;
+				// // cout << rightProcNo_glo << endl;
+				// send_rightProcNo_rightId_loc[rightProcNo_glo].push_back(rightProcNo_loc);
+				// send_rightProcNo_rightId_loc[rightProcNo_glo].push_back(rightId_loc);
+				
+				// // int new_my_id_glo = points_id_local2global[ip].at(my_id_loc); // 새로운 포인트 id
+			// }
+				
+		// }
+		// vector<vector<int>> recv_rightProcNo_rightId_loc;
+		// MASCH_MPI_Alltoallv(send_rightProcNo_rightId_loc, recv_rightProcNo_rightId_loc);
+		// vector<vector<int>> send_new_rightId_loc(size);
+		// for(int ip=0; ip<size; ++ip){
+			// for(int i=0, iter=0; i<recv_rightProcNo_rightId_loc[ip].size()/2; ++i){
+				// int rightProcNo_loc = recv_rightProcNo_rightId_loc[ip][iter++];
+				// int rightId_loc = recv_rightProcNo_rightId_loc[ip][iter++];
+				
+				// int new_my_id_glo = points_id_local2global[rightProcNo_loc].at(rightId_loc); // 새로운 포인트 id
+				
+				// send_new_rightId_loc[ip].push_back(new_my_id_glo);
+			// }
+		// }
+		// vector<vector<int>> recv_new_rightId_loc;
+		// MASCH_MPI_Alltoallv(send_new_rightId_loc, recv_new_rightId_loc);
+		// // if(rank==0) cout << recv_new_rightId_loc[1].size() << endl;
+		// vector<int> ttt_size(size,0);
+		// for(int ip=0; ip<size; ++ip){
+			// for(int i=0, iter=0, iter2=0; i<recv_globalPoint_toProc_toId[ip].size()/4; ++i){
+				// int my_id_loc = recv_globalPoint_toProc_toId[ip][iter++]; // 자신의 local id  
+				// int rightProcNo_glo = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 global proc 넘버
+				// int rightProcNo_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록 에서 자신과 중복한 포인트의 local proc
+				// int rightId_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 자신과 중복한 포인트의 local id 넘버
+				
+				// // cout << rank << " " << rightProcNo_loc << endl;
+				// int new_rightId_glo = recv_new_rightId_loc[rightProcNo_glo].at(ttt_size[rightProcNo_glo]++);
 				
 				// int new_my_id_glo = points_id_local2global[ip].at(my_id_loc); // 새로운 포인트 id
-			}
 				
-		}
-		vector<vector<int>> recv_rightProcNo_rightId_loc;
-		MASCH_MPI_Alltoallv(send_rightProcNo_rightId_loc, recv_rightProcNo_rightId_loc);
-		vector<vector<int>> send_new_rightId_loc(size);
-		for(int ip=0; ip<size; ++ip){
-			for(int i=0, iter=0; i<recv_rightProcNo_rightId_loc[ip].size()/2; ++i){
-				int rightProcNo_loc = recv_rightProcNo_rightId_loc[ip][iter++];
-				int rightId_loc = recv_rightProcNo_rightId_loc[ip][iter++];
+				// auto& connPoints = meshComb.points[new_my_id_glo].connPoints;
+				// vector<int> tmp_first;
+				// for(auto& [proc, id] : connPoints){
+					// tmp_first.push_back(proc);
+				// }
 				
-				int new_my_id_glo = points_id_local2global[rightProcNo_loc].at(rightId_loc); // 새로운 포인트 id
-				
-				send_new_rightId_loc[ip].push_back(new_my_id_glo);
-			}
-		}
-		vector<vector<int>> recv_new_rightId_loc;
-		MASCH_MPI_Alltoallv(send_new_rightId_loc, recv_new_rightId_loc);
-		for(int ip=0; ip<size; ++ip){
-			for(int i=0, iter=0, iter2=0; i<recv_globalPoint_toProc_toId[ip].size()/4; ++i){
-				int my_id_loc = recv_globalPoint_toProc_toId[ip][iter++]; // 자신의 local id  
-				int rightProcNo_glo = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 global proc 넘버
-				int rightProcNo_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록 에서 자신과 중복한 포인트의 local proc
-				int rightId_loc = recv_globalPoint_toProc_toId[ip][iter++]; // right 블록의 자신과 중복한 포인트의 local id 넘버
-				
-				int new_rightId_glo = recv_globalPoint_toProc_toId[ip].at(iter2++);
-				
-				int new_my_id_glo = points_id_local2global[ip].at(my_id_loc); // 새로운 포인트 id
-				
-				auto& connPoints = meshComb.points[new_my_id_glo].connPoints;
-				vector<int> tmp_first;
-				for(auto& [proc, id] : connPoints){
-					tmp_first.push_back(proc);
-				}
-				
-				if(find(
-				tmp_first.begin(),tmp_first.end(),rightProcNo_glo)==
-				tmp_first.end()){
-					connPoints.push_back(make_pair(rightProcNo_glo,new_rightId_glo));
-				}
-			}
-		}
+				// if(find(
+				// tmp_first.begin(),tmp_first.end(),rightProcNo_glo)==
+				// tmp_first.end()){
+					// connPoints.push_back(make_pair(rightProcNo_glo,new_rightId_glo));
+				// }
+			// }
+		// }
 		
 		
 		
@@ -2229,44 +3439,100 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 	}
 	
 	
+	
+	
+	
+	
+	// 원래 메쉬에 넣기
+	{
+		mesh.cells.clear();
+		mesh.cells.shrink_to_fit();
+		
+		mesh.faces.clear();
+		mesh.faces.shrink_to_fit();
+		
+		mesh.points.clear();
+		mesh.points.shrink_to_fit();
+		
+		mesh.boundaries.clear();
+		mesh.boundaries.shrink_to_fit();
+
+		mesh.cells.reserve(meshComb.cells.size());
+		mesh.faces.reserve(meshComb.faces.size());
+		mesh.points.reserve(meshComb.points.size());
+		
+		for(auto& point : meshComb.points){
+			mesh.addPoint();
+			mesh.points.back().x = point.x;
+			mesh.points.back().y = point.y;
+			mesh.points.back().z = point.z;
+			for(auto& [proc, id] : point.connPoints){
+				mesh.points.back().connPoints.push_back(make_pair(proc, id));
+			}
+		}
+		
+		for(auto& face : meshComb.faces){
+			mesh.addFace();
+			mesh.faces.back().iL = face.iL;
+			mesh.faces.back().iR = face.iR;
+			mesh.faces.back().setType(face.getType());
+			for(auto& ipoint : face.ipoints){
+				mesh.faces.back().ipoints.push_back(ipoint);
+			}
+		}
+		
+		for(auto& boundary : meshComb.boundaries){
+			mesh.addBoundary();
+			mesh.boundaries.back().name = boundary.name;
+			mesh.boundaries.back().startFace = boundary.startFace;
+			mesh.boundaries.back().nFaces = boundary.nFaces;
+			mesh.boundaries.back().rightProcNo = boundary.rightProcNo;
+			mesh.boundaries.back().myProcNo = boundary.myProcNo;
+			mesh.boundaries.back().setType(boundary.getType());
+		}
+	}
+	
+	
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
-	meshComb.check();
-	meshComb.setFaceTypes();
-	meshComb.buildCells();
-	meshComb.connectFacetoPointsCells();
-	meshComb.connectCelltoFaces();
-	meshComb.connectCelltoPoints();
-	meshComb.setCountsProcFaces();
-	meshComb.setDisplsProcFaces();
+	mesh.check();
+	mesh.setFaceTypes();
+	mesh.buildCells();
+	mesh.connectFacetoPointsCells();
+	mesh.connectCelltoFaces();
+	mesh.connectCelltoPoints();
+	mesh.setCountsProcFaces();
+	mesh.setDisplsProcFaces();
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	// int tmptmtp=0;
-	// for(auto& face : meshComb.faces){
-		// double tmp0 = pow(meshComb.points[face.ipoints[0]].x-meshComb.points[face.ipoints[2]].x,2.0);
-		// tmp0 += pow(meshComb.points[face.ipoints[0]].y-meshComb.points[face.ipoints[2]].y,2.0);
-		// tmp0 += pow(meshComb.points[face.ipoints[0]].z-meshComb.points[face.ipoints[2]].z,2.0);
+	// for(auto& face : mesh.faces){
+		// double tmp0 = pow(mesh.points[face.ipoints[0]].x-mesh.points[face.ipoints[2]].x,2.0);
+		// tmp0 += pow(mesh.points[face.ipoints[0]].y-mesh.points[face.ipoints[2]].y,2.0);
+		// tmp0 += pow(mesh.points[face.ipoints[0]].z-mesh.points[face.ipoints[2]].z,2.0);
 		
-		// double tmp1 = pow(meshComb.points[face.ipoints[1]].x-meshComb.points[face.ipoints[3]].x,2.0);
-		// tmp1 += pow(meshComb.points[face.ipoints[1]].y-meshComb.points[face.ipoints[3]].y,2.0);
-		// tmp1 += pow(meshComb.points[face.ipoints[1]].z-meshComb.points[face.ipoints[3]].z,2.0);
+		// double tmp1 = pow(mesh.points[face.ipoints[1]].x-mesh.points[face.ipoints[3]].x,2.0);
+		// tmp1 += pow(mesh.points[face.ipoints[1]].y-mesh.points[face.ipoints[3]].y,2.0);
+		// tmp1 += pow(mesh.points[face.ipoints[1]].z-mesh.points[face.ipoints[3]].z,2.0);
 		
 		// if(abs(tmp1-tmp0)>1.e-6){
 			// cout << face_state[tmptmtp] << endl;
-			// cout << "(" << meshComb.points[face.ipoints[0]].x << " " <<
-			// meshComb.points[face.ipoints[0]].y << " " <<
-			// meshComb.points[face.ipoints[0]].z << ") ";
-			// cout << "(" << meshComb.points[face.ipoints[1]].x << " " <<
-			// meshComb.points[face.ipoints[1]].y << " " <<
-			// meshComb.points[face.ipoints[1]].z << ") ";
-			// cout << "(" << meshComb.points[face.ipoints[2]].x << " " <<
-			// meshComb.points[face.ipoints[2]].y << " " <<
-			// meshComb.points[face.ipoints[2]].z << ") ";
-			// cout << "(" << meshComb.points[face.ipoints[3]].x << " " <<
-			// meshComb.points[face.ipoints[3]].y << " " <<
-			// meshComb.points[face.ipoints[3]].z << ") " << endl;
+			// cout << "(" << mesh.points[face.ipoints[0]].x << " " <<
+			// mesh.points[face.ipoints[0]].y << " " <<
+			// mesh.points[face.ipoints[0]].z << ") ";
+			// cout << "(" << mesh.points[face.ipoints[1]].x << " " <<
+			// mesh.points[face.ipoints[1]].y << " " <<
+			// mesh.points[face.ipoints[1]].z << ") ";
+			// cout << "(" << mesh.points[face.ipoints[2]].x << " " <<
+			// mesh.points[face.ipoints[2]].y << " " <<
+			// mesh.points[face.ipoints[2]].z << ") ";
+			// cout << "(" << mesh.points[face.ipoints[3]].x << " " <<
+			// mesh.points[face.ipoints[3]].y << " " <<
+			// mesh.points[face.ipoints[3]].z << ") " << endl;
 		// }
 		// if(face.ipoints.size()!=4){
 			// cout << "EEEE" << endl;
@@ -2275,51 +3541,196 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		// ++tmptmtp;
 	// }
 	
-	for(auto& cell : meshComb.cells){
-		vector<int> tmp_ipoints;
+	// for(auto& cell : mesh.cells){
+		// vector<int> tmp_ipoints;
 	
-		for(auto& iface : cell.ifaces){
-			auto& face = meshComb.faces[iface];
-			for(auto& ipoint : face.ipoints){
-				if(find(
-				tmp_ipoints.begin(),tmp_ipoints.end(),ipoint)==
-				tmp_ipoints.end()){
-					tmp_ipoints.push_back( ipoint );
-				}
-			}
-		}
-		if(tmp_ipoints.size()!=8){
-			cout << "NON " << cell.ifaces.size() << endl;
-			for(auto& iface : cell.ifaces){
-				auto& face = meshComb.faces[iface];
-				cout << face_state[iface] << endl;
-				cout << "(" << meshComb.points[face.ipoints[0]].x << " " <<
-				meshComb.points[face.ipoints[0]].y << " " <<
-				meshComb.points[face.ipoints[0]].z << ") ";
-				cout << "(" << meshComb.points[face.ipoints[1]].x << " " <<
-				meshComb.points[face.ipoints[1]].y << " " <<
-				meshComb.points[face.ipoints[1]].z << ") ";
-				cout << "(" << meshComb.points[face.ipoints[2]].x << " " <<
-				meshComb.points[face.ipoints[2]].y << " " <<
-				meshComb.points[face.ipoints[2]].z << ") ";
-				cout << "(" << meshComb.points[face.ipoints[3]].x << " " <<
-				meshComb.points[face.ipoints[3]].y << " " <<
-				meshComb.points[face.ipoints[3]].z << ") " << endl;
-			}
-			
-			
-			// for(auto& tmp : tmp_ipoints){
-				// cout << tmp << endl;
+		// for(auto& iface : cell.ifaces){
+			// auto& face = mesh.faces[iface];
+			// for(auto& ipoint : face.ipoints){
+				// if(find(
+				// tmp_ipoints.begin(),tmp_ipoints.end(),ipoint)==
+				// tmp_ipoints.end()){
+					// tmp_ipoints.push_back( ipoint );
+				// }
 			// }
-		}
-		else{
+		// }
+		// if(tmp_ipoints.size()!=8){
 			// cout << "NON " << cell.ifaces.size() << endl;
+			// cout << "NON " << tmp_ipoints.size() << endl;
 			// for(auto& iface : cell.ifaces){
+				// auto& face = mesh.faces[iface];
 				// cout << face_state[iface] << endl;
+				// cout << "(" << mesh.points[face.ipoints[0]].x << " " <<
+				// mesh.points[face.ipoints[0]].y << " " <<
+				// mesh.points[face.ipoints[0]].z << ") ";
+				// cout << "(" << mesh.points[face.ipoints[1]].x << " " <<
+				// mesh.points[face.ipoints[1]].y << " " <<
+				// mesh.points[face.ipoints[1]].z << ") ";
+				// cout << "(" << mesh.points[face.ipoints[2]].x << " " <<
+				// mesh.points[face.ipoints[2]].y << " " <<
+				// mesh.points[face.ipoints[2]].z << ") ";
+				// cout << "(" << mesh.points[face.ipoints[3]].x << " " <<
+				// mesh.points[face.ipoints[3]].y << " " <<
+				// mesh.points[face.ipoints[3]].z << ") " << endl;
 			// }
-		}
+			
+			
+			// // for(auto& tmp : tmp_ipoints){
+				// // cout << tmp << endl;
+			// // }
+		// }
+		// else{
+			// // cout << "NON " << cell.ifaces.size() << endl;
+			// // for(auto& iface : cell.ifaces){
+				// // cout << face_state[iface] << endl;
+			// // }
+		// }
 		
-	}
+	// }
+	
+	
+	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
+	// {
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// vector<double> send_x0,send_y0,send_z0;
+		// vector<double> send_x1,send_y1,send_z1;
+		// vector<double> send_x2,send_y2,send_z2;
+		// vector<double> send_x3,send_y3,send_z3;
+		// for(int i=0; i<mesh.faces.size(); ++i){
+			// auto& face = mesh.faces[i];
+			// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// double avgx = 0.0;
+				// double avgy = 0.0;
+				// double avgz = 0.0;
+				// for(auto& ipoint : face.ipoints){
+					// avgx += mesh.points[ipoint].x;
+					// avgy += mesh.points[ipoint].y;
+					// avgz += mesh.points[ipoint].z;
+				// }
+				// avgx /= (double)face.ipoints.size();
+				// avgy /= (double)face.ipoints.size();
+				// avgz /= (double)face.ipoints.size();
+				// send_x0.push_back(avgx);
+				// send_y0.push_back(avgy);
+				// send_z0.push_back(avgz);
+				// // send_x0.push_back(mesh.points[face.ipoints[0]].x);
+				// // send_y0.push_back(mesh.points[face.ipoints[0]].y);
+				// // send_z0.push_back(mesh.points[face.ipoints[0]].z);
+				// // send_x1.push_back(mesh.points[face.ipoints[1]].x);
+				// // send_y1.push_back(mesh.points[face.ipoints[1]].y);
+				// // send_z1.push_back(mesh.points[face.ipoints[1]].z);
+				// // send_x2.push_back(mesh.points[face.ipoints[2]].x);
+				// // send_y2.push_back(mesh.points[face.ipoints[2]].y);
+				// // send_z2.push_back(mesh.points[face.ipoints[2]].z);
+				// // send_x3.push_back(mesh.points[face.ipoints[3]].x);
+				// // send_y3.push_back(mesh.points[face.ipoints[3]].y);
+				// // send_z3.push_back(mesh.points[face.ipoints[3]].z);
+			// }
+		// }
+		// vector<double> recv_x0,recv_y0,recv_z0;
+		// // vector<double> recv_x1,recv_y1,recv_z1;
+		// // vector<double> recv_x2,recv_y2,recv_z2;
+		// // vector<double> recv_x3,recv_y3,recv_z3;
+		// recv_x0.resize(send_x0.size());
+		// recv_y0.resize(send_y0.size());
+		// recv_z0.resize(send_z0.size());
+		// // recv_x1.resize(send_x1.size());
+		// // recv_y1.resize(send_y1.size());
+		// // recv_z1.resize(send_z1.size());
+		// // recv_x2.resize(send_x2.size());
+		// // recv_y2.resize(send_y2.size());
+		// // recv_z2.resize(send_z2.size());
+		// // recv_x3.resize(send_x3.size());
+		// // recv_y3.resize(send_y3.size());
+		// // recv_z3.resize(send_z3.size());
+		// MPI_Alltoallv( send_x0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_x0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_y0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_y0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+		// MPI_Alltoallv( send_z0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // recv_z0.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // MPI_COMM_WORLD);
+					   
+		// // MPI_Alltoallv( send_x1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_x1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+		// // MPI_Alltoallv( send_y1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_y1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+		// // MPI_Alltoallv( send_z1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_z1.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+					   
+		// // MPI_Alltoallv( send_x2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_x2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+		// // MPI_Alltoallv( send_y2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_y2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+		// // MPI_Alltoallv( send_z2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_z2.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+					   
+		// // MPI_Alltoallv( send_x3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_x3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+		// // MPI_Alltoallv( send_y3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_y3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+		// // MPI_Alltoallv( send_z3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // recv_z3.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_DOUBLE, 
+					   // // MPI_COMM_WORLD);
+					   
+
+		// for(int i=0, ip=0; i<mesh.faces.size(); ++i){
+			// auto& face = mesh.faces[i];
+			// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// if(rank==1){
+					// cout << face_state[i] << endl;
+					
+					// double avgx = 0.0;
+					// double avgy = 0.0;
+					// double avgz = 0.0;
+					// for(auto& ipoint : face.ipoints){
+						// avgx += mesh.points[ipoint].x;
+						// avgy += mesh.points[ipoint].y;
+						// avgz += mesh.points[ipoint].z;
+					// }
+					// avgx /= (double)face.ipoints.size();
+					// avgy /= (double)face.ipoints.size();
+					// avgz /= (double)face.ipoints.size();
+					// cout << recv_x0[ip] << " " << recv_y0[ip] << " " << recv_z0[ip] << endl;
+					// cout << avgx << " " << avgy << " " << avgz << endl;
+					
+					
+					
+					// // cout << send_x0[ip] << " " << send_y0[ip] << " " << send_z0[ip] << endl;
+					// // cout << recv_x0[ip] << " " << recv_y0[ip] << " " << recv_z0[ip] << endl;
+					// // cout << send_x1[ip] << " " << send_y1[ip] << " " << send_z1[ip] << endl;
+					// // cout << recv_x1[ip] << " " << recv_y1[ip] << " " << recv_z1[ip] << endl;
+					// // cout << send_x2[ip] << " " << send_y2[ip] << " " << send_z2[ip] << endl;
+					// // cout << recv_x2[ip] << " " << recv_y2[ip] << " " << recv_z2[ip] << endl;
+					// // cout << send_x3[ip] << " " << send_y3[ip] << " " << send_z3[ip] << endl;
+					// // cout << recv_x3[ip] << " " << recv_y3[ip] << " " << recv_z3[ip] << endl;
+				// }
+				
+				// ++ip;
+			// }
+		// }
+		
+	// }
+	
+	
+	
+	
+	
 	
 	// for(auto& cell : meshComb.cells){
 		// if(cell.ifaces.size()!=6){
@@ -2361,28 +3772,70 @@ void combineMesh(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 	// }
 	
 	
-	
-	meshComb.informations();
-	
-	// if(rank==0)
-	{
+	// for(auto& point : mesh.points){
+		// int iii=0;
+		// for(auto& point2 : mesh.points){
+			// double resi = 0.0;
+			// resi += abs(point.x-point2.x);
+			// resi += abs(point.y-point2.y);
+			// resi += abs(point.z-point2.z);
+			// if(resi<1.e-8) ++iii;
+		// }
 		
-		cout.precision(20);
-		// for(int ip=0; ip<size; ++ip)
-		{
+		// if(iii!=1) cout << "ERRORRRRR" << endl;
+		
+	// }
+	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
+	
+	// // 디버그 processor face
+	// {
+		// vector<double> send_value;
+		// vector<double> recv_value;
+		// for(int i=0; i<mesh.faces.size(); ++i){
+			// auto& face = mesh.faces[i];
+			// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// send_value.push_back(mesh.points[face.ipoints[0]].x);
+			// }
+		// }
+	// }
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	mesh.informations();
+	
+	// // if(rank==0)
+	// {
+		
+		// cout.precision(20);
+		// // for(int ip=0; ip<size; ++ip)
+		// {
 
-			// SEMO_Utility_Math math;
-			// SEMO_Mesh_Geometric geometric;
-			// geometric.init(newMesh[ip]);
+			// // SEMO_Utility_Math math;
+			// // SEMO_Mesh_Geometric geometric;
+			// // geometric.init(newMesh[ip]);
 			
-			MASCH_Mesh_Save save;
-			save.vtu("./grid/test/", rank, meshComb);
-		}
+			// MASCH_Mesh_Save save;
+			// save.vtu("./grid/test/", rank, meshComb);
+		// }
 
 	
-	}
+	// }
 	
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
 	

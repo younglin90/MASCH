@@ -323,3 +323,262 @@ void SEMO_MPI_Builder::sendRecvTemporaryCellVectorData(
 		
 	
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void MASCH_MPI::Alltoallv(vector<vector<double>>& inp_send_value, vector<double>& recv_value, vector<int>& displs){
+
+	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	recv_value.clear();
+	displs.clear();
+	
+	vector<int> send_counts(size,0);
+	for(int ip=0; ip<size; ++ip){
+		send_counts[ip] = inp_send_value[ip].size();
+	}
+	vector<int> send_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) send_displs[ip+1] = send_displs[ip] + send_counts[ip];
+	
+	vector<int> recv_counts(size,0);
+    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+	
+	
+	vector<int> recv_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) recv_displs[ip+1] = recv_displs[ip] + recv_counts[ip];
+	
+	
+	vector<double> send_value;
+	for(int ip=0; ip<size; ++ip){
+		for(auto& item : inp_send_value[ip]){
+			send_value.push_back(item);
+		}
+	}
+	
+	recv_value.resize(recv_displs[size]);
+	MPI_Alltoallv( send_value.data(), send_counts.data(), send_displs.data(), MPI_DOUBLE, 
+				   recv_value.data(), recv_counts.data(), recv_displs.data(), MPI_DOUBLE, 
+				   MPI_COMM_WORLD);
+				   
+	displs.resize(size+1,0);
+	displs = recv_displs;
+	
+
+
+}
+
+
+
+void MASCH_MPI::Alltoallv(vector<vector<int>>& inp_send_value, vector<int>& recv_value, vector<int>& displs){
+
+	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	vector<int> send_counts(size,0);
+	for(int ip=0; ip<size; ++ip){
+		send_counts[ip] = inp_send_value[ip].size();
+	}
+	vector<int> send_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) send_displs[ip+1] = send_displs[ip] + send_counts[ip];
+	
+	vector<int> recv_counts(size,0);
+    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+	
+	
+	vector<int> recv_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) recv_displs[ip+1] = recv_displs[ip] + recv_counts[ip];
+	
+	
+	vector<int> send_value;
+	for(int ip=0; ip<size; ++ip){
+		for(auto& item : inp_send_value[ip]){
+			send_value.push_back(item);
+		}
+	}
+	
+	recv_value.resize(recv_displs[size]);
+	MPI_Alltoallv( send_value.data(), send_counts.data(), send_displs.data(), MPI_INT, 
+				   recv_value.data(), recv_counts.data(), recv_displs.data(), MPI_INT, 
+				   MPI_COMM_WORLD);
+				   
+	displs = recv_displs;
+	
+
+
+}
+
+
+
+
+void MASCH_MPI::Alltoallv(vector<vector<double>>& inp_send_value, vector<vector<double>>& recv_value){
+
+	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	// displs.clear();
+	
+	vector<int> send_counts(size,0);
+	for(int ip=0; ip<size; ++ip){
+		send_counts[ip] = inp_send_value[ip].size();
+	}
+	vector<int> send_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) send_displs[ip+1] = send_displs[ip] + send_counts[ip];
+	
+	vector<int> recv_counts(size,0);
+    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+	
+	
+	vector<int> recv_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) recv_displs[ip+1] = recv_displs[ip] + recv_counts[ip];
+	
+	
+	vector<double> send_value;
+	for(int ip=0; ip<size; ++ip){
+		for(auto& item : inp_send_value[ip]){
+			send_value.push_back(item);
+		}
+	}
+	
+	vector<double> tmp_recv_value(recv_displs[size]);
+	MPI_Alltoallv( send_value.data(), send_counts.data(), send_displs.data(), MPI_DOUBLE, 
+				   tmp_recv_value.data(), recv_counts.data(), recv_displs.data(), MPI_DOUBLE, 
+				   MPI_COMM_WORLD);
+				   
+	recv_value.clear();
+	recv_value.resize(size);
+	for(int ip=0; ip<size; ++ip){
+		int str = recv_displs[ip];
+		int end = recv_displs[ip+1];
+		for(int i=str; i<end; ++i){
+			recv_value[ip].push_back(tmp_recv_value[i]);
+		}
+	}
+
+
+}
+
+
+
+void MASCH_MPI::Alltoallv(vector<vector<int>>& inp_send_value, vector<vector<int>>& recv_value){
+
+	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	// displs.clear();
+	
+	vector<int> send_counts(size,0);
+	for(int ip=0; ip<size; ++ip){
+		send_counts[ip] = inp_send_value[ip].size();
+	}
+	vector<int> send_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) send_displs[ip+1] = send_displs[ip] + send_counts[ip];
+	
+	vector<int> recv_counts(size,0);
+    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+	
+	
+	vector<int> recv_displs(size+1,0);
+	for(int ip=0; ip<size; ++ip) recv_displs[ip+1] = recv_displs[ip] + recv_counts[ip];
+	
+	
+	vector<int> send_value;
+	for(int ip=0; ip<size; ++ip){
+		for(auto& item : inp_send_value[ip]){
+			send_value.push_back(item);
+		}
+	}
+	
+	vector<int> tmp_recv_value(recv_displs[size]);
+	MPI_Alltoallv( send_value.data(), send_counts.data(), send_displs.data(), MPI_INT, 
+				   tmp_recv_value.data(), recv_counts.data(), recv_displs.data(), MPI_INT, 
+				   MPI_COMM_WORLD);
+				   
+	recv_value.clear();
+	recv_value.resize(size);
+	for(int ip=0; ip<size; ++ip){
+		int str = recv_displs[ip];
+		int end = recv_displs[ip+1];
+		for(int i=str; i<end; ++i){
+			recv_value[ip].push_back(tmp_recv_value[i]);
+		}
+	}
+
+
+}
+
+
+
+
+void MASCH_MPI::Gatherv(vector<int>& my_value, vector<int>& value, vector<int>& displs){
+	
+	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	
+	int my_value_size = my_value.size();
+	if(rank==0){
+		vector<int> counts(size,0);
+        MPI_Gather(&my_value_size, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+		displs.clear(); displs.resize(size+1,0);
+		for(int ip=0; ip<size; ++ip) displs[ip+1] = displs[ip]+counts[ip];
+            
+        value.resize(displs[size]);
+		MPI_Gatherv(my_value.data(), my_value_size, MPI_INT, value.data(), counts.data(), displs.data(), 
+		MPI_INT, 0, MPI_COMM_WORLD);
+	}
+	else{
+        MPI_Gather(&my_value_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Gatherv(my_value.data(), my_value_size, MPI_INT, NULL, NULL, NULL, 
+		MPI_INT, 0, MPI_COMM_WORLD);
+	}
+	
+}
+
+
+
+void MASCH_MPI::Gatherv(vector<double>& my_value, vector<double>& value, vector<int>& displs){
+	
+	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	
+	int my_value_size = my_value.size();
+	if(rank==0){
+		vector<int> counts(size,0);
+        MPI_Gather(&my_value_size, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+		displs.clear(); displs.resize(size+1,0);
+		for(int ip=0; ip<size; ++ip) displs[ip+1] = displs[ip]+counts[ip];
+            
+        value.resize(displs[size]);
+		MPI_Gatherv(my_value.data(), my_value_size, MPI_DOUBLE, value.data(), counts.data(), displs.data(), 
+		MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	}
+	else{
+        MPI_Gather(&my_value_size, 1, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Gatherv(my_value.data(), my_value_size, MPI_DOUBLE, NULL, NULL, NULL, 
+		MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	}
+	
+}

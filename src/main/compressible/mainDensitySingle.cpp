@@ -23,6 +23,7 @@
 // #include "../../mesh/polyAMR.h"
 #include "../../load/load.h" 
 #include "../../controls/controls.h" 
+#include "../../mpi/mpi.h"
 // #include "../../solvers/solvers.h"  
 
 // wchar_t wStr[] = L"€áa¢cée£";
@@ -33,60 +34,60 @@
 
 #define MASCH_FFL __FILE__,__FUNCTION__,__LINE__
 
-class MASCH_MPI {
-private:
-public:
-    int rank = MPI::COMM_WORLD.Get_rank(); 
-    int size = MPI::COMM_WORLD.Get_size();
-	MASCH_MPI(){}
-	// ~MASCH_MPI(){ MPI::Finalize(); }
+// class MASCH_MPI {
+// private:
+// public:
+    // int rank = MPI::COMM_WORLD.Get_rank(); 
+    // int size = MPI::COMM_WORLD.Get_size();
+	// MASCH_MPI(){}
+	// // ~MASCH_MPI(){ MPI::Finalize(); }
 	
-	vector<string> gatherv(vector<string>& inp){
-		if(size>1){
-			vector<int> counts(size,0);
-			vector<int> disp(size+1,0);
+	// vector<string> gatherv(vector<string>& inp){
+		// if(size>1){
+			// vector<int> counts(size,0);
+			// vector<int> disp(size+1,0);
 			
-			std::vector<char> cstrings;
-			for(std::string s: inp)
-			{
-				for(int i = 0; i < strlen(s.c_str()); ++i)
-				{
-					cstrings.push_back(s.c_str()[i]);
-				}
-			}
+			// std::vector<char> cstrings;
+			// for(std::string s: inp)
+			// {
+				// for(int i = 0; i < strlen(s.c_str()); ++i)
+				// {
+					// cstrings.push_back(s.c_str()[i]);
+				// }
+			// }
 			
-			int my_count = cstrings.size();
-			MPI_Allgather(&my_count, 1, MPI_INT, counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
-			for(int i=1; i<size+1; ++i) disp[i] = disp[i-1] + counts[i-1];
+			// int my_count = cstrings.size();
+			// MPI_Allgather(&my_count, 1, MPI_INT, counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+			// for(int i=1; i<size+1; ++i) disp[i] = disp[i-1] + counts[i-1];
 			
-			std::vector<char> cstrings_recv(disp[size]);
-			if(rank==0){
-				MPI_Gatherv(
-				cstrings.data(), cstrings.size(), MPI_CHAR, 
-				cstrings_recv.data(), counts.data(), disp.data(), MPI_CHAR, 0, MPI_COMM_WORLD);
+			// std::vector<char> cstrings_recv(disp[size]);
+			// if(rank==0){
+				// MPI_Gatherv(
+				// cstrings.data(), cstrings.size(), MPI_CHAR, 
+				// cstrings_recv.data(), counts.data(), disp.data(), MPI_CHAR, 0, MPI_COMM_WORLD);
 				
-			}
-			else{
-				MPI_Gatherv(
-				cstrings.data(), cstrings.size(), MPI_CHAR, 
-				NULL, NULL, NULL, MPI_CHAR, 0, MPI_COMM_WORLD);
-			}
+			// }
+			// else{
+				// MPI_Gatherv(
+				// cstrings.data(), cstrings.size(), MPI_CHAR, 
+				// NULL, NULL, NULL, MPI_CHAR, 0, MPI_COMM_WORLD);
+			// }
 			
-			vector<string> results;
-			if(rank==0){
-				for(int ip=0; ip<size; ++ip){
-					std::stringstream ss;
-					for(int i=disp[ip]; i<disp[ip+1]; ++i){
-						ss << cstrings_recv[i];
-					}
-					results.push_back(ss.str());
-				}
-			}
-			return results;
-		}
-	}
+			// vector<string> results;
+			// if(rank==0){
+				// for(int ip=0; ip<size; ++ip){
+					// std::stringstream ss;
+					// for(int i=disp[ip]; i<disp[ip+1]; ++i){
+						// ss << cstrings_recv[i];
+					// }
+					// results.push_back(ss.str());
+				// }
+			// }
+			// return results;
+		// }
+	// }
 
-};
+// };
 
 
 class MASCH_FileSystem {

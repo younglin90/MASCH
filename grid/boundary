@@ -7,30 +7,12 @@ FoamFile
     object      boundary;
 }
 
-4         
+1         
 (
     invwall
     {
         type Unspecified;
-        nFaces 31126;
-        startFace 30800;
-    }
-    outlet
-    {
-        type Unspecified;
-        nFaces 59;
-        startFace 61926;
-    }
-    supinlet
-    {
-        type Unspecified;
-        nFaces 78;
-        startFace 61985;
-    }
-    viswall
-    {
-        type Unspecified;
-        nFaces 515;
-        startFace 62063;
+        nFaces 5046;
+        startFace 70644;
     }
 )
