@@ -80,23 +80,9 @@ SOURCES = src/mesh/mesh.cpp\
 	      src/transport/transport.cpp\
 	      src/turbulenceModels/LES.cpp\
 
-SOURCES_SAVE = src/save/save.cpp\
-	      src/save/saveOnlyMesh.cpp\
-	      src/save/saveAscii.cpp\
-	      src/save/saveBinary.cpp\
-	      src/save/saveCompress.cpp\
-	      src/save/saveParticle.cpp\
-	      src/save/saveGnuplot.cpp\
-	      src/save/saveMkdirs.cpp\
-	      src/save/saveBase64.cpp\
-	      src/save/saveCellData.cpp\
+SOURCES_SAVE = src/others/save.cpp\
 
-SOURCES_LOAD = src/load/load.cpp\
-	      src/load/loadOpenFoam.cpp\
-	      src/load/loadFiles.cpp\
-	      src/load/loadBinary.cpp\
-	      src/load/loadCompress.cpp\
-	      src/load/loadBase64.cpp\
+SOURCES_LOAD = src/others/load.cpp\
 
 OBJECTS = $(SOURCES:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
 
@@ -137,15 +123,16 @@ OBJECTS_CompDensitySingle = $(SOURCES_CompDensitySingle:.cpp=.o) $(SOURCES_SAVE:
 # partitioning
 EXE_PARTITION = Partition
 
-SOURCES_PARTITION = src/utility/partition.cpp\
-                    src/controls/controls.cpp\
-                    src/mesh/mesh.cpp\
-                    src/mesh/geometric.cpp\
-                    src/mesh/partition/partition.cpp\
-                    src/mesh/partition/parMetis.cpp\
-                    src/math/math.cpp\
-                    src/math/gradient.cpp\
-                    src/mpi/mpi.cpp\
+SOURCES_PARTITION = src/main/partition/partitionMain.cpp\
+                    src/main/partition/partition.cpp\
+                    src/main/partition/parMetis.cpp\
+                    src/others/controls.cpp\
+                    src/others/mpi.cpp\
+                    src/others/mesh.cpp\
+                    src/others/log.cpp\
+                    src/others/variables.cpp\
+                    src/others/math.cpp\
+                    src/others/setVarUDF.cpp\
 
 OBJECTS_PARTITION = $(SOURCES_PARTITION:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
 
@@ -176,6 +163,38 @@ SOURCES_CombineMesh = src/test/combineMesh.cpp\
                     src/mpi/mpi.cpp\
 
 OBJECTS_CombineMesh = $(SOURCES_CombineMesh:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
+
+# test1
+EXE_MultiComponent = MultiComponent
+
+SOURCES_MultiComponent = \
+  src/main/flow/compressible/multicomponent/multicomponent.cpp\
+  src/main/flow/compressible/multicomponent/setAddiUDF.cpp\
+  src/main/flow/compressible/multicomponent/setConvUDF.cpp\
+  src/main/flow/compressible/multicomponent/setDiffUDF.cpp\
+  src/main/flow/compressible/multicomponent/setFaceValUDF.cpp\
+  src/main/flow/compressible/multicomponent/setGradUDF.cpp\
+  src/main/flow/compressible/multicomponent/setHOUDF.cpp\
+  src/main/flow/compressible/multicomponent/setOldVarUDF.cpp\
+  src/main/flow/compressible/multicomponent/setSourUDF.cpp\
+  src/main/flow/compressible/multicomponent/setTempUDF.cpp\
+  src/main/flow/compressible/multicomponent/setVarUDF.cpp\
+  src/others/variables.cpp\
+  src/others/solvers.cpp\
+  src/others/fvm.cpp\
+  src/others/math.cpp\
+  src/others/gradient.cpp\
+  src/others/controls.cpp\
+  src/others/mpi.cpp\
+  src/others/mesh.cpp\
+  src/others/log.cpp\
+  src/others/polyAMR.cpp\
+  src/others/polyRefine.cpp\
+  src/others/polyUnrefine.cpp\
+  src/others/repartitioning.cpp\
+  src/others/repartParMETIS.cpp\
+
+OBJECTS_MultiComponent = $(SOURCES_MultiComponent:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
 
 # # potential flow
 # EXE_POTENTIAL = Potential
@@ -343,9 +362,13 @@ COTEXT  = "\033[1;31m Compiling\033[0m\033[1m $< \033[0m"
 
 # all : $(EXE)
 
-EXE_ALL = $(EXE_CompDensitySingle) $(EXE_PARTITION) $(EXE_CombineMesh)
+EXE_ALL = $(EXE_PARTITION) $(EXE_MultiComponent) 
 
-OBJECTS_ALL = $(OBJECTS_CompDensitySingle) $(OBJECTS_PARTITION) $(OBJECTS_CombineMesh)
+OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_MultiComponent)
+
+#EXE_ALL = $(EXE_CompDensitySingle) $(EXE_PARTITION) $(EXE_test1) $(EXE_CombineMesh)
+
+#OBJECTS_ALL = $(OBJECTS_CompDensitySingle) $(OBJECTS_PARTITION) $(OBJECTS_test1) $(OBJECTS_CombineMesh)
 
 # EXE_ALL = $(EXE_CompDensitySingle) $(EXE_CompDensityDual) $(EXE_IncomPressure) $(EXE_CompCoupled) $(EXE_PARTITION) $(EXE_INITIAL) $(EXE_POTENTIAL) $(EXE_LAPLACE) $(EXE_ADVECTION) $(EXE_CompressVF) $(EXE_SMD) $(EXE_GRADIENT) $(EXE_MapField) $(EXE_MeshAMR) $(EXE_ExtractData)
 
@@ -369,6 +392,10 @@ $(EXE_INITIAL) : $(OBJECTS_INITIAL)
 $(EXE_CombineMesh) : $(OBJECTS_CombineMesh)
 	@$(CCOMPLR) -o $@ $(OBJECTS_CombineMesh) $(LIBRARIES)
 	@echo -e "\033[1;31m CombineMesh CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_MultiComponent) : $(OBJECTS_MultiComponent)
+	@$(CCOMPLR) -o $@ $(OBJECTS_MultiComponent) $(LIBRARIES)
+	@echo -e "\033[1;31m MultiComponent CODE compile/link complete \033[0m" | tee -a make.log
 
 ifeq ("x","y")
 $(EXE_CompDensityDual) : $(OBJECTS_CompDensityDual)
