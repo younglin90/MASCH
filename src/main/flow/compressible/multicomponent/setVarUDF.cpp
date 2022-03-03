@@ -48,7 +48,7 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 		species_diff_Ht_abb.push_back(diff_Ht_abb);
 		
 		string tmp_left_species = "left ";
-		string tmp_right_species = "left ";
+		string tmp_right_species = "right ";
 		tmp_left_species += species[i];
 		tmp_right_species += species[i];
 		left_species.push_back(tmp_left_species);
@@ -61,6 +61,7 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	species_shape_prim.push_back("thermo");
 	species_shape.push_back("thermo");
 	
+	// 셀 값 정의
 	(*this).setVarible({cell},"pressure","p","Pa",prim,scal);
 	(*this).setVarible({cell},"velocity","U","m/s",prim,vec,
 						{"x-velocity","y-velocity","z-velocity"},{"u","v","w"},
@@ -118,6 +119,7 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 			
 	(*this).setVarible({cell},"viscosity","mu","Pa*s",thermo,scal);
 	
+	// 페이스 값 정의
 	(*this).setVarible({face},"left pressure","p","Pa","value",scal);
 	(*this).setVarible({face},"left velocity","U","m/s","value",vec,
 						{"left x-velocity","left y-velocity","left z-velocity"},{"u","v","w"},
@@ -141,5 +143,38 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({face},"right total enthalpy","Ht","J/kg",thermo,scal);
 	
 	
+	// 필드 값 정의
+	{
+		vector<string> species_material_name;
+		vector<string> species_material_abb;
+		vector<string> species_material_unit;
+		for(int i=0, SIZE=species.size(); i<SIZE; ++i){
+			{
+				string tmp_name = species[i];
+				tmp_name += " pinf";
+				(*this).setVarible({field},"-step","","","thermo",scal);
+			}
+			{
+				string tmp_name = species[i];
+				tmp_name += " cv";
+				(*this).setVarible({field},"-step","","","thermo",scal);
+			}
+			{
+				string tmp_name = species[i];
+				tmp_name += " gamma";
+				(*this).setVarible({field},"-step","","","thermo",scal);
+			}
+			{
+				string tmp_name = species[i];
+				tmp_name += " bNASG";
+				(*this).setVarible({field},"-step","","","thermo",scal);
+			}
+			{
+				string tmp_name = species[i];
+				tmp_name += " q";
+				(*this).setVarible({field},"-step","","","thermo",scal);
+			}
+		}
+	}
 }
 

@@ -12,6 +12,94 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 	Bound_Cell_Funct_type setCellFunction;
 	Bound_Face_Funct_type setFaceFunction;
 	
+	
+
+	// species 관련 재료들
+	auto& thermoMap = controls.thermophysicalProperties;
+	vector<int> id_spec_type;
+	vector<vector<double>> spInf;
+	for(int i=0; i<controls.nSp; ++i){
+		spInf.push_back(vector<double>());
+		// cout << controls.spName[i] << endl;
+		{
+			string name = controls.spName[i];
+			name += ".thermodynamics.rho.pinf";
+			if (thermoMap.find(name) != thermoMap.end()) {
+				spInf.back().push_back(stod(thermoMap[name]));
+			}
+			else{
+				spInf.back().push_back(0.0);
+			}
+		}
+		{
+			string name = controls.spName[i];
+			name += ".thermodynamics.rho.cv";
+			if (thermoMap.find(name) != thermoMap.end()) {
+				spInf.back().push_back(stod(thermoMap[name]));
+			}
+			else{
+				spInf.back().push_back(0.0);
+			}
+		}
+		{
+			string name = controls.spName[i];
+			name += ".thermodynamics.rho.gamma";
+			if (thermoMap.find(name) != thermoMap.end()) {
+				spInf.back().push_back(stod(thermoMap[name]));
+			}
+			else{
+				spInf.back().push_back(0.0);
+			}
+		}
+		{
+			string name = controls.spName[i];
+			name += ".thermodynamics.rho.b";
+			if (thermoMap.find(name) != thermoMap.end()) {
+				spInf.back().push_back(stod(thermoMap[name]));
+			}
+			else{
+				spInf.back().push_back(0.0);
+			}
+		}
+		{
+			string name = controls.spName[i];
+			name += ".thermodynamics.rho.q";
+			if (thermoMap.find(name) != thermoMap.end()) {
+				spInf.back().push_back(stod(thermoMap[name]));
+			}
+			else{
+				spInf.back().push_back(0.0);
+			}
+		}
+		{
+			string name = controls.spName[i];
+			name += ".transport.mu.value";
+			if (thermoMap.find(name) != thermoMap.end()) {
+				spInf.back().push_back(stod(thermoMap[name]));
+			}
+			else{
+				spInf.back().push_back(0.0);
+			}
+		}
+		
+		{
+			string name = controls.spName[i];
+			name += ".thermodynamics.rho.type";
+			if(
+			controls.thermophysicalProperties[name] ==
+			"ideal"){
+				id_spec_type.push_back(0);
+			}
+			else if(
+			controls.thermophysicalProperties[name] ==
+			"NASG"){
+				id_spec_type.push_back(1);
+			}
+		}
+	}
+	
+	
+	
 	{
 		int id_p = controls.cellVar["pressure"].id;
 		int id_u = controls.cellVar["x-velocity"].id;
@@ -45,11 +133,14 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 		
 		int id_mu = controls.cellVar["viscosity"].id;
 		
+		
+		
 		setCellFunction = [&solver,id_p,id_u,id_v,id_w,id_T,id_Y,nSp,
-		id_rho,id_c,id_Ht,
+		id_rho,id_c,id_Ht,spInf,id_spec_type,
 		id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
 		id_mu] (
 		double* cells) ->int {
+			auto spInf_ptr = spInf.data();
 			double p = cells[id_p];
 			double u = cells[id_u];
 			double v = cells[id_v];
@@ -69,16 +160,24 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			double rhoi[nSp], ci[nSp], Hti[nSp], 
 			drhodpi[nSp], drhodTi[nSp], dHtdpi[nSp], 
 			dHtdTi[nSp];
-			solver.eosNASG(
-			621780000.0,3610.0,1.19,6.7212e-4,-1177788.0,
-			p,u,v,w,T,rhoi[0],ci[0],Hti[0], 
-			drhodpi[0], drhodTi[0], dHtdpi[0], dHtdTi[0]);
-			solver.eosIdeal(
-			717.0,1.4,
-			p,u,v,w,T,rhoi[1],ci[1],Hti[1], 
-			drhodpi[1], drhodTi[1], dHtdpi[1], dHtdTi[1]);
+			for(int i=0; i<nSp; ++i){
+				auto spInf_ptr_i = spInf_ptr[i].data();
+				if(id_spec_type[i]==0){
+					solver.eosIdeal(
+					// 717.0,1.4,
+					spInf_ptr_i[1],spInf_ptr_i[2],
+					p,u,v,w,T,rhoi[i],ci[i],Hti[i], 
+					drhodpi[i], drhodTi[i], dHtdpi[i], dHtdTi[i]);
+				}
+				else if(id_spec_type[i]==1){
+					solver.eosNASG(
+					// 621780000.0,3610.0,1.19,6.7212e-4,-1177788.0,
+					spInf_ptr_i[0],spInf_ptr_i[1],spInf_ptr_i[2],spInf_ptr_i[3],spInf_ptr_i[4],
+					p,u,v,w,T,rhoi[i],ci[i],Hti[i], 
+					drhodpi[i], drhodTi[i], dHtdpi[i], dHtdTi[i]);
+				}
+			}
 			
-		
 			double rho = 0.0;
 			for(int ns=0; ns<nSp; ++ns){
 				rho += Y[ns]/rhoi[ns];
@@ -109,6 +208,7 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			double c = drhodp + 1.0/rho*drhodT/dHtdT*(1.0-rho*dHtdp);
 			c = sqrt( 1.0 / c );
 			
+			
 			cells[id_rho] = rho;
 			cells[id_c] = c;
 			cells[id_Ht] = Ht;
@@ -125,8 +225,10 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			
 			// 점성계수 관련
 			cells[id_mu] = 0.0;
-			cells[id_mu] += alpha[0]*1.e-3;
-			cells[id_mu] += alpha[1]*1.e-5;
+			for(int i=0; i<nSp; ++i){
+				cells[id_mu] += alpha[0]*spInf[i][5];
+				// cout << spInf[i][5] << endl;
+			}
 			// for(int ns=0; ns<nSp; ++ns){
 				// cells[id_mu] += alpha[ns]*
 			// }
@@ -199,38 +301,48 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			
 		}
 		
-		setFaceFunction = [&solver,nSp,
+		setFaceFunction = 
+		[&solver,nSp,spInf,id_spec_type,
 		id_p,id_u,id_v,id_w,id_T,id_Y,id_rho,id_c,id_Ht] (
-		double* cells) ->int {
-			double p = cells[id_p];
-			double u = cells[id_u];
-			double v = cells[id_v];
-			double w = cells[id_w];
-			double T = cells[id_T];
+		double* faces) ->int {
+			auto spInf_ptr = spInf.data();
+			double p = faces[id_p];
+			double u = faces[id_u];
+			double v = faces[id_v];
+			double w = faces[id_w];
+			double T = faces[id_T];
 			double Y[nSp];
 			for(int i=0; i<nSp; ++i){
-				Y[i] = cells[id_Y[i]];
+				Y[i] = faces[id_Y[i]];
 			}
 			double Y_sum = 0.0;
 			for(int i=0; i<nSp-1; ++i){
 				Y_sum += Y[i];
 			}
 			Y[nSp-1] = 1.0-Y_sum;
-			cells[id_Y[nSp-1]] = Y[nSp-1];
+			faces[id_Y[nSp-1]] = Y[nSp-1];
 			
 			double rhoi[nSp], ci[nSp], Hti[nSp], 
 			drhodpi[nSp], drhodTi[nSp], dHtdpi[nSp], 
 			dHtdTi[nSp];
-			solver.eosNASG(
-			621780000.0,3610.0,1.19,6.7212e-4,-1177788.0,
-			p,u,v,w,T,rhoi[0],ci[0],Hti[0], 
-			drhodpi[0], drhodTi[0], dHtdpi[0], dHtdTi[0]);
-			solver.eosIdeal(
-			717.0,1.4,
-			p,u,v,w,T,rhoi[1],ci[1],Hti[1], 
-			drhodpi[1], drhodTi[1], dHtdpi[1], dHtdTi[1]);
-			
-		
+
+			for(int i=0; i<nSp; ++i){
+				auto spInf_ptr_i = spInf_ptr[i].data();
+				if(id_spec_type[i]==0){
+					solver.eosIdeal(
+					// 717.0,1.4,
+					spInf_ptr_i[1],spInf_ptr_i[2],
+					p,u,v,w,T,rhoi[i],ci[i],Hti[i], 
+					drhodpi[i], drhodTi[i], dHtdpi[i], dHtdTi[i]);
+				}
+				else if(id_spec_type[i]==1){
+					solver.eosNASG(
+					// 621780000.0,3610.0,1.19,6.7212e-4,-1177788.0,
+					spInf_ptr_i[0],spInf_ptr_i[1],spInf_ptr_i[2],spInf_ptr_i[3],spInf_ptr_i[4],
+					p,u,v,w,T,rhoi[i],ci[i],Hti[i], 
+					drhodpi[i], drhodTi[i], dHtdpi[i], dHtdTi[i]);
+				}
+			}
 			double rho = 0.0;
 			for(int ns=0; ns<nSp; ++ns){
 				rho += Y[ns]/rhoi[ns];
@@ -253,9 +365,13 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			double c = drhodp + 1.0/rho*drhodT/dHtdT*(1.0-rho*dHtdp);
 			c = sqrt( 1.0 / c );
 			
-			cells[id_rho] = rho;
-			cells[id_c] = c;
-			cells[id_Ht] = Ht;
+			faces[id_rho] = rho;
+			faces[id_c] = c;
+			faces[id_Ht] = Ht;
+			
+			// if(c<=1.e-8){
+			// cout << id_rho << " " << id_c << " " << id_Ht << endl;
+			// }
 			
 			return 0;
 		};

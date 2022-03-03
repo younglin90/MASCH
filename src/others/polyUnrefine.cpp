@@ -10,7 +10,9 @@
 void MASCH_Poly_AMR_Builder::polyUnrefine(
 	MASCH_Mesh& mesh, 
 	MASCH_Control& controls,
+	vector<vector<double>> indicatorCriterion,
 	vector<vector<double>>& indicatorValues,
+	vector<vector<int>>& child_org_cell_id_of_new,
 	int iter){
 
 	MASCH_MPI mpi;
@@ -31,8 +33,8 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	int proc_num = 0;
 	
 	if(rank==0){
-		// cout << "┌────────────────────────────────────────────────────" << endl;
-		// cout << "| execute AMR - Unrefine " << endl;
+		cout << "┌────────────────────────────────────────────────────" << endl;
+		cout << "| execute AMR - Unrefine ";
 	}
 	
 
@@ -46,9 +48,28 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
     std::default_random_engine eng(rd());
     std::uniform_real_distribution<double> distr(0.0, 1.0);
 	
+	// cout << indicatorValues.size() << " " <<
+	// indicatorCriterion.size() << " " <<
+	// indicatorValues[0].size() << " " <<
+	// indicatorCriterion[0].size() << " " <<
+	// mesh.cells.size() <<
+	// endl;
+	
 	vector<bool> boolCellUnrefine(mesh.cells.size(),false);
 	for(int i=0; i<mesh.cells.size(); ++i){
 		
+		for(int indi=0; indi<indicatorCriterion.size(); ++indi)
+		{
+			for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
+			{
+				double indicatorRefine_AMR = indicatorCriterion.at(indi).at(level);
+				if( mesh.cells[i].level > level ){
+					if( indicatorValues.at(indi).at(i) <= indicatorRefine_AMR ){
+						boolCellUnrefine[i] = true;
+					}
+				}				
+			}
+		}
 		// for(int level=0; level<controls.indicatorCriterion.size(); ++level){
 			// double indicatorRefine_AMR = controls.indicatorCriterion[level];
 			// if( mesh.cells[i].level > level ){
@@ -57,20 +78,22 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 				// }
 			// }					
 		// }
-
-		if( 
-		(rank==0 && distr(eng) > 100.0) ||
-		(rank==1 && distr(eng) > 0.0) ||
-		(rank==2 && distr(eng) > 0.0) ||
-		(rank==3 && distr(eng) > 0.0) 
-		){
-			boolCellUnrefine[i] = true;
-		}
+		// if( 
+		// (rank==0 && distr(eng) > 100.0) ||
+		// (rank==1 && distr(eng) > 0.0) ||
+		// (rank==2 && distr(eng) > 0.0) ||
+		// (rank==3 && distr(eng) > 0.0) 
+		// ){
+			// boolCellUnrefine[i] = true;
+		// }
 		
 		// 만약 셀의 레벨이 0 이면, false
 		if(mesh.cells[i].level <= 0) boolCellUnrefine[i] = false;
 	}
 	
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
 	vector<int> cLevel_recv;
 	vector<int> cUnrefine_recv;
 	this->mpiLevelRefine(mesh, boolCellUnrefine, cLevel_recv, cUnrefine_recv);
@@ -114,12 +137,16 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	//====================================================
 	// 셀 넘버링
 	
+	
 	vector<int> newCellsNumber(mesh.cells.size(),-1);
 	vector<int> cellsLevel(mesh.cells.size(),-1);
 	vector<int> cellsGroup(mesh.cells.size(),-1);
 	int newCellNum = 0;
 	for(int i=0; i<mesh.cells.size(); ++i){
 		if(groupCells_id[i] == -1){
+			// child_org_cell_id_of_new.push_back(vector<int>());
+			// child_org_cell_id_of_new.back().push_back(i);
+			
 			cellsLevel[newCellNum] = mesh.cells[i].level;
 			// if(boolCanNotUnrefineCells[i]==true) cellsLevel[newCellNum] = -1;
 			cellsGroup[newCellNum] = mesh.cells[i].group;
@@ -129,11 +156,15 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 			++newCellNum;
 		}
 		else{
+			// child_org_cell_id_of_new.push_back(vector<int>());
+			
 			cellsLevel[newCellNum] = mesh.cells[i].level-1;
 			// if(boolCanNotUnrefineCells[i]==true) cellsLevel[newCellNum] = -1;
 			cellsGroup[newCellNum] = mesh.cells[i].group;
-			
-			for(auto& j : groupCellsUnrefine[groupCells_id[i]].ichild){
+			int tmp_id = groupCells_id[i];
+			for(auto& j : groupCellsUnrefine[tmp_id].ichild){
+				// child_org_cell_id_of_new.back().push_back(i);
+				
 				newCellsNumber[j] = newCellNum;
 				++i;
 			}
@@ -143,8 +174,29 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 		}
 	}
 	
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
 	int totalCellNum = newCellNum;
 	
+	
+	child_org_cell_id_of_new.clear();
+	child_org_cell_id_of_new.resize(totalCellNum);
+	for(int i=0, iter=0; i<mesh.cells.size(); ++i){
+		if(groupCells_id[i] == -1){
+			child_org_cell_id_of_new[iter].push_back(i);
+			++iter;
+		}
+		else{
+			int tmp_id = groupCells_id[i];
+			for(auto& j : groupCellsUnrefine[tmp_id].ichild){
+				child_org_cell_id_of_new[iter].push_back(i);
+				++i;
+			}
+			--i;
+			++iter;
+		}
+	}
 	
 	// // 그룹 리넘버링
 	// {
@@ -241,6 +293,7 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 			++proc_num;
 		}
 	}
+
 	
 	// *******************************
 	// connPoints
@@ -1113,9 +1166,10 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	mesh.connectCelltoPoints();
 	mesh.setCountsProcFaces();
 	mesh.setDisplsProcFaces();
+	mesh.cellsGlobal();
 	// mesh.setFaceLevels();
-	// mesh.setCellStencils();
-	// mesh.setNumberOfFaces();
+	mesh.setCellStencils();
+	mesh.setNumberOfFaces();
 	
 	
 	
@@ -1223,14 +1277,12 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	
 	
 	if(rank==0){
-		
+		cout << "-> completed" << endl;
 		cout << 
-		" | unrefined deleted cell size = " << deletedCellSize_glb <<
-		" | unrefined deleted face size = " << deletedFaceSize_glb <<
-		" | unrefined deleted point size = " << deletedPointSize_glb << endl;
-		
-		// cout << "| AMR - Refine completed" << endl;
-		// cout << "└────────────────────────────────────────────────────" << endl;
+		"| cell = -" << deletedCellSize_glb <<
+		" | face = -" << deletedFaceSize_glb <<
+		" | point = -" << deletedPointSize_glb << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
 	}
 	
 	

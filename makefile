@@ -1,6 +1,8 @@
 CCOMPLR = mpiicpc
 
-CFLAGS = -std=c++17 -c -O2
+CFLAGS = -std=c++17 -c
+# CFLAGS = -std=c++17 -c -O3 -fPIC -xCORE-AVX512 -ipo -no-prec-div
+# CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math -hfp4 -ipo -no-prec-div
 
 EXE = SEMO
 
@@ -82,7 +84,11 @@ SOURCES = src/mesh/mesh.cpp\
 
 SOURCES_SAVE = src/others/save.cpp\
 
-SOURCES_LOAD = src/others/load.cpp\
+SOURCES_LOAD = \
+  src/others/load.cpp\
+  src/others/load_settingFiles.cpp\
+  src/others/load_vtuFiles.cpp\
+  src/others/load_openFoam.cpp\
 
 OBJECTS = $(SOURCES:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
 
@@ -179,16 +185,20 @@ SOURCES_MultiComponent = \
   src/main/flow/compressible/multicomponent/setSourUDF.cpp\
   src/main/flow/compressible/multicomponent/setTempUDF.cpp\
   src/main/flow/compressible/multicomponent/setVarUDF.cpp\
+  src/main/flow/compressible/multicomponent/setTempStepUDF.cpp\
   src/others/variables.cpp\
   src/others/solvers.cpp\
   src/others/fvm.cpp\
+  src/others/fvm_inline.cpp\
   src/others/math.cpp\
   src/others/gradient.cpp\
   src/others/controls.cpp\
+  src/others/controls_geometric.cpp\
   src/others/mpi.cpp\
   src/others/mesh.cpp\
   src/others/log.cpp\
   src/others/polyAMR.cpp\
+  src/others/polyAMR_inline.cpp\
   src/others/polyRefine.cpp\
   src/others/polyUnrefine.cpp\
   src/others/repartitioning.cpp\

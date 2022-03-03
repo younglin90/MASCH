@@ -22,6 +22,10 @@ void MASCH_Gradient::init(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Varia
 	int id_coeff4 = controls.cellVar["coeff(2,2) of least square"].id;
 	int id_coeff5 = controls.cellVar["coeff(2,3) of least square"].id;
 	int id_coeff6 = controls.cellVar["coeff(3,3) of least square"].id;
+	
+	// if(rank==0){
+		// cout << id_coeff1 << " " << id_coeff6 << endl;
+	// }
 
 	// SEMO_MPI_Builder mpi;
 	
@@ -34,21 +38,32 @@ void MASCH_Gradient::init(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Varia
 		
 		vector<double> send_x, send_y, send_z;
 		for(auto& icell : mesh.send_StencilCellsId){
-			send_x.push_back(mesh.cells[icell].x);
-			send_y.push_back(mesh.cells[icell].y);
-			send_z.push_back(mesh.cells[icell].z);
+			send_x.push_back(mesh.cells.at(icell).x);
+			send_y.push_back(mesh.cells.at(icell).y);
+			send_z.push_back(mesh.cells.at(icell).z);
 		}
 		mesh.recv_x_StencilCells.resize(mesh.recv_displsStencilCells[size]);
 		mesh.recv_y_StencilCells.resize(mesh.recv_displsStencilCells[size]);
 		mesh.recv_z_StencilCells.resize(mesh.recv_displsStencilCells[size]);
-		MPI_Alltoallv( send_x.data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
-					   mesh.recv_x_StencilCells.data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
+		
+		// if(rank==1){
+			// cout << mesh.send_countsStencilCells[0] << endl;
+		// }
+		
+		MPI_Alltoallv( send_x.data(), mesh.send_countsStencilCells.data(), 
+					   mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
+					   mesh.recv_x_StencilCells.data(), mesh.recv_countsStencilCells.data(), 
+					   mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
 					   MPI_COMM_WORLD);
-		MPI_Alltoallv( send_y.data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
-					   mesh.recv_y_StencilCells.data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
+		MPI_Alltoallv( send_y.data(), mesh.send_countsStencilCells.data(), 
+					   mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
+					   mesh.recv_y_StencilCells.data(), mesh.recv_countsStencilCells.data(), 
+					   mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
 					   MPI_COMM_WORLD);
-		MPI_Alltoallv( send_z.data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
-					   mesh.recv_z_StencilCells.data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
+		MPI_Alltoallv( send_z.data(), mesh.send_countsStencilCells.data(), 
+					   mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
+					   mesh.recv_z_StencilCells.data(), mesh.recv_countsStencilCells.data(), 
+					   mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
 					   MPI_COMM_WORLD);
 		
 		
@@ -90,18 +105,28 @@ void MASCH_Gradient::init(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Varia
 		}
 		
 		for(auto& icell : cell.recv_iStencils){
-			auto& cellSten = mesh.cells[icell];
+			// auto& cellSten = mesh.cells[icell];
 			// double distX = recv_x[icell] - cell.x;
 			// double distY = recv_y[icell] - cell.y;
 			// double distZ = recv_z[icell] - cell.z;
-			double distX = mesh.recv_x_StencilCells[icell] - cell.x;
-			double distY = mesh.recv_y_StencilCells[icell] - cell.y;
-			double distZ = mesh.recv_z_StencilCells[icell] - cell.z;
+			double distX = mesh.recv_x_StencilCells.at(icell) - cell.x;
+			double distY = mesh.recv_y_StencilCells.at(icell) - cell.y;
+			double distZ = mesh.recv_z_StencilCells.at(icell) - cell.z;
 		
 			double wk = 1.0 / (distX*distX+distY*distY+distZ*distZ);
-			// wk = pow(wk,n_weight);
-			
-			// vector<double> vari(9,0.0);;
+			// // wk = pow(wk,n_weight);
+			// if(rank==1){
+			// if(isnan(wk) || wk<-10000000.0 || wk>10000000.0){
+				// cout << i << " " << icell << endl;
+				// cout << mesh.recv_x_StencilCells[icell] << " " << 
+				// cell.x << endl;
+				// cout << mesh.recv_y_StencilCells[icell] << " " << 
+				// cell.y << endl;
+				// cout << mesh.recv_z_StencilCells[icell] << " " << 
+				// cell.z << endl;
+			// }
+			// }
+			// // vector<double> vari(9,0.0);;
 			double vari[3];
 			vari[0] = distX; vari[1] = distY; vari[2] = distZ;
 		
@@ -165,6 +190,12 @@ void MASCH_Gradient::init(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Varia
 		// cout << vsum[i][0] << " " << vsum[i][5] << endl;
 		if(detA==0.0 || isnan(detA)){
 			cerr << "| #Error, detA=0.0 at leat-sqare" << endl;
+			// cout << vsum[i][0] << endl;
+			// cout << vsum[i][1] << endl;
+			// cout << vsum[i][2] << endl;
+			// cout << vsum[i][3] << endl;
+			// cout << vsum[i][4] << endl;
+			// cout << vsum[i][5] << endl;
 			MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		}
 		

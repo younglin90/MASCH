@@ -10,21 +10,38 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	
 	using Bound_Funct_type = function<int(double* cells, double* faces)>;
 	
-	vector<string> tmp_type;
-	vector<int> tmp_cell_id;
-	vector<int> tmp_L_id;
-	vector<int> tmp_R_id;
-	vector<int> tmp_vel_cell_id;
-	vector<int> tmp_vel_L_id;
-	vector<int> tmp_vel_R_id;
+	
+	
+	int tmp_x_vel_id;
+	int tmp_y_vel_id;
+	int tmp_z_vel_id;
+	{
+		int iter = 0;
+		for(auto& name : controls.primVarNames){
+			if(name=="x-velocity"){
+				tmp_x_vel_id = iter;
+			}
+			if(name=="y-velocity"){
+				tmp_y_vel_id = iter;
+			}
+			if(name=="z-velocity"){
+				tmp_z_vel_id = iter;
+			}
+			++iter;
+		}
+	}
+	
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	// cout << tmp_bool_velo.size() << endl;
+	
 	for(int i=0; i<mesh.boundaries.size(); ++i){
 		auto& boundary = mesh.boundaries[i];
-		int tmp_size = boundary.types.size();
-		int iter=0;
-		for(int i=0; i<boundary.types.size(); ++i){
-			string type = boundary.types[i];
-			int id_inp = controls.primVarIds[i];
-			string name = controls.primVarNames[i];
+		if(boundary.getType()!=MASCH_Face_Types::BOUNDARY) continue;
+		for(int j=0; j<boundary.types.size(); ++j){
+			string type = boundary.types[j];
+			int id_inp = controls.primVarIds[j];
+			string name = controls.primVarNames[j];
 			string left_name = "left ";
 			string right_name = "right ";
 			left_name += name;
@@ -32,101 +49,143 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 			int id_L_out = controls.faceVar[left_name].id;
 			int id_R_out = controls.faceVar[right_name].id;
 			
-			tmp_type.push_back(type);
-			tmp_cell_id.push_back(id_inp);
-			tmp_L_id.push_back(id_L_out);
-			tmp_R_id.push_back(id_R_out);
 			
-			if(type=="slip" || type=="noSlip"){
-				tmp_vel_cell_id.push_back(id_inp);
-				tmp_vel_L_id.push_back(id_L_out);
-				tmp_vel_R_id.push_back(id_R_out);
+			Bound_Funct_type setFunction;
+			
+			if(
+			name=="x-velocity" ||
+			name=="y-velocity" ||
+			name=="z-velocity" ){
+				if(type=="zeroGradient"){
+					setFunction = [id_inp, id_L_out, id_R_out](
+					double* cells, double* faces) ->int {
+						faces[id_L_out] = cells[id_inp];
+						faces[id_R_out] = faces[id_L_out];
+						// return inp[0];
+						return 0;
+					};
+				}
+				else if(type=="fixedValue"){
+					double value = boundary.values[j];
+					setFunction = [id_inp, id_L_out, id_R_out, value](
+					double* cells, double* faces) ->int {
+						faces[id_L_out] = value;
+						faces[id_R_out] = value;
+						return 0;
+					};
+				}
+				else if(type=="function"){
+					string libraryName = "./constant/boundaryFunctions.so";
+					void *handle = dlopen(libraryName.c_str(), RTLD_NOW);
+					// typedef void (*setFunc_t)(double, double, double, double, double&);
+					*(void **) (&setFunction) = dlsym(handle, "setFunction");
+				}
+				else if(type=="slip"){
+					int id_u, id_v, id_w;
+					int id_u_L, id_v_L, id_w_L;
+					int id_u_R, id_v_R, id_w_R;
+					{
+						id_u = controls.primVarIds[tmp_x_vel_id];
+						string name = controls.primVarNames[tmp_x_vel_id];
+						string left_name_u = "left ";
+						string right_name_u = "right ";
+						left_name_u += name;
+						right_name_u += name;
+						id_u_L = controls.faceVar[left_name_u].id;
+						id_u_R = controls.faceVar[right_name_u].id;
+					}
+					{
+						id_v = controls.primVarIds[tmp_y_vel_id];
+						string name = controls.primVarNames[tmp_y_vel_id];
+						string left_name_v = "left ";
+						string right_name_v = "right ";
+						left_name_v += name;
+						right_name_v += name;
+						id_v_L = controls.faceVar[left_name_v].id;
+						id_v_R = controls.faceVar[right_name_v].id;
+					}
+					{
+						id_w = controls.primVarIds[tmp_z_vel_id];
+						string name = controls.primVarNames[tmp_z_vel_id];
+						string left_name_w = "left ";
+						string right_name_w = "right ";
+						left_name_w += name;
+						right_name_w += name;
+						id_w_L = controls.faceVar[left_name_w].id;
+						id_w_R = controls.faceVar[right_name_w].id;
+					}
+					int id_nx = controls.faceVar["x unit normal"].id;
+					int id_ny = controls.faceVar["y unit normal"].id;
+					int id_nz = controls.faceVar["z unit normal"].id;
+					setFunction = [id_u, id_v, id_w, 
+					id_u_L, id_v_L, id_w_L, id_u_R, id_v_R, id_w_R,
+					id_nx,id_ny,id_nz](
+					double* cells, double* faces) ->int {
+						double u_vel = cells[id_u];
+						double v_vel = cells[id_v];
+						double w_vel = cells[id_w];
+						double norVel = u_vel * faces[id_nx] + 
+										v_vel * faces[id_ny] + 
+										w_vel * faces[id_nz];
+						double invU = u_vel - norVel * faces[id_nx];
+						double invV = v_vel - norVel * faces[id_ny];
+						double invW = w_vel - norVel * faces[id_nz];
+						
+						faces[id_u_L] = invU; faces[id_u_R] = invU;
+						faces[id_v_L] = invV; faces[id_v_R] = invV;
+						faces[id_w_L] = invW; faces[id_w_R] = invW;
+						return 0;
+					};
+					// ++i;
+					// ++i;
+				}
+				else if(type=="noSlip"){
+					setFunction = [id_inp, id_L_out, id_R_out](
+					double* cells, double* faces) ->int {
+						faces[id_L_out] = 0.0;
+						faces[id_R_out] = 0.0;
+						return 0;
+					};
+				}
+				else{
+					cout << "#ERROR" << endl;
+				}
 			}
-				
+			else{
+				if(type=="zeroGradient"){
+					setFunction = [id_inp, id_L_out, id_R_out](
+					double* cells, double* faces) ->int {
+						faces[id_L_out] = cells[id_inp];
+						faces[id_R_out] = faces[id_L_out];
+						// return inp[0];
+						return 0;
+					};
+				}
+				else if(type=="fixedValue"){
+					double value = boundary.values[j];
+					setFunction = [id_inp, id_L_out, id_R_out, value](
+					double* cells, double* faces) ->int {
+						faces[id_L_out] = value;
+						faces[id_R_out] = value;
+						return 0;
+					};
+				}
+				else if(type=="function"){
+					string libraryName = "./constant/boundaryFunctions.so";
+					void *handle = dlopen(libraryName.c_str(), RTLD_NOW);
+					// typedef void (*setFunc_t)(double, double, double, double, double&);
+					*(void **) (&setFunction) = dlsym(handle, "setFunction");
+				}
+				else{
+					cout << "#ERROR" << endl;
+				}
+			}
+			
+			solver.calcBoundFacePrimVal.push_back(setFunction);
+			
 		}
-	}
-	
-	
-	for(int i=0; i<tmp_type.size(); ++i){
-		auto& boundary = mesh.boundaries[i];
-		string type = tmp_type[i];
-		int id_inp = tmp_cell_id[i];
-		int id_L_out = tmp_L_id[i];
-		int id_R_out = tmp_R_id[i];
-		
-		Bound_Funct_type setFunction;
-		// cout << type << endl;
-		if(type=="zeroGradient"){
-			setFunction = [id_inp, id_L_out, id_R_out](
-			double* cells, double* faces) ->int {
-				faces[id_L_out] = cells[id_inp];
-				faces[id_R_out] = faces[id_L_out];
-				// return inp[0];
-				return 0;
-			};
-		}
-		else if(type=="fixedValue"){
-			double value = boundary.values[i];
-			setFunction = [id_inp, id_L_out, id_R_out, value](
-			double* cells, double* faces) ->int {
-				faces[id_L_out] = value;
-				faces[id_R_out] = value;
-				return 0;
-			};
-		}
-		else if(type=="slip"){
-			int id_u = tmp_vel_cell_id[0]; 
-			int id_v = tmp_vel_cell_id[1]; 
-			int id_w = tmp_vel_cell_id[2]; 
-			int id_u_L = tmp_vel_L_id[0]; 
-			int id_v_L = tmp_vel_L_id[1]; 
-			int id_w_L = tmp_vel_L_id[2];
-			int id_u_R = tmp_vel_R_id[0]; 
-			int id_v_R = tmp_vel_R_id[1]; 
-			int id_w_R = tmp_vel_R_id[2];
-			int id_nx = controls.faceVar["x unit normal"].id;
-			int id_ny = controls.faceVar["y unit normal"].id;
-			int id_nz = controls.faceVar["z unit normal"].id;
-			setFunction = [id_u, id_v, id_w, 
-			id_u_L, id_v_L, id_w_L, id_u_R, id_v_R, id_w_R,
-			id_nx,id_ny,id_nz](
-			double* cells, double* faces) ->int {
-				double u_vel = cells[id_u];
-				double v_vel = cells[id_v];
-				double w_vel = cells[id_w];
-				double norVel = u_vel * faces[id_nx] + 
-								v_vel * faces[id_ny] + 
-								w_vel * faces[id_nz];
-				double invU = u_vel - norVel * faces[id_nx];
-				double invV = v_vel - norVel * faces[id_ny];
-				double invW = w_vel - norVel * faces[id_nz];
-				
-				faces[id_u_L] = invU; faces[id_u_R] = invU;
-				faces[id_v_L] = invU; faces[id_v_R] = invV;
-				faces[id_w_L] = invU; faces[id_w_R] = invW;
-				return 0;
-			};
-			// ++i;
-			// ++i;
-		}
-		else if(type=="noSlip"){
-			setFunction = [id_inp, id_L_out, id_R_out](
-			double* cells, double* faces) ->int {
-				faces[id_L_out] = 0.0;
-				faces[id_R_out] = 0.0;
-				return 0;
-			};
-		}
-		else if(type=="function"){
-			string libraryName = "./constant/boundaryFunctions.so";
-			void *handle = dlopen(libraryName.c_str(), RTLD_NOW);
-			// typedef void (*setFunc_t)(double, double, double, double, double&);
-			*(void **) (&setFunction) = dlsym(handle, "setFunction");
-		}
-		solver.calcBoundFacePrimVal.push_back(setFunction);
 			
 	}
-	
 	
 	// cout << mesh.boundaries.size() << endl;
 	// cout << controls.boundaryFunct.size() << endl;
@@ -152,6 +211,7 @@ void MASCH_Solver::setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls){
 	field : dt
 	
 	*/
+	solver.setTempStepFunctionsUDF(mesh, controls);
 	
 	solver.setOldVFunctionsUDF(mesh, controls);
 	
@@ -386,4 +446,80 @@ void MASCH_Solver::eosNASG(
 
 		
 		
+}
+
+
+
+void MASCH_Solver::calcTempSteps(
+MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
+	
+	int rank = MPI::COMM_WORLD.Get_rank(); 
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	auto& solver = (*this);
+	
+	auto cells = mesh.cells.data();
+	auto faces = mesh.faces.data();
+	auto cellVar = var.cells.data();
+	auto faceVar = var.faces.data();
+	auto fieldVar = var.fields.data();
+	auto procRightCellsVar = var.procRightCells.data();
+	
+	int tempFunctFace_size = solver.calcTempStepFace.size();
+	auto tempFunctFace_ptr = solver.calcTempStepFace.data();
+	
+	
+	int id_dt = controls.fieldVar["time-step"].id;
+	fieldVar[id_dt] = 1.e12;
+	
+	// cout << tempFunctFace_size << endl;
+	
+	for(int i=0, SIZE=mesh.nInternalFaces; i<SIZE; ++i){
+		int iL = faces[i].iL;
+		int iR = faces[i].iR;
+		for(int iFunct=0; iFunct<tempFunctFace_size; ++iFunct){
+			tempFunctFace_ptr[iFunct](cellVar[iL].data(), cellVar[iR].data(), 
+				faceVar[i].data(), fieldVar);
+		// cout << fieldVar[id_dt] << endl;
+		}
+	}
+	
+	for(int i=0, ip=0, SIZE=mesh.boundaries.size(); i<SIZE; ++i){
+		auto& boundary = mesh.boundaries[i];
+		int str = boundary.startFace;
+		int end = str + boundary.nFaces;
+		if(boundary.getType() == MASCH_Face_Types::BOUNDARY){
+			for(int i=str; i<end; ++i){
+				auto& face = faces[i];
+				int iL = face.iL;
+				
+				for(int iFunct=0; iFunct<tempFunctFace_size; ++iFunct){
+					tempFunctFace_ptr[iFunct](
+							cellVar[iL].data(), nullptr, faceVar[i].data(), fieldVar);
+				}
+			}
+		}
+		else if(boundary.getType() == MASCH_Face_Types::PROCESSOR){
+			for(int i=str; i<end; ++i){
+				auto& face = faces[i];
+				int iL = face.iL;
+				int iR = i-str;
+				for(int iFunct=0; iFunct<tempFunctFace_size; ++iFunct){
+					tempFunctFace_ptr[iFunct](
+						cellVar[iL].data(), nullptr, faceVar[i].data(), fieldVar);
+				}
+				
+				++ip;
+			}
+		}
+	}
+	
+	if(size>1){
+		double tmp_fieldVar = fieldVar[id_dt];
+		double tmp_fieldVar_glo;
+		MPI_Allreduce(&tmp_fieldVar, &tmp_fieldVar_glo, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+		fieldVar[id_dt] = tmp_fieldVar_glo;
+	}
+	
+	
 }

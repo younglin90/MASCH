@@ -11,11 +11,15 @@
 #include <mpi.h>
 #include <cstring>
 #include <zlib.h>
-// #include "../species/species.h" 
+#include <dlfcn.h>
+
+using namespace std;
+
 #include "./mesh.h"  
 #include "./controls.h"  
 #include "./solvers.h" 
 #include "./log.h"  
+#include "./variables.h"  
 
 #define MASCH_FFL __FILE__,__FUNCTION__,__LINE__
 
@@ -27,11 +31,6 @@ class MASCH_Mesh_Load {
 private:
 
 public:
-    MASCH_Mesh_Load() {
-    }
-    ~MASCH_Mesh_Load() {
-    }
-	
 	template<typename T>
 	void loadDatasAtVTU(
 		ifstream& inputFile, string dataName, vector<T>& outData);
@@ -53,6 +52,11 @@ public:
 	
 	void vtu(string folder, MASCH_Control &controls, MASCH_Mesh &mesh);
 	void OpenFoam(string folder, MASCH_Mesh &in);
+	void vtuPrimitive(
+		string folderName, int rank,
+		MASCH_Control& controls, 
+		MASCH_Mesh& mesh,
+		MASCH_Variables& var);
 	
 	bool boolCompress;
 };
@@ -266,7 +270,14 @@ public:
 	
 	void settingFiles(string folderName, MASCH_Control& controls);
 	void meshFiles(string folderName, MASCH_Control& controls, MASCH_Mesh& mesh);
-
+	
+	// fvm file 로드
+	void fvmFiles(
+		string folderName, 
+		int rank,
+		MASCH_Mesh& mesh,
+		MASCH_Control& controls, 
+		MASCH_Variables& var);
 };
 
 

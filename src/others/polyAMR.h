@@ -112,12 +112,22 @@ public:
 		MASCH_Control& controls,
 		MASCH_Variables& var,
 		int iter);
+	
+	void polyAMR_inline(
+		MASCH_Mesh& mesh, 
+		MASCH_Control& controls,
+		MASCH_Solver& solver,
+		MASCH_Variables& var,
+		int iter);
 		
 	// 리파인 관련
 	void polyRefine(
 		MASCH_Mesh& mesh, 
 		MASCH_Control& controls,
+		int maxLevel_AMR, int maxCells_AMR, double minVolume_AMR, 
+		vector<vector<double>> indicatorCriterion,
 		vector<vector<double>>& indicatorValues,
+		vector<vector<int>>& child_new_cell_id_of_org,
 		int iter);
 		
 	void mpiLevelRefine(
@@ -287,7 +297,9 @@ public:
 	void polyUnrefine(
 		MASCH_Mesh& mesh, 
 		MASCH_Control& controls,
+		vector<vector<double>> indicatorCriterion,
 		vector<vector<double>>& indicatorValues,
+		vector<vector<int>>& child_org_cell_id_of_new,
 		int iter);
 		
 	void sortCellCanUnrefine(

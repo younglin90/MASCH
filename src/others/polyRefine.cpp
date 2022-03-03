@@ -8,10 +8,16 @@
 void MASCH_Poly_AMR_Builder::polyRefine(
 	MASCH_Mesh& mesh, 
 	MASCH_Control& controls,
+	int maxLevel_AMR, int maxCells_AMR, double minVolume_AMR, 
+	vector<vector<double>> indicatorCriterion,
 	vector<vector<double>>& indicatorValues,
+	vector<vector<int>>& child_new_cell_id_of_org,
 	int iter){
 		
 		
+	// int maxLevel_AMR = controls.maxLevelRefine;
+	// double minVolume_AMR = controls.minVolumeRefine;
+	// int maxCells_AMR = controls.maxCellsRefine;
 	// // ===========================================
 	// // connPoints 디버깅
 	// mesh.debug_connPoints(1.e-36);
@@ -35,8 +41,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	int afterPointSize = 0;
 	
 	
-	
-	
+	child_new_cell_id_of_org.clear();
+	child_new_cell_id_of_org.resize(beforeCellSize);
 	
 
 	// //=======================================
@@ -91,8 +97,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// if(rank==0 && iter==1) cout << "START" << endl;
 	
 	if(rank==0){
-		// cout << "┌────────────────────────────────────────────────────" << endl;
-		// cout << "| execute AMR - Refine " << endl;
+		cout << "┌────────────────────────────────────────────────────" << endl;
+		cout << "| execute AMR - Refine ";
 	}
 	
 	// SEMO_Mesh_Geometric geometric;
@@ -111,42 +117,42 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	MASCH_Poly_Mesh_Refine refineMesh;
 	
-	int maxLevel_AMR = controls.maxLevelRefine;
-	double minVolume_AMR = controls.minVolumeRefine;
-	int maxCells_AMR = controls.maxCellsRefine;
+	// int maxLevel_AMR = controls.maxLevelRefine;
+	// double minVolume_AMR = controls.minVolumeRefine;
+	// int maxCells_AMR = controls.maxCellsRefine;
 	
 	// refine 되는 셀 조사
 	vector<bool> boolCellRefine(mesh.cells.size(),false);
 	// cout << maxCells_AMR << endl;
 	if(mesh.cells.size()<maxCells_AMR){
 		for(int i=0; i<mesh.cells.size(); ++i){
-			// for(int level=0; level<controls.indicatorCriterion.size(); ++level)
+			for(int indi=0; indi<indicatorCriterion.size(); ++indi)
 			{
-				// double indicatorRefine_AMR = controls.indicatorCriterion[level];
-				// if( mesh.cells[i].level < level+1 ){
-					// if( mesh.cells[i].var[controls.indicatorAMR[0]] > indicatorRefine_AMR ){
-					// if( indicatorValues[i][0] > indicatorRefine_AMR ){
-						// boolCellRefine[i] = true;
-					// }
-					if( 
-					(rank==0 && distr(eng) > 0.8) ||
-					(rank==1 && distr(eng) > 100.0) ||
-					(rank==2 && distr(eng) > 100.0) ||
-					(rank==3 && distr(eng) > 100.0) 
-					){
-						// cout << mesh.cells[i].volume << endl;
-						boolCellRefine[i] = true;
-					}
-				// }					
+				for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
+				{
+					double indicatorRefine_AMR = indicatorCriterion.at(indi).at(level);
+					if( mesh.cells.at(i).level < level+1 ){
+						if( indicatorValues.at(indi).at(i) > indicatorRefine_AMR ){
+							boolCellRefine[i] = true;
+						}
+					}				
+				}
 			}
+							// boolCellRefine[i] = true;
 			
-			
-			if(mesh.cells[i].level >= 4) boolCellRefine[i] = false;
-			
+				// if( 
+				// (rank==0 && distr(eng) > 0.8) ||
+				// (rank==1 && distr(eng) > 100.0) ||
+				// (rank==2 && distr(eng) > 100.0) ||
+				// (rank==3 && distr(eng) > 100.0) 
+				// ){
+					// cout << mesh.cells[i].volume << endl;
+					// boolCellRefine[i] = true;
+				// }	
 			
 			// if(mesh.cells[i].volume < minVolume_AMR) boolCellRefine[i] = false;
-			// if(mesh.cells[i].level >= maxLevel_AMR) boolCellRefine[i] = false;
-			// if(mesh.cells[i].level < 0) boolCellRefine[i] = false;
+			if(mesh.cells[i].level >= maxLevel_AMR) boolCellRefine[i] = false;
+			if(mesh.cells[i].level < 0) boolCellRefine[i] = false;
 		} 
 	}
 	
@@ -1123,8 +1129,16 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	mesh.cells.resize(totalCellNum,MASCH_Cell());
 	for(int i=orgCellSize-1; i>=0; --i){
 		int subCellSize = groupCell_Levels[i].size();
+		
+		child_new_cell_id_of_org[i].resize(subCellSize);
+		
 		for(int j=0; j<subCellSize; ++j){
 			// mesh.cells[tmpCellNum].var.assign(mesh.cells[i].var.begin(),mesh.cells[i].var.end());
+			
+			child_new_cell_id_of_org[i][j] = tmpCellNum;
+			
+			
+			
 			mesh.cells[tmpCellNum].ipoints.clear();
 			mesh.cells[tmpCellNum].ifaces.clear();
 			--tmpCellNum;
@@ -1594,10 +1608,12 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	if(rank==0){
+		cout << "-> completed" << endl;
 		cout << 
-		" | refined added cell size = " << addedCellSize_glb <<
-		" | refined added face size = " << addedFaceSize_glb <<
-		" | refined added point size = " << addedPointSize_glb << endl;
+		"| cell = +" << addedCellSize_glb <<
+		" | face = +" << addedFaceSize_glb <<
+		" | point = +" << addedPointSize_glb << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
 	}
 	
 	

@@ -143,13 +143,20 @@ vector<int>& procFaces, vector<int>& reorderFaceIds) {
 // };
 
 
-void MASCH_Mesh::repartitioning(vector<int>& idBlockCell){
+void MASCH_Mesh::repartitioning(
+vector<int>& idBlockCell, 
+int maxLevel, 
+vector<int>& to_new_cell_id
+){
 	
 	
 	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
 	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
 	
 	auto& mesh = (*this);
+	
+	
+	to_new_cell_id.resize(mesh.cells.size());
 	
 	
     if(rank == 0){
@@ -1573,6 +1580,20 @@ void MASCH_Mesh::repartitioning(vector<int>& idBlockCell){
 		
 		
 		
+		// variables 넘기기 위한 재료
+		{
+			vector<vector<int>> send_nCells_local(size);
+			for(int ip=0; ip<size; ++ip) send_nCells_local[ip].push_back(nCells_local[ip]);
+			vector<vector<int>> recv_nCells_local(size);
+			mpi.Alltoallv(send_nCells_local, recv_nCells_local);
+			int iter = 0;
+			for(auto& [proc, id] : send_localCell_proc_id){
+				to_new_cell_id[iter++] = recv_nCells_local[proc][0] + id;
+			}
+		}
+		
+		
+		
 	}
 	
 	
@@ -2038,7 +2059,7 @@ void MASCH_Mesh::repartitioning(vector<int>& idBlockCell){
 				}
 				
 				vector<int> reorderFaceIds;
-				getFaceOrders(4, mesh.points, mesh.faces, procFace, reorderFaceIds);
+				getFaceOrders(maxLevel, mesh.points, mesh.faces, procFace, reorderFaceIds);
 				
 				vector<int> tmp_iL;
 				vector<vector<int>> tmp_ipoints;

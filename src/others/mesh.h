@@ -288,7 +288,8 @@ public:
 	void debug_procFace_unitNomals(double inp_resi);
 	
 	// 로드밸런싱 리파티셔닝
-	void repartitioning(vector<int>& idBlockCell);
+	void repartitioning(
+		vector<int>& idBlockCell, int maxLevel, vector<int>& connCelll);
 	void repartParMETIS(
 		int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh);
 	

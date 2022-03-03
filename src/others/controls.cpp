@@ -12,6 +12,7 @@ void MASCH_Control::setVariablesBasic(){
 	
 	(*this).setVarible({field},"time","t","sec.","physics",scal);
 	(*this).setVarible({field},"time-step","dt","sec.","physics",scal);
+	(*this).setVarible({field},"residual","","","physics",scal);
 	
 	(*this).setVarible({face},"area","dA","m^2","mesh",scal);
 	(*this).setVarible({face},"unit normal vector","nvec","","mesh",vec,
@@ -33,6 +34,7 @@ void MASCH_Control::setVariablesBasic(){
 							"y skewness",
 							"z skewness"},{"xSkew","ySkew","zSkew"},
 							{"mesh","mesh","mesh"});
+	(*this).setVarible({face},"Courant-Friedrichs-Lewy number","CFL","","numeric",scal);
 	
 	(*this).setVarible({cell},"Courant-Friedrichs-Lewy number","CFL","","numeric",scal);
 	(*this).setVarible({cell},"pseudo time-step","dtau","sec.","numeric",scal);
@@ -147,6 +149,8 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 	// int nParticles = controls.parcel.size();
 	int nParticles = 0;
 	
+	// var.nCells = nCells;
+	
 	// var.cells = new double*[nCells];
 	// var.faces = new double*[nFaces];
 	// var.points = new double*[nPoints];
@@ -200,6 +204,373 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 	
 	
 }
+
+void MASCH_Control::resetVariableArray(
+MASCH_Mesh& mesh, MASCH_Variables& var,
+vector<vector<double>>& org_xyz, vector<vector<int>>& cellConn,
+string inp_option){
+	
+	auto& controls = (*this);
+	
+	int tmp_nPrimitive = 0;
+	vector<string> tmp_name_prim;
+	vector<string> tmp_name_x_grad_prim;
+	vector<string> tmp_name_y_grad_prim;
+	vector<string> tmp_name_z_grad_prim;
+	for(auto& [name, tmp_var] : controls.cellVar){
+		if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+			tmp_name_prim.push_back(name);
+			string x_grad_name = "x-gradient ";
+			string y_grad_name = "y-gradient ";
+			string z_grad_name = "z-gradient ";
+			x_grad_name += name;
+			y_grad_name += name;
+			z_grad_name += name;
+			tmp_name_x_grad_prim.push_back(x_grad_name);
+			tmp_name_y_grad_prim.push_back(y_grad_name);
+			tmp_name_z_grad_prim.push_back(z_grad_name);
+			++tmp_nPrimitive;
+		}
+	}
+	
+	if(inp_option=="refine"){
+		
+		
+		int org_nCells = cellConn.size();
+		
+		vector<vector<double>> send_val(tmp_nPrimitive);
+		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
+		for(int i=0; i<org_nCells; ++i){
+			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				int id_x_grad_prim = controls.getId_cellVar(tmp_name_x_grad_prim[iprim]);
+				int id_y_grad_prim = controls.getId_cellVar(tmp_name_y_grad_prim[iprim]);
+				int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
+				double value = var.cells[i][id_prim];
+				send_val[iprim].push_back(value);
+				send_x_grad_val[iprim].push_back(var.cells[i][id_x_grad_prim]);
+				send_y_grad_val[iprim].push_back(var.cells[i][id_y_grad_prim]);
+				send_z_grad_val[iprim].push_back(var.cells[i][id_z_grad_prim]);
+			}
+		}
+		
+			
+		int nCells = mesh.cells.size();
+		int nFaces = mesh.faces.size();
+		int nProcFaces = mesh.nProcessorFaces;
+		int nPoints = mesh.points.size();
+		int nBoundaries = mesh.boundaries.size();
+		// int nParticles = controls.parcel.size();
+		int nParticles = 0;
+		
+		var.cells.resize(nCells);
+		var.faces.resize(nFaces);
+		var.procRightCells.resize(nProcFaces);
+		var.points.resize(nPoints);
+		var.boundaries.resize(nBoundaries);
+		
+		var.parcel.resize(nParticles);
+		
+		int nVarBoundary = 0;
+		for(auto& [name, tmp_var] : controls.cellVar){
+			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+				// cout << name << endl;
+				++nVarBoundary;
+			}
+		}
+		int nVarParticle = 100;
+		
+		var.fields.resize(controls.nFieldVar);
+		if(controls.nCellVar>0){
+			for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
+			for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+		}
+		if(controls.nFaceVar>0){
+			for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+		}
+		if(controls.nPointVar>0){
+			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+		}
+		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+		for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+	
+		
+		
+		for(int i=0; i<org_nCells; ++i){
+			int sub_size = cellConn[i].size();
+			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				double org_value = send_val[iprim][i];
+				double cell_x = org_xyz[i][0];
+				double cell_y = org_xyz[i][1];
+				double cell_z = org_xyz[i][2];
+				double x_grad = send_x_grad_val.at(iprim).at(i);
+				double y_grad = send_y_grad_val.at(iprim).at(i);
+				double z_grad = send_z_grad_val.at(iprim).at(i);
+				double avg_values = 0.0;
+				for(int j=0; j<sub_size; ++j){
+					int id_cell = cellConn.at(i).at(j);
+					double value_interpol = org_value;
+					// value_interpol += x_grad*(mesh.cells.at(id_cell).x - cell_x);
+					// value_interpol += y_grad*(mesh.cells.at(id_cell).y - cell_y);
+					// value_interpol += z_grad*(mesh.cells.at(id_cell).z - cell_z);
+					
+					var.cells.at(id_cell).at(id_prim) = value_interpol;
+					
+					avg_values += value_interpol/(double)sub_size;
+				}
+				// if(avg_values!=org_value){
+					// double coeff = sub_size*org_value/(avg_values+1.e-12);
+					// for(int j=0; j<sub_size; ++j){
+						// int id_cell = cellConn[i][j];
+						// var.cells.at(id_cell).at(id_prim) *= coeff;
+					// }
+				// }
+			}
+		}
+		
+
+			
+		
+		
+	}
+	else if(inp_option=="repart"){
+		
+	}
+	else if(inp_option=="unrefine"){
+		
+		// cout << mesh.cells.size() << " " <<
+		// cellConn.size() << " " <<
+		// cellConn.back().back() << " " << 
+		// var.cells.size() <<
+		// endl;
+		
+		vector<vector<double>> send_val(tmp_nPrimitive);
+		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
+		for(auto& item : cellConn){
+			for(auto& i : item){
+				for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+					int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+					int id_x_grad_prim = controls.getId_cellVar(tmp_name_x_grad_prim[iprim]);
+					int id_y_grad_prim = controls.getId_cellVar(tmp_name_y_grad_prim[iprim]);
+					int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
+					double value = var.cells[i][id_prim];
+					send_val[iprim].push_back(value);
+				}
+			}
+		}
+		
+			
+		int nCells = mesh.cells.size();
+		int nFaces = mesh.faces.size();
+		int nProcFaces = mesh.nProcessorFaces;
+		int nPoints = mesh.points.size();
+		int nBoundaries = mesh.boundaries.size();
+		// int nParticles = controls.parcel.size();
+		int nParticles = 0;
+		
+		var.cells.resize(nCells);
+		var.faces.resize(nFaces);
+		var.procRightCells.resize(nProcFaces);
+		var.points.resize(nPoints);
+		var.boundaries.resize(nBoundaries);
+		
+		var.parcel.resize(nParticles);
+		
+		int nVarBoundary = 0;
+		for(auto& [name, tmp_var] : controls.cellVar){
+			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+				// cout << name << endl;
+				++nVarBoundary;
+			}
+		}
+		int nVarParticle = 100;
+		
+		var.fields.resize(controls.nFieldVar);
+		if(controls.nCellVar>0){
+			for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
+			for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+		}
+		if(controls.nFaceVar>0){
+			for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+		}
+		if(controls.nPointVar>0){
+			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+		}
+		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+		for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+	
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// cout << "44" << endl;
+		
+		
+		for(int i=0; i<cellConn.size(); ++i){
+			int sub_size = cellConn[i].size();
+			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				
+				double new_value = 0.0;
+				for(int j=0; j<sub_size; ++j){
+					int sub_id = cellConn[i][j];
+					double org_value = send_val.at(iprim).at(sub_id);
+					new_value += org_value/(double)sub_size;
+				}
+				
+				var.cells.at(i).at(id_prim) = new_value;
+			}
+		}
+		
+		
+		
+	}
+	else{
+		cout << "#WARNING" << endl;
+	}
+			
+	
+	
+}
+
+
+void MASCH_Control::resetVariableArray(
+MASCH_Mesh& mesh, MASCH_Variables& var,
+vector<int>& cell_ip, vector<int>& cellConn,
+string inp_option){
+	
+	auto& controls = (*this);
+	
+	
+	if(inp_option=="repart"){
+		
+		int tmp_nPrimitive = 0;
+		vector<string> tmp_name_prim;
+		vector<string> tmp_name_x_grad_prim;
+		vector<string> tmp_name_y_grad_prim;
+		vector<string> tmp_name_z_grad_prim;
+		for(auto& [name, tmp_var] : controls.cellVar){
+			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+				tmp_name_prim.push_back(name);
+				string x_grad_name = "x-gradient ";
+				string y_grad_name = "y-gradient ";
+				string z_grad_name = "z-gradient ";
+				x_grad_name += name;
+				y_grad_name += name;
+				z_grad_name += name;
+				tmp_name_x_grad_prim.push_back(x_grad_name);
+				tmp_name_y_grad_prim.push_back(y_grad_name);
+				tmp_name_z_grad_prim.push_back(z_grad_name);
+				++tmp_nPrimitive;
+			}
+		}
+		
+		int org_nCells = cellConn.size();
+		
+		vector<vector<double>> send_val(tmp_nPrimitive);
+		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
+		for(int i=0; i<org_nCells; ++i){
+			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				int id_x_grad_prim = controls.getId_cellVar(tmp_name_x_grad_prim[iprim]);
+				int id_y_grad_prim = controls.getId_cellVar(tmp_name_y_grad_prim[iprim]);
+				int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
+				double value = var.cells[i][id_prim];
+				send_val[iprim].push_back(value);
+				send_x_grad_val[iprim].push_back(var.cells[i][id_x_grad_prim]);
+				send_y_grad_val[iprim].push_back(var.cells[i][id_y_grad_prim]);
+				send_z_grad_val[iprim].push_back(var.cells[i][id_z_grad_prim]);
+			}
+		}
+		
+			
+		int nCells = mesh.cells.size();
+		int nFaces = mesh.faces.size();
+		int nProcFaces = mesh.nProcessorFaces;
+		int nPoints = mesh.points.size();
+		int nBoundaries = mesh.boundaries.size();
+		// int nParticles = controls.parcel.size();
+		int nParticles = 0;
+		
+		var.cells.resize(nCells);
+		var.faces.resize(nFaces);
+		var.procRightCells.resize(nProcFaces);
+		var.points.resize(nPoints);
+		var.boundaries.resize(nBoundaries);
+		
+		var.parcel.resize(nParticles);
+		
+		int nVarBoundary = 0;
+		for(auto& [name, tmp_var] : controls.cellVar){
+			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+				// cout << name << endl;
+				++nVarBoundary;
+			}
+		}
+		int nVarParticle = 100;
+		
+		var.fields.resize(controls.nFieldVar);
+		if(controls.nCellVar>0){
+			for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
+			for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+		}
+		if(controls.nFaceVar>0){
+			for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+		}
+		if(controls.nPointVar>0){
+			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+		}
+		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+		for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+	
+		
+		int rank = MPI::COMM_WORLD.Get_rank();
+		int size = MPI::COMM_WORLD.Get_size();
+	
+		vector<vector<double>> send_value(size);
+		for(int i=0; i<org_nCells; ++i){
+			int send_id = cellConn[i];
+			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				double org_value = send_val[iprim][i];
+				double x_grad = send_x_grad_val.at(iprim).at(i);
+				double y_grad = send_y_grad_val.at(iprim).at(i);
+				double z_grad = send_z_grad_val.at(iprim).at(i);
+				double avg_values = 0.0;
+				
+				double value_interpol = org_value;
+				
+				send_value[cell_ip[i]].push_back(value_interpol);
+					
+			}
+		}
+		MASCH_MPI mpi;
+		vector<vector<double>> recv_value(size);
+		mpi.Alltoallv(send_value, recv_value);
+		for(int ip=0, id=0; ip<size; ++ip){
+			int tmp_size = recv_value[ip].size()/tmp_nPrimitive;
+			for(int i=0, iter=0; i<tmp_size; ++i){
+				for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+					int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+					double tmp_value = recv_value[ip][iter++];
+					var.cells[id][id_prim] = tmp_value;
+				}
+				++id;
+			}
+		}
+		
+		
+	}
+			
+	
+	
+}
+
+
 
 
 void MASCH_Control::setBoundaryConditions(MASCH_Mesh& mesh){
@@ -274,325 +645,6 @@ void MASCH_Control::setBoundaryConditions(MASCH_Mesh& mesh){
 	
 }
 
-
-
-
-
-void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
-	auto& controls = (*this);
-	
-	int rank = MPI::COMM_WORLD.Get_rank();
-	int size = MPI::COMM_WORLD.Get_size();
-
-	if(rank==0){
-		// cout << "┌────────────────────────────────────────────────────" << endl;
-		// cout << "| execute geometric (face normal vectors, face area, face center, cell volume) ... ";
-	}
-	
-	int id_volume = controls.cellVar["volume"].id;
-	int id_area = controls.faceVar["area"].id;
-	int id_nx = controls.faceVar["x unit normal"].id;
-	int id_ny = controls.faceVar["y unit normal"].id;
-	int id_nz = controls.faceVar["z unit normal"].id;
-	int id_xLR = controls.faceVar["x distance of between left and right cell"].id;
-	int id_yLR = controls.faceVar["y distance of between left and right cell"].id;
-	int id_zLR = controls.faceVar["z distance of between left and right cell"].id;
-	int id_xSkew = controls.faceVar["x skewness"].id;
-	int id_ySkew = controls.faceVar["y skewness"].id;
-	int id_zSkew = controls.faceVar["z skewness"].id;
-	int id_xCN = controls.faceVar["x distance project to face normal"].id;
-	int id_yCN = controls.faceVar["y distance project to face normal"].id;
-	int id_zCN = controls.faceVar["z distance project to face normal"].id;
-	int id_Wc = controls.faceVar["distance weight"].id;
-	int id_dLR = controls.faceVar["distance of between left and right cell"].id;
-	int id_alpha = controls.faceVar["cosine angle of between face normal and cells"].id;
-	
-	MASCH_Math math;
-	
-	// polyhedron cell volume (Green-Gauss Theorem.)
-	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-		auto& cell = mesh.cells[i];
-		
-		var.cells[i][id_volume] = 0.0;
-		cell.x = 0.0;
-		cell.y = 0.0;
-		cell.z = 0.0;
-	}
-	
-	// polygon face normal vectors & polygon face area
-	// polygon face center x,y,z
-	// 3D Polygon Areas
-	for(int i=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
-		auto& face = mesh.faces[i];
-		vector<double> Vx, Vy, Vz;
-		for(auto ipoint : face.ipoints){
-			Vx.push_back(mesh.points[ipoint].x);
-			Vy.push_back(mesh.points[ipoint].y);
-			Vz.push_back(mesh.points[ipoint].z);
-		}
-		
-		double VSn=0.0;
-		vector<double> cellCentroid;
-		vector<double> unitNormals(3,0.0);
-		double area;
-		math.calcUnitNormals_Area3dPolygon(
-			face.ipoints.size(), Vx,Vy,Vz,
-			unitNormals, area,
-			face.x, face.y, face.z,
-			VSn, cellCentroid);
-			
-		var.faces[i][id_nx] = unitNormals[0];
-		var.faces[i][id_ny] = unitNormals[1];
-		var.faces[i][id_nz] = unitNormals[2];
-		var.faces[i][id_area] = area;
-			
-		int iL = face.iL;
-		int iR = face.iR;
-			
-		// mesh.cells[iL].volume += VSn / 3.0;
-		var.cells[iL][id_volume] += VSn / 3.0;
-		mesh.cells[iL].x += cellCentroid[0];
-		mesh.cells[iL].y += cellCentroid[1];
-		mesh.cells[iL].z += cellCentroid[2];
-		if(face.getType() == MASCH_Face_Types::INTERNAL){
-			// mesh.cells[iR].volume -= VSn / 3.0;
-			var.cells[iR][id_volume] -= VSn / 3.0;
-			mesh.cells[iR].x -= cellCentroid[0];
-			mesh.cells[iR].y -= cellCentroid[1];
-			mesh.cells[iR].z -= cellCentroid[2];
-		}
-			
-		
-	}
-	
-	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-		auto& cell = mesh.cells[i];
-		cell.x *= 1.0/(24.0*2.0*var.cells[i][id_volume]);
-		cell.y *= 1.0/(24.0*2.0*var.cells[i][id_volume]);
-		cell.z *= 1.0/(24.0*2.0*var.cells[i][id_volume]);
-	}
-	
-	
-	
-	
-	for(int i=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
-		auto& face = mesh.faces[i];
-		int iL = face.iL;
-		int iR = face.iR;
-		double nx = var.faces[i][id_nx];
-		double ny = var.faces[i][id_ny];
-		double nz = var.faces[i][id_nz];
-		
-		if(face.getType() == MASCH_Face_Types::INTERNAL){
-			var.faces[i][id_xLR] = mesh.cells[iR].x - mesh.cells[iL].x;
-			var.faces[i][id_yLR] = mesh.cells[iR].y - mesh.cells[iL].y;
-			var.faces[i][id_zLR] = mesh.cells[iR].z - mesh.cells[iL].z;
-			
-			double dxFP = face.x-mesh.cells[iL].x;
-			double dyFP = face.y-mesh.cells[iL].y;
-			double dzFP = face.z-mesh.cells[iL].z;
-			double dFP = sqrt(pow(dxFP,2.0)+pow(dyFP,2.0)+pow(dzFP,2.0));
-			
-			double dxFN = face.x-mesh.cells[iR].x;
-			double dyFN = face.y-mesh.cells[iR].y;
-			double dzFN = face.z-mesh.cells[iR].z;
-			double dFN = sqrt(pow(dxFN,2.0)+pow(dyFN,2.0)+pow(dzFN,2.0));
-			
-			double dxPN = var.faces[i][id_xLR];
-			double dyPN = var.faces[i][id_yLR];
-			double dzPN = var.faces[i][id_zLR];
-			double dPN = sqrt(pow(dxPN,2.0)+pow(dyPN,2.0)+pow(dzPN,2.0));
-			
-			// at openfoam 
-			double dFP_of = abs(dxFP*nx+dyFP*ny+dzFP*nz);
-			double dFN_of = abs(dxFN*nx+dyFN*ny+dzFN*nz);
-				
-			// at openfoam
-			var.faces[i][id_Wc] = dFN_of/(dFP_of+dFN_of);
-			// 절단오차 걸러내기 위한 과정
-			var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
-			
-			var.faces[i][id_dLR] = dPN;
-			
-			// original
-			vector<double> unitNomalsPN(3,0.0);
-			unitNomalsPN[0] = dxPN/dPN;
-			unitNomalsPN[1] = dyPN/dPN;
-			unitNomalsPN[2] = dzPN/dPN;
-			double alphaF = 0.0;
-			alphaF += nx*unitNomalsPN[0];
-			alphaF += ny*unitNomalsPN[1];
-			alphaF += nz*unitNomalsPN[2];
-			var.faces[i][id_alpha] = 1.0/abs(alphaF);
-			
-			// skewness
-			double D_plane = -(nx*face.x+ny*face.y+nz*face.z);
-			double u_line = 
-				(nx*mesh.cells[iL].x+
-				 ny*mesh.cells[iL].y+
-				 nz*mesh.cells[iL].z+
-				 D_plane) /
-				(nx*(mesh.cells[iL].x-mesh.cells[iR].x)+
-				 ny*(mesh.cells[iL].y-mesh.cells[iR].y)+
-				 nz*(mesh.cells[iL].z-mesh.cells[iR].z));
-			vector<double> vecSkewness(3,0.0);
-			vecSkewness[0] = mesh.cells[iL].x-u_line*(mesh.cells[iL].x-mesh.cells[iR].x);
-			vecSkewness[1] = mesh.cells[iL].y-u_line*(mesh.cells[iL].y-mesh.cells[iR].y);
-			vecSkewness[2] = mesh.cells[iL].z-u_line*(mesh.cells[iL].z-mesh.cells[iR].z);
-			vecSkewness[0] = face.x-vecSkewness[0];
-			vecSkewness[1] = face.y-vecSkewness[1];
-			vecSkewness[2] = face.z-vecSkewness[2];
-			
-			var.faces[i][id_xSkew] = vecSkewness[0];
-			var.faces[i][id_ySkew] = vecSkewness[1];
-			var.faces[i][id_zSkew] = vecSkewness[2];
-			
-			
-			
-		}
-		else if(face.getType() == MASCH_Face_Types::BOUNDARY){
-			var.faces[i][id_xLR] = face.x - mesh.cells[iL].x;
-			var.faces[i][id_yLR] = face.y - mesh.cells[iL].y;
-			var.faces[i][id_zLR] = face.z - mesh.cells[iL].z;
-			
-			double dxFP = face.x-mesh.cells[iL].x;
-			double dyFP = face.y-mesh.cells[iL].y;
-			double dzFP = face.z-mesh.cells[iL].z;
-			double dFP = sqrt(pow(dxFP,2.0)+pow(dyFP,2.0)+pow(dzFP,2.0));
-			
-			// at openfoam 
-			double dFP_of = abs(dxFP*nx+dyFP*ny+dzFP*nz);
-				
-			// at openfoam
-			var.faces[i][id_Wc] = 0.5;
-			
-			var.faces[i][id_dLR] = dFP;
-			
-			// original
-			vector<double> unitNomalsPN(3,0.0);
-			unitNomalsPN[0] = dxFP/dFP;
-			unitNomalsPN[1] = dyFP/dFP;
-			unitNomalsPN[2] = dzFP/dFP;
-			double alphaF = 0.0;
-			alphaF += nx*unitNomalsPN[0];
-			alphaF += ny*unitNomalsPN[1];
-			alphaF += nz*unitNomalsPN[2];
-			var.faces[i][id_alpha] = 1.0/abs(alphaF);
-			
-			// skewness
-			var.faces[i][id_xSkew] = 0.0;
-			var.faces[i][id_ySkew] = 0.0;
-			var.faces[i][id_zSkew] = 0.0;
-			
-		}
-		else if(face.getType() == MASCH_Face_Types::PROCESSOR){
-			var.faces[i][id_xLR] = face.x - mesh.cells[iL].x;
-			var.faces[i][id_yLR] = face.y - mesh.cells[iL].y;
-			var.faces[i][id_zLR] = face.z - mesh.cells[iL].z;
-		}
-	}
-	
-	
-	
-	if(size>1){
-		MASCH_MPI mpi;
-		
-		vector<vector<double>> sendValues(3);
-		vector<vector<double>> recvValues(3);
-		for(int i=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
-			auto& face = mesh.faces[i];
-			if(face.getType() == MASCH_Face_Types::PROCESSOR){
-				sendValues[0].push_back(var.faces[i][id_xLR]);
-				sendValues[1].push_back(var.faces[i][id_yLR]);
-				sendValues[2].push_back(var.faces[i][id_zLR]);
-			}
-		}
-		for(int i=0; i<3; ++i){
-			mpi.procFace_Alltoallv(sendValues[i], recvValues[i],
-				mesh.countsProcFaces, mesh.countsProcFaces,
-				mesh.displsProcFaces, mesh.displsProcFaces);
-		}	
-		for(int i=0, ip=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
-			auto& face = mesh.faces[i];
-			int iL = face.iL;
-			int iR = face.iR;
-			double nx = var.faces[i][id_nx];
-			double ny = var.faces[i][id_ny];
-			double nz = var.faces[i][id_nz];
-		
-			if(face.getType() == MASCH_Face_Types::PROCESSOR){
-				var.faces[i][id_xLR] -= recvValues[0][ip];
-				var.faces[i][id_yLR] -= recvValues[1][ip];
-				var.faces[i][id_zLR] -= recvValues[2][ip];
-				
-				double dxFP = face.x-mesh.cells[iL].x;
-				double dyFP = face.y-mesh.cells[iL].y;
-				double dzFP = face.z-mesh.cells[iL].z;
-				double dFP = sqrt(pow(dxFP,2.0)+pow(dyFP,2.0)+pow(dzFP,2.0));
-				
-				double dxFN = recvValues[0][ip];
-				double dyFN = recvValues[1][ip];
-				double dzFN = recvValues[2][ip];
-				double dFN = sqrt(pow(dxFN,2.0)+pow(dyFN,2.0)+pow(dzFN,2.0));
-				
-				double dxPN = var.faces[i][id_xLR];
-				double dyPN = var.faces[i][id_yLR];
-				double dzPN = var.faces[i][id_zLR];
-				double dPN = sqrt(pow(dxPN,2.0)+pow(dyPN,2.0)+pow(dzPN,2.0));
-				
-				// at openfoam 
-				double dFP_of = abs(dxFP*nx+dyFP*ny+dzFP*nz);
-				double dFN_of = abs(dxFN*nx+dyFN*ny+dzFN*nz);
-					
-				// at openfoam
-				var.faces[i][id_Wc] = dFN_of/(dFP_of+dFN_of);
-				// 절단오차 걸러내기 위한 과정
-				var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
-				
-				var.faces[i][id_dLR] = dPN;
-				
-				// original
-				vector<double> unitNomalsPN(3,0.0);
-				unitNomalsPN[0] = dxPN/dPN;
-				unitNomalsPN[1] = dyPN/dPN;
-				unitNomalsPN[2] = dzPN/dPN;
-				double alphaF = 0.0;
-				alphaF += nx*unitNomalsPN[0];
-				alphaF += ny*unitNomalsPN[1];
-				alphaF += nz*unitNomalsPN[2];
-				var.faces[i][id_alpha] = 1.0/abs(alphaF);
-				
-				// skewness
-				double D_plane = -(nx*face.x+ny*face.y+nz*face.z);
-				double u_line = 
-					(nx*mesh.cells[iL].x+ny*mesh.cells[iL].y+nz*mesh.cells[iL].z+
-					 D_plane) / (nx*(-dxPN)+ny*(-dyPN)+nz*(-dzPN));
-				vector<double> vecSkewness(3,0.0);
-				vecSkewness[0] = mesh.cells[iL].x-u_line*(-dxPN);
-				vecSkewness[1] = mesh.cells[iL].y-u_line*(-dyPN);
-				vecSkewness[2] = mesh.cells[iL].z-u_line*(-dzPN);
-				vecSkewness[0] = face.x-vecSkewness[0];
-				vecSkewness[1] = face.y-vecSkewness[1];
-				vecSkewness[2] = face.z-vecSkewness[2];
-				
-				var.faces[i][id_xSkew] = vecSkewness[0];
-				var.faces[i][id_ySkew] = vecSkewness[1];
-				var.faces[i][id_zSkew] = vecSkewness[2];
-				
-				++ip;
-			}
-		}
-	}
-	
-	
-	MPI_Barrier(MPI_COMM_WORLD);
-	
-	if(rank==0){
-		// cout << "-> completed" << endl;
-		// cout << "└────────────────────────────────────────────────────" << endl;
-	}
-		
-}
 
 
 
@@ -731,4 +783,114 @@ void MASCH_Control::setVarible(vector<string> save_where, string name, string ab
 }
 
 
+void MASCH_Control::saveAfterInitial(MASCH_Mesh& mesh){
+	auto& controls = (*this);
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	// 메쉬 파일 로드
+	MASCH_Load load;
+	load.meshFiles("./grid/0/", controls, mesh);
+	// variable들 어레이 생성
+	MASCH_Variables var;
+	controls.setVariableArray(mesh, var);
+	
+	// 값 초기화
+	int ii=0;
+	for(auto& inp_abb : controls.supPrimVarAbbs){
+		if(inp_abb=="p") {
+			int id = controls.cellVar["pressure"].id;
+			double value = stod(controls.initialMap[ii]["value"]);
+			int iter = 0;
+			for(auto& cell : var.cells){
+				cell[id] = value;
+				++iter;
+			}
+		}
+		if(inp_abb=="T") {
+			int id = controls.cellVar["temperature"].id;
+			double value = stod(controls.initialMap[ii]["value"]);
+			int iter = 0;
+			for(auto& cell : var.cells){
+				cell[id] = value;
+				++iter;
+			}
+		}
+		if(inp_abb=="U") {
+			int id0 = controls.cellVar["x-velocity"].id;
+			int id1 = controls.cellVar["y-velocity"].id;
+			int id2 = controls.cellVar["z-velocity"].id;
+			vector<string> output = load.extractVector(controls.initialMap[ii]["value"]);
+			double value0 = stod(output[0]);
+			double value1 = stod(output[1]);
+			double value2 = stod(output[2]);
+			int iter = 0;
+			for(auto& cell : var.cells){
+				cell[id0] = value0;
+				cell[id1] = value1;
+				cell[id2] = value2;
+				++iter;
+			}
+		}
+		
+		++ii;
+	}
+	// if(controls.initialMap[0]["type"] == "fixedValue"){
+		// int id = controls.cellVar["pressure"].id;
+		// double value = stod(controls.initialMap[0]["value"]);
+		// int iter = 0;
+		// for(auto& cell : var.cells){
+			// cell[id] = value;
+			// ++iter;
+		// }
+	// }
+	
+	// if(controls.initialMap[2]["type"] == "fixedValue"){
+		// int id0 = controls.cellVar["x-velocity"].id;
+		// int id1 = controls.cellVar["y-velocity"].id;
+		// int id2 = controls.cellVar["z-velocity"].id;
+		// vector<string> output = load.extractVector(controls.initialMap[2]["value"]);
+		// double value0 = stod(output[0]);
+		// double value1 = stod(output[1]);
+		// double value2 = stod(output[2]);
+		// int iter = 0;
+		// for(auto& cell : var.cells){
+			// cell[id0] = value0;
+			// cell[id1] = value1;
+			// cell[id2] = value2;
+			// ++iter;
+		// }
+	// }
+	
+	// if(controls.initialMap[1]["type"] == "fixedValue"){
+		// int id = controls.cellVar["temperature"].id;
+		// double value = stod(controls.initialMap[1]["value"]);
+		// int iter = 0;
+		// for(auto& cell : var.cells){
+			// cell[id] = value;
+			// ++iter;
+		// }
+	// }
+	
+	// // if(controls.initialMap[0]["water.type"] == "fixedValue"){
+		// // int id = controls.cellVar["water"].id;
+		// // double value = stod(controls.initialMap[0]["water.value"]);
+		// // int iter = 0;
+		// // for(auto& cell : var.cells){
+			// // cell[id] = value;
+			// // ++iter;
+		// // }
+	// // }
+	
+	
+	
+	var.fields[controls.fieldVar["time"].id] = 0.0;
+	
+	
+	// save 하기
+	MASCH_Mesh_Save save;
+	save.fvmFiles("./save/0/", rank, mesh, controls, var);
+	// save.vtu("./save/0/", rank, mesh);
 
+}

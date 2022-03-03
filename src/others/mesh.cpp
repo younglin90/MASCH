@@ -911,7 +911,8 @@ void MASCH_Mesh::setCellStencils(){
 	recv_displsStencilCells.clear();
 	
 	send_countsStencilCells.resize(size,0);
-	for(int ip=0, iter=0; ip<size; ++ip){
+	for(int ip=0; ip<size; ++ip){
+		int iter = 0;
 		for(auto& icell : send_real_cells[ip]){
 			send_StencilCellsId.push_back(icell);
 			++iter;

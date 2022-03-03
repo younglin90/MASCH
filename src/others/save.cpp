@@ -1391,10 +1391,15 @@ MASCH_Control& controls, MASCH_Variables& var){
 		MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	}
 	
+	string saveFormat = controls.saveFormat;
+	
+	
+	
+	
+	
 	// string out_line;
 	outputFile << "<?xml version=\"1.0\"?>" << endl;
 
-	string saveFormat = controls.saveFormat;
 	if(controls.saveFormat == "ascii"){
 		outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
 	}
@@ -1417,15 +1422,19 @@ MASCH_Control& controls, MASCH_Variables& var){
 	outputFile << "  <UnstructuredGrid>" << endl;
 	
 
+
+
+
+
 	// Field data
 	outputFile << "    <FieldData>" << endl;
-	// {
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"TimeValue\" NumberOfTuples=\"1\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// values.push_back(controls.time);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
+	{
+		outputFile << "     <DataArray type=\"Float64\" Name=\"TimeValue\" NumberOfTuples=\"1\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		values.push_back(var.fields[controls.fieldVar["time"].id]);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
 	outputFile << "    </FieldData>" << endl;
 	
 	outputFile << "   <Piece NumberOfPoints=\"" << mesh.points.size() << "\" NumberOfCells=\"" << mesh.cells.size() << "\">" << endl;
@@ -1464,7 +1473,14 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << "     </DataArray>" << endl;
 	}
 	
-	for(auto& name : controls.primVarNames)
+	
+	vector<string> cell_save_name = controls.primVarNames;
+	cell_save_name.push_back("speed of sound");
+	cell_save_name.push_back("density");
+	cell_save_name.push_back("x-gradient pressure");
+	cell_save_name.push_back("y-gradient pressure");
+	cell_save_name.push_back("z-gradient pressure");
+	for(auto& name : cell_save_name)
 	{
 		outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
 		name << "\" format=\"" << saveFormat << "\">" << endl;
@@ -1479,6 +1495,15 @@ MASCH_Control& controls, MASCH_Variables& var){
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
+	
+	
+	outputFile << "    </CellData>" << endl;
+	
+	
+	
+	
+	
+	
 	
 	
 	// {
@@ -1767,9 +1792,6 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	
 	
-	outputFile << "    </CellData>" << endl;
-	
-	
 	// Points
 	outputFile << "    <Points>" << endl;
 	{
@@ -1784,6 +1806,8 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << "     </DataArray>" << endl;
 	}
 	outputFile << "   </Points>" << endl;
+	
+	
 	
 	// cells
 	outputFile << "   <Cells>" << endl; 
@@ -1821,6 +1845,7 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << "     </DataArray>" << endl;
 	}
 	
+	
 	// faces (cell's faces number, each face's point number, cell's faces's points)
 	{
 		outputFile << "    <DataArray type=\"Int32\" IdType=\"1\" Name=\"faces\" format=\"" << saveFormat << "\">" << endl;
@@ -1857,10 +1882,11 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	outputFile << "   </Cells>" << endl;
 	
+	
 	outputFile << "  </Piece>" << endl;
 	outputFile << " </UnstructuredGrid>" << endl;
 	
-
+	
 	// additional informations
 	{
 		outputFile << " <DataArray type=\"Int32\" Name=\"owner\" format=\"" << saveFormat << "\">" << endl;
@@ -1875,13 +1901,17 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << " <DataArray type=\"Int32\" Name=\"neighbour\" format=\"" << saveFormat << "\">" << endl;
 		vector<int> values;
 		for(auto& face : mesh.faces){
-			values.push_back(face.iR);
+			if(face.getType() == MASCH_Face_Types::INTERNAL){
+				values.push_back(face.iR);
+			}
 		}
 		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << endl;
 		outputFile << " </DataArray>" << endl;
 	}
 	
-
+	
+	
 	// boundary informations
 	{
 		outputFile << " <DataArray type=\"Char\" Name=\"bcName\" format=\"" << "ascii" << "\">" << endl;
@@ -1941,186 +1971,117 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	
 	
-	// // ==========================================
-	// // pvtu file
-	// if(rank==0){
-		// string filenamePvtu = "./save/plot.";
-		// string stime = folder;
-		// stime.erase(stime.find("./save/"),7);
-		// stime.erase(stime.find("/"),1);
-		// filenamePvtu += stime;
-		// filenamePvtu += ".pvtu";
+	// ==========================================
+	// pvtu file
+	if(rank==0){
+		string filenamePvtu = "./save/plot.";
+		string stime = folder;
+		stime.erase(stime.find("./save/"),7);
+		stime.erase(stime.find("/"),1);
+		filenamePvtu += stime;
+		filenamePvtu += ".pvtu";
 		
-		// outputFile.open(filenamePvtu);
-		// if(outputFile.fail()){
-			// cerr << "Unable to write file for writing." << endl;
-			// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-		// }
+		outputFile.open(filenamePvtu);
+		if(outputFile.fail()){
+			cerr << "Unable to write file for writing." << endl;
+			MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		}
 		
-		// // string out_line;
-		// outputFile << "<?xml version=\"1.0\"?>" << endl;
-		// outputFile << " <VTKFile type=\"PUnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
-		// outputFile << "  <PUnstructuredGrid>" << endl;
+		// string out_line;
+		outputFile << "<?xml version=\"1.0\"?>" << endl;
+		outputFile << " <VTKFile type=\"PUnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+		outputFile << "  <PUnstructuredGrid>" << endl;
 
-		// outputFile << "   <PFieldData>" << endl;
-		// outputFile << "    <PDataArray type=\"Float64\" Name=\"TimeValue\"/>" << endl;
-		// outputFile << "   </PFieldData>" << endl;
+		outputFile << "   <PFieldData>" << endl;
+		outputFile << "    <PDataArray type=\"Float64\" Name=\"TimeValue\"/>" << endl;
+		outputFile << "   </PFieldData>" << endl;
 		
-		// outputFile << "   <PPoints>" << endl;
-		// outputFile << "    <PDataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"Points\"/>" << endl;
-		// outputFile << "   </PPoints>" << endl;
-		// for(int ip=0; ip<size; ++ip){
-			// string filenamevtus = "./" + stime;
-			// filenamevtus += "/plot.";
-			// filenamevtus += to_string(ip);
-			// filenamevtus += ".vtu";
-			// outputFile << "    <Piece Source=\"" << filenamevtus << "\"/>" << endl;
-		// }
-		// outputFile << "   <PPointData>" << endl;
+		outputFile << "   <PPoints>" << endl;
+		outputFile << "    <PDataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"Points\"/>" << endl;
+		outputFile << "   </PPoints>" << endl;
+		for(int ip=0, SIZE=MPI::COMM_WORLD.Get_size(); ip<SIZE; ++ip){
+			string filenamevtus = "./" + stime;
+			filenamevtus += "/plot.";
+			filenamevtus += to_string(ip);
+			filenamevtus += ".vtu";
+			outputFile << "    <Piece Source=\"" << filenamevtus << "\"/>" << endl;
+		}
+		outputFile << "   <PPointData>" << endl;
 
-		// outputFile << "    <PDataArray type=\"Int32\" Name=\"pointLevels\"/>" << endl;
+		outputFile << "    <PDataArray type=\"Int32\" Name=\"pointLevels\"/>" << endl;
 		
-		// outputFile << "   </PPointData>" << endl;
-		// outputFile << "   <PCellData>" << endl;
-		// outputFile << "    <PDataArray type=\"Float64\" Name=\"pressure\"/>" << endl;
-		// // outputFile << "    <PDataArray type=\"Float64\" Name=\"velocity\" NumberOfComponents=\"3\"/>" << endl;
-		// // outputFile << "    <PDataArray type=\"Float64\" Name=\"temperature\"/>" << endl;
-		// // // outputFile << "    <PDataArray type=\"Float64\" Name=\"density\"/>" << endl;
-		// // outputFile << "    <PDataArray type=\"Float64\" Name=\"" << controls.name[controls.VF[0]] << "\"/>" << endl;
-		// // outputFile << "    <PDataArray type=\"Float64\" Name=\"" << controls.name[controls.MF[0]] << "\"/>" << endl;
-		// // outputFile << "    <PDataArray type=\"Int32\" Name=\"cellLevels\"/>" << endl;
-		// // outputFile << "    <PDataArray type=\"Int32\" Name=\"cellGroups\"/>" << endl;
-		// // // 추가적인 데이터 저장
-		// // // mesh data
-		// // if(controls.saveMeshData["nonOrthogonality"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"nonOrthogonality\"/>" << endl;
-		// // }
-		// // if(controls.saveMeshData["uniformity"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"uniformity\"/>" << endl;
-		// // }
-		// // if(controls.saveMeshData["skewness"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"skewness\"/>" << endl;
-		// // }
-		// // // gradient
-		// // if(controls.saveGradientData["pressure"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-pressure\"/ NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // if(controls.saveGradientData["x-velocity"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-x-velocity\"/ NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // if(controls.saveGradientData["y-velocity"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-y-velocity\"/ NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // if(controls.saveGradientData["z-velocity"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-z-velocity\"/ NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // // if(controls.saveGradientData["velocityMagnitude"]){
-			// // // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient\"/>" << endl;
-		// // // }
-		// // if(controls.saveGradientData["temperature"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-temperature\"/ NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // if(controls.saveGradientData[controls.name[controls.VF[0]]]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-" << controls.name[controls.VF[0]] << "\" NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // if(controls.saveGradientData[controls.name[controls.MF[0]]]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gradient-" << controls.name[controls.MF[0]] << "\" NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // // thermodynamic
-		// // if(controls.saveThermodynamicData["density"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"density\"/>" << endl;
-		// // }
-		// // if(controls.saveThermodynamicData["speedOfSound"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"speedOfSound\"/>" << endl;
-		// // }
-		// // if(controls.saveThermodynamicData["enthalpy"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"enthalpy\"/>" << endl;
-		// // }
-		// // if(controls.saveThermodynamicData["totalEnthalpy"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"totalEnthalpy\"/>" << endl;
-		// // }
-		// // // body-force
-		// // if(controls.saveBodyForceData["gravity"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"gravity\" NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // if(controls.saveBodyForceData["surfaceTension"]){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"surface-tension\" NumberOfComponents=\"3\"/>" << endl;
-		// // }
-		// // // UDV
-		// // for(int i=0; i<controls.UDV.size(); ++i){
-			// // outputFile << "    <PDataArray type=\"Float64\" Name=\"" << controls.name[controls.UDV[i]] << "\"/>" << endl;
-		// // }
-		// // // // level-set
-		// // // {
-			// // // outputFile << "    <PDataArray type=\"Float64\" Name=\"" << "level-set" << "\"/>" << endl;
-		// // // }
+		outputFile << "   </PPointData>" << endl;
+		outputFile << "   <PCellData>" << endl;
+		
+		for(auto& name : cell_save_name){
+			outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
+		}
+		outputFile << "   </PCellData>" << endl;
+		outputFile << "  </PUnstructuredGrid>" << endl;
+		outputFile << "</VTKFile>" << endl;
 		
 		
-		// outputFile << "   </PCellData>" << endl;
-		// outputFile << "  </PUnstructuredGrid>" << endl;
-		// outputFile << "</VTKFile>" << endl;
+		outputFile.close();
 		
-		
-		// outputFile.close();
-		
-	// }
+	}
 	
 	
 	
 	
 	
-	// // ==========================================
-	// // PVD file
-	// if(rank==0){
-		// string filenamePvtu = "./save/plot.pvd";
-		// string stime = folder;
-		// stime.erase(stime.find("./save/"),7);
-		// stime.erase(stime.find("/"),1);
+	// ==========================================
+	// PVD file
+	if(rank==0){
+		string filenamePvtu = "./save/plot.pvd";
+		string stime = folder;
+		stime.erase(stime.find("./save/"),7);
+		stime.erase(stime.find("/"),1);
 		
-		// ifstream inputFile;
-		// inputFile.open(filenamePvtu);
+		ifstream inputFile;
+		inputFile.open(filenamePvtu);
 		// if(inputFile && stod(stime)-controls.timeStep != 0.0){
+		if(inputFile){
 
-			// string nextToken;
-			// int lineStart = 0;
-			// while(getline(inputFile, nextToken)){
-				// if( nextToken.find("</Collection>") != string::npos ){
-					// break;
-				// }
-				// ++lineStart;
-			// }
-			// inputFile.close();
+			string nextToken;
+			int lineStart = 0;
+			while(getline(inputFile, nextToken)){
+				if( nextToken.find("</Collection>") != string::npos ){
+					break;
+				}
+				++lineStart;
+			}
+			inputFile.close();
 			
-			// outputFile.open(filenamePvtu, ios::in);
-			// outputFile.seekp(-26, ios::end);
+			outputFile.open(filenamePvtu, ios::in);
+			outputFile.seekp(-26, ios::end);
 			
-			// // outputFile << saveLines;
-			// outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
-			// outputFile << "  </Collection>" << endl;
-			// outputFile << "</VTKFile>";
-			// outputFile.close();
+			// outputFile << saveLines;
+			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+			outputFile << "  </Collection>" << endl;
+			outputFile << "</VTKFile>";
+			outputFile.close();
 			
-		// }
-		// else{
-			// inputFile.close();
+		}
+		else{
+			inputFile.close();
 			
-			// outputFile.open(filenamePvtu);
+			outputFile.open(filenamePvtu);
 			
-			// // string out_line;
-			// outputFile << "<?xml version=\"1.0\"?>" << endl;
-			// outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
-			// outputFile << "  <Collection>" << endl;
-			// outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
-			// outputFile << "  </Collection>" << endl;
-			// outputFile << "</VTKFile>";
+			// string out_line;
+			outputFile << "<?xml version=\"1.0\"?>" << endl;
+			outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+			outputFile << "  <Collection>" << endl;
+			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+			outputFile << "  </Collection>" << endl;
+			outputFile << "</VTKFile>";
 			
 			
-			// outputFile.close();
+			outputFile.close();
 			
-		// }
+		}
 		
 		
-	// }
+	}
 	
 	
 	if(rank==0){

@@ -37,14 +37,14 @@ int MASCH_FileSystem::calcFileSize(string folder){
 
 
 MASCH_TimeSystem& MASCH_TimeSystem::push(string inp_name){
-	MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Barrier(MPI_COMM_WORLD);
 	name.push(inp_name);
 	start.push(chrono::system_clock::now());
 	level.push(levelNow++);
 	return (*this);
 }
 MASCH_TimeSystem& MASCH_TimeSystem::pop(){
-	MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Barrier(MPI_COMM_WORLD);
 	// chrono::microseconds calcTime = 
 	// chrono::duration_cast<chrono::microseconds>(
 	// chrono::system_clock::now() - start.top()); 
@@ -78,13 +78,32 @@ MASCH_TimeSystem& MASCH_TimeSystem::pop(){
 	return (*this);
 }
 void MASCH_TimeSystem::show(){
+	vector<int> time_glo;
+	{
+		int i=0;
+		for(auto& item : (*this).logCalcName){
+			time_glo.push_back(
+			(*this).logCalcTime[i].count()
+			);
+			++i;
+		}
+	}
+	int size = MPI::COMM_WORLD.Get_size();
+	if(size>1){
+		int tmp_size = time_glo.size();
+		vector<int> tmp_var_glo(tmp_size);
+		MPI_Allreduce(time_glo.data(), tmp_var_glo.data(), tmp_size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		for(int i=0; i<tmp_size; ++i){
+			time_glo[i] = tmp_var_glo[i]/size;
+		}
+	}
 	if(MPI::COMM_WORLD.Get_rank()==0){
 		int i=0;
 		for(auto& item : (*this).logCalcName){
 			cout << "| " << 
 			(*this).logCalcFront[i] <<
 			item << " : " <<
-			(*this).logCalcTime[i].count() << 
+			time_glo[i] << 
 			" us" << endl;
 			// cout << "| " << item << endl;
 			++i;

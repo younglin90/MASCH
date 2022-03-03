@@ -27,7 +27,13 @@ public:
 class MASCH_Math {
 private:
 public:
+
+	// void GaussSeidel(double* a, double* b, double* x, int n);
+	// void GaussSeidel(vector<vector<double>>& AA, int N);
+	void GaussSeidel(double* AA, int N);
 	void GaussSeidelSOR(double* A, int N);
+	// void GaussSeidelSOR(vector<double>& A, int N);
+	void GaussSeidelSOR(vector<vector<double>>& A);
 	
 	void calcUnitNormals_Area3dPolygon(
 		int n, vector<double> Vx, vector<double> Vy, vector<double> Vz,

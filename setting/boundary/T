@@ -1,6 +1,9 @@
 supinlet {
 	type = fixedValue;
-	value = 26691.0;
+	value = 0.0035;
+}
+outlet {
+	type = zeroGradient;
 }
 
 invwall {

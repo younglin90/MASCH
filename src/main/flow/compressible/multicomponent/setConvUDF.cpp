@@ -37,9 +37,9 @@ void MASCH_Solver::setConvFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			string tmp_name = controls.faceVar["left mass fraction"].sub_name[i];
 			id_YL[i] = controls.faceVar[tmp_name].id;
 		}
-		int id_rhoL = controls.faceVar["left pressure"].id;
-		int id_cL = controls.faceVar["left x-velocity"].id;
-		int id_HtL = controls.faceVar["left y-velocity"].id;
+		int id_rhoL = controls.faceVar["left density"].id;
+		int id_cL = controls.faceVar["left speed of sound"].id;
+		int id_HtL = controls.faceVar["left total enthalpy"].id;
 		
 		// right값
 		int id_pR = controls.faceVar["right pressure"].id;
@@ -52,9 +52,9 @@ void MASCH_Solver::setConvFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			string tmp_name = controls.faceVar["right mass fraction"].sub_name[i];
 			id_YR[i] = controls.faceVar[tmp_name].id;
 		}
-		int id_rhoR = controls.faceVar["right pressure"].id;
-		int id_cR = controls.faceVar["right x-velocity"].id;
-		int id_HtR = controls.faceVar["right y-velocity"].id;
+		int id_rhoR = controls.faceVar["right density"].id;
+		int id_cR = controls.faceVar["right speed of sound"].id;
+		int id_HtR = controls.faceVar["right total enthalpy"].id;
 		
 		// 메쉬관련
 		int id_nx = controls.faceVar["x unit normal"].id;
@@ -94,6 +94,8 @@ void MASCH_Solver::setConvFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 				uCL = faces[id_uL]; uCR = faces[id_uR];
 				vCL = faces[id_vL]; vCR = faces[id_vR];
 				wCL = faces[id_wL]; wCR = faces[id_wR];
+				
+				// cout << id_uL << " " << id_wL << " " << wCL << " " << wCR << " " << endl;
 			}
 			
 			double nvec[3];
@@ -155,11 +157,36 @@ void MASCH_Solver::setConvFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			if( mdot < 0.0 ) {
 				f1L = 0.0; f1R = mdot;
 			}
-			
+
+			// double Mcy = min(1.0,KLR/chat);
+			// double phi_c = (1.0-Mcy)*(1.0-Mcy);
+			// double g_c = -max( min(ML,0.0), -1.0 )*min( max(MR,0.0), 1.0 ) ;
+			// double unbar = ( rhoL*abs(UnL)+rhoR*abs(UnR) ) / ( rhoL + rhoR );
+			// double unp = (1.0-g_c)*abs(unbar)+g_c*abs(UnL);
+			// double unm = (1.0-g_c)*abs(unbar)+g_c*abs(UnR);
+			// double mdot = 0.5*(rhoL*(UnL+unp) + rhoR*(UnR-unm) - phi_c/chat*(pR-pL));
+			// double f1L = 0.5*(mdot+abs(mdot)); 
+			// double f1R = 0.5*(mdot-abs(mdot));
+
+
 			double PLR = 0.5*(pL+pR) - 
 						 0.5*Mcy*preP*preM*0.5*(pL+pR)/chat*(UnR-UnL) + 
 						 Mcy*0.5*(pL+pR)*(preP+preM-1.0) - 
 						 0.5*(preP-preM)*(pR-pL);
+			// double PLR = 0.5*(pL+pR) + 0.5*(pL-pR)*(preP-preM) + 0.5*KLR*rhohat*chat*(preP+preM-1.0);
+
+			// double f1L; 
+			// double f1R;
+			// if(unhat>=0.0){
+				// f1L = rhoL*unhat;
+				// f1R = 0.0;
+			// }
+			// else{
+				// f1L = 0.0;
+				// f1R = rhoR*unhat;
+			// }
+
+			// double PLR = 0.5*(pL+pR);
 
 			double area = faces[id_area];
 			int iter=0;
@@ -172,7 +199,16 @@ void MASCH_Solver::setConvFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 				fluxB[iter++] = -(f1L*YL[i]+ f1R*YR[i])*area;
 			}
 	
-			
+			// double test1 = fluxB[0];
+			// if(isnan(test1) || test1<-1.e12 || test1>1.e12){
+				// cout << uL << " " << 
+				// vL << " " << 
+				// wL << " " << 
+				// f1L << " " << 
+				// cL << " " << 
+				// cR << " " << 
+				// endl;
+			// }
 			
 			
 			

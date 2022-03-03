@@ -95,9 +95,16 @@ public:
 	
 	// temporal 관련
 	using temporal_Funct_type = 
-	function<int(double* cells, double* fluxA, double* fluxB)>;
+	function<int(double* cells, double* fields, double* fluxA, double* fluxB)>;
 	vector<temporal_Funct_type> calcTemporal;
 	
+	// time-step 관련
+	using dtstep_Cell_Funct_type = 
+	function<int(double* faces, double* fields)>;
+	vector<dtstep_Cell_Funct_type> calcTempStepCell;
+	using dtstep_Face_Funct_type = 
+	function<int(double* cellsL, double* cellsR, double* faces, double* fields)>;
+	vector<dtstep_Face_Funct_type> calcTempStepFace;
 	
 	
 	// vector<function<int(double* inpL, double* inpR, double* inpF)>> reconstruction;
@@ -124,11 +131,13 @@ public:
 	void setDiffFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setSourFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
+	void setTempStepFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	
 	void fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void fvm_inline(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
 	void updateCellAddiValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
-	void updateFaceAddiValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	// void updateFaceAddiValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void updateProcRightCellPrimValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void updateProcRightCellAddiValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void updateBoundaryFacePrimValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
@@ -140,15 +149,14 @@ public:
 	void gradientTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void highOrderTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
-	void temporalTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
-	void convectiveTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
-	void diffusionTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
-	void sourceTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void cellLoopTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void faceLoopTerms(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
 	void linearSystem(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void updateCellPrimValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
 	
+	void calcTempSteps(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
 	void eosIdeal(
 		double cv, double gam,

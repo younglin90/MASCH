@@ -1,8 +1,3 @@
-
-water{
-	type = fixedValue;
-	value = 1.0;
-}
 air{
 	type = fixedValue;
 	value = 1.0;

@@ -1,9 +1,11 @@
 supinlet {
 	type = fixedValue;
 	value {
-		water = 1.0;
-		air = 0.0;
+		air = 1.0;
 	}
+}
+outlet{
+	type = zeroGradient;
 }
 
 invwall {

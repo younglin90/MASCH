@@ -12,89 +12,83 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 	MASCH_Variables& var,
 	int iter){
 
-	int rank = MPI::COMM_WORLD.Get_rank();
-	int size = MPI::COMM_WORLD.Get_size();
+	// int rank = MPI::COMM_WORLD.Get_rank();
+	// int size = MPI::COMM_WORLD.Get_size();
 	
-	// SEMO_Mesh_Geometric geometric;
-	// SEMO_Utility_Math math;
-	// SEMO_Solvers_Builder solvers;
+	// // SEMO_Mesh_Geometric geometric;
+	// // SEMO_Utility_Math math;
+	// // SEMO_Solvers_Builder solvers;
 	
-	vector<vector<double>> indicatorValues;
-	// for(int i=0; i<5; ++i)
+	// vector<vector<double>> indicatorValues;
+	// // for(int i=0; i<5; ++i)
+	// // {
+		// // if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
+		
+		// // polyRefine(mesh, controls, indicatorValues, 0);
+		
+		// // controls.setVariableArray(mesh, var);
+		// // controls.setGeometric(mesh, var);
+		
+		// // polyUnrefine(mesh, controls, indicatorValues, 0);
+		
+		// // controls.setVariableArray(mesh, var);
+		// // controls.setGeometric(mesh, var);
+		
+		// // // // random
+		// // // std::random_device rd;
+		// // // std::default_random_engine eng(rd());
+		// // // std::uniform_int_distribution<int> distr(0, size-1);
+		// // // vector<int> cell_ip(mesh.cells.size());
+		// // // for(int i=0; i<mesh.cells.size(); ++i){
+			// // // cell_ip[i] = distr(eng);
+		// // // }
+		
+		// // // mesh.informations();
+		
+		// // vector<int> cell_ip(mesh.cells.size(),0);
+		// // mesh.repartParMETIS(size, cell_ip, mesh);
+		// // mesh.repartitioning(cell_ip);
+		
+		// // controls.setVariableArray(mesh, var);
+		// // controls.setGeometric(mesh, var);
+	// // }
+	
+	// for(int ii=0; ii<39; ++ii)
 	// {
+		
 		// if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
-		
 		// polyRefine(mesh, controls, indicatorValues, 0);
-		
 		// controls.setVariableArray(mesh, var);
 		// controls.setGeometric(mesh, var);
+		// mesh.debug_procFace_unitNomals(0.8);
 		
-		// polyUnrefine(mesh, controls, indicatorValues, 0);
+		// int iterReal = ii+1;
+		// int calcInter = 8;
+		// if(iterReal % calcInter == 0){
+			// if(rank==0) cout << "| exe. Dynamic Load Balancing" << endl;
+			// vector<int> cell_ip(mesh.cells.size(),rank);
+			// mesh.repartParMETIS(size, cell_ip, mesh);
+			// mesh.repartitioning(cell_ip);
+			// controls.setVariableArray(mesh, var);
+			// controls.setGeometric(mesh, var);
+			// mesh.debug_procFace_unitNomals(0.8);
+		// }
 		
-		// controls.setVariableArray(mesh, var);
-		// controls.setGeometric(mesh, var);
+		// string tttt = "calc";
+		// tttt += to_string(ii);
+		// controls.log.push(tttt);
 		
-		// // // random
-		// // std::random_device rd;
-		// // std::default_random_engine eng(rd());
-		// // std::uniform_int_distribution<int> distr(0, size-1);
-		// // vector<int> cell_ip(mesh.cells.size());
-		// // for(int i=0; i<mesh.cells.size(); ++i){
-			// // cell_ip[i] = distr(eng);
-		// // }
-		
-		// // mesh.informations();
-		
-		// vector<int> cell_ip(mesh.cells.size(),0);
-		// mesh.repartParMETIS(size, cell_ip, mesh);
-		// mesh.repartitioning(cell_ip);
-		
-		// controls.setVariableArray(mesh, var);
-		// controls.setGeometric(mesh, var);
-	// }
-	
-	for(int ii=0; ii<39; ++ii)
-	{
-		
-		if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
-		polyRefine(mesh, controls, indicatorValues, 0);
-		controls.setVariableArray(mesh, var);
-		controls.setGeometric(mesh, var);
-		mesh.debug_procFace_unitNomals(0.8);
-		
-		int iterReal = ii+1;
-		int calcInter = 8;
-		if(iterReal % calcInter == 0){
-			if(rank==0) cout << "| exe. Dynamic Load Balancing" << endl;
-			vector<int> cell_ip(mesh.cells.size(),rank);
-			mesh.repartParMETIS(size, cell_ip, mesh);
-			mesh.repartitioning(cell_ip);
-			controls.setVariableArray(mesh, var);
-			controls.setGeometric(mesh, var);
-			mesh.debug_procFace_unitNomals(0.8);
-		}
-		
-		string tttt = "calc";
-		tttt += to_string(ii);
-		controls.log.push(tttt);
-		
-		vector<int> aaaa;
-		for(int i=0; i<mesh.cells.size(); ++i){
-			aaaa.push_back(i);
-			// for(int j=0; j<mesh.cells.size(); ++j){
-			// }
-		}
-		// sort(aaaa.begin(),aaaa.end());
-		controls.log.pop();
-		controls.log.show();
+		// vector<int> aaaa;
+		// for(int i=0; i<mesh.cells.size(); ++i){
+			// aaaa.push_back(i);
+			// // for(int j=0; j<mesh.cells.size(); ++j){
+			// // }
+		// }
+		// // sort(aaaa.begin(),aaaa.end());
+		// controls.log.pop();
+		// controls.log.show();
 		
 		
-		
-		if(rank==0) cout << "| exe. Poly AMR Unrefinement" << endl;
-		polyUnrefine(mesh, controls, indicatorValues, 0);
-		controls.setVariableArray(mesh, var);
-		controls.setGeometric(mesh, var);
-		mesh.debug_procFace_unitNomals(0.8);
 		
 		// if(rank==0) cout << "| exe. Poly AMR Unrefinement" << endl;
 		// polyUnrefine(mesh, controls, indicatorValues, 0);
@@ -102,136 +96,142 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 		// controls.setGeometric(mesh, var);
 		// mesh.debug_procFace_unitNomals(0.8);
 		
-		{
-			int ncells = mesh.cells.size();
-			vector<int> recv_ncells(size);
-			MPI_Allgather(&ncells, 1, MPI_INT, recv_ncells.data(), 1, MPI_INT, MPI_COMM_WORLD);
+		// // if(rank==0) cout << "| exe. Poly AMR Unrefinement" << endl;
+		// // polyUnrefine(mesh, controls, indicatorValues, 0);
+		// // controls.setVariableArray(mesh, var);
+		// // controls.setGeometric(mesh, var);
+		// // mesh.debug_procFace_unitNomals(0.8);
+		
+		// {
+			// int ncells = mesh.cells.size();
+			// vector<int> recv_ncells(size);
+			// MPI_Allgather(&ncells, 1, MPI_INT, recv_ncells.data(), 1, MPI_INT, MPI_COMM_WORLD);
 			
-			if(rank==0) {
-				for(auto& item : recv_ncells){
-					cout << " | " << item;
-				}
-				cout << endl;
-			}
-		}
-		
-		
-		if(iterReal % calcInter == 0){
-			string savestring = "./save/";
-			savestring += tttt;
-			MASCH_Mesh_Save save;
-			save.fvmFiles(savestring, rank, mesh, controls, var);
-		}
-		
-		
-	}
-	
-	
-	// polyRefine(mesh, controls, indicatorValues, 0);
-		
-	// for(int i=0; i<2; ++i)
-	// {
-		// polyRefine(mesh, controls, indicatorValues, 0);
-		
-		
-		// // random
-		// std::random_device rd;
-		// std::default_random_engine eng(rd());
-		// std::uniform_int_distribution<int> distr(0, size-1);
-		// vector<int> idBlockCell(mesh.cells.size());
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// idBlockCell[i] = distr(eng);
-		// }
-		// mesh.repartitioning(idBlockCell);
-	// }
-	
-
-	// SEMO_MPI_Builder mpi;
-	// if(size>1){
-		// mpi.setCellDatasToFaceRight(mesh, 
-					// controls.VF[0], controls.fVF[0],
-					// mesh.countsProcFaces, mesh.countsProcFaces, 
-					// mesh.displsProcFaces, mesh.displsProcFaces);
-	// }
-	// vector<vector<double>> gradVF(mesh.cells.size(),vector<double>(3,0.0));
-	// math.calcGaussGreen(mesh, controls.VF[0], controls.fVF[0], gradVF);
-	// for(int i=0; i<mesh.cells.size(); ++i){
-		// mesh.cells[i].var[controls.indicatorAMR[0]] = 
-			// sqrt(gradVF[i][0]*gradVF[i][0]+
-				 // gradVF[i][1]*gradVF[i][1]+
-				 // gradVF[i][2]*gradVF[i][2]);
-	// }
-	
-	
-	// // ======================
-	// // add Buffer layer
-	// for(int iter=0; iter<controls.bufferLayer; ++iter){
-
-		// vector<double> newIndicatorAMR(mesh.cells.size(),0.0);
-		// vector<double> recvValues;
-		// if(size>1){
-			// // processor faces
-			// vector<double> sendValues;
-			// for(int i=0; i<mesh.faces.size(); ++i){
-				// auto& face = mesh.faces[i];
-				
-				// if(face.getType() == MASCH_Face_Types::PROCESSOR){
-					// sendValues.push_back(mesh.cells[face.iL].var[controls.indicatorAMR[0]]);
+			// if(rank==0) {
+				// for(auto& item : recv_ncells){
+					// cout << " | " << item;
 				// }
+				// cout << endl;
 			// }
-			// mpi.setProcsFaceDatas(
-						// sendValues, recvValues,
-						// mesh.countsProcFaces, mesh.countsProcFaces, 
-						// mesh.displsProcFaces, mesh.displsProcFaces);
 		// }
 		
-		// int num_proc = 0;
-		// for(int i=0; i<mesh.faces.size(); ++i){
-			// auto& face = mesh.faces[i];
+		
+		// if(iterReal % calcInter == 0){
+			// string savestring = "./save/";
+			// savestring += tttt;
+			// MASCH_Mesh_Save save;
+			// save.fvmFiles(savestring, rank, mesh, controls, var);
+		// }
+		
+		
+	// }
+	
+	
+	// // polyRefine(mesh, controls, indicatorValues, 0);
+		
+	// // for(int i=0; i<2; ++i)
+	// // {
+		// // polyRefine(mesh, controls, indicatorValues, 0);
+		
+		
+		// // // random
+		// // std::random_device rd;
+		// // std::default_random_engine eng(rd());
+		// // std::uniform_int_distribution<int> distr(0, size-1);
+		// // vector<int> idBlockCell(mesh.cells.size());
+		// // for(int i=0; i<mesh.cells.size(); ++i){
+			// // idBlockCell[i] = distr(eng);
+		// // }
+		// // mesh.repartitioning(idBlockCell);
+	// // }
+	
+
+	// // SEMO_MPI_Builder mpi;
+	// // if(size>1){
+		// // mpi.setCellDatasToFaceRight(mesh, 
+					// // controls.VF[0], controls.fVF[0],
+					// // mesh.countsProcFaces, mesh.countsProcFaces, 
+					// // mesh.displsProcFaces, mesh.displsProcFaces);
+	// // }
+	// // vector<vector<double>> gradVF(mesh.cells.size(),vector<double>(3,0.0));
+	// // math.calcGaussGreen(mesh, controls.VF[0], controls.fVF[0], gradVF);
+	// // for(int i=0; i<mesh.cells.size(); ++i){
+		// // mesh.cells[i].var[controls.indicatorAMR[0]] = 
+			// // sqrt(gradVF[i][0]*gradVF[i][0]+
+				 // // gradVF[i][1]*gradVF[i][1]+
+				 // // gradVF[i][2]*gradVF[i][2]);
+	// // }
+	
+	
+	// // // ======================
+	// // // add Buffer layer
+	// // for(int iter=0; iter<controls.bufferLayer; ++iter){
+
+		// // vector<double> newIndicatorAMR(mesh.cells.size(),0.0);
+		// // vector<double> recvValues;
+		// // if(size>1){
+			// // // processor faces
+			// // vector<double> sendValues;
+			// // for(int i=0; i<mesh.faces.size(); ++i){
+				// // auto& face = mesh.faces[i];
+				
+				// // if(face.getType() == MASCH_Face_Types::PROCESSOR){
+					// // sendValues.push_back(mesh.cells[face.iL].var[controls.indicatorAMR[0]]);
+				// // }
+			// // }
+			// // mpi.setProcsFaceDatas(
+						// // sendValues, recvValues,
+						// // mesh.countsProcFaces, mesh.countsProcFaces, 
+						// // mesh.displsProcFaces, mesh.displsProcFaces);
+		// // }
+		
+		// // int num_proc = 0;
+		// // for(int i=0; i<mesh.faces.size(); ++i){
+			// // auto& face = mesh.faces[i];
 			
-			// double maxInd = 0.0;
-			// if(face.getType() == MASCH_Face_Types::INTERNAL){
-				// maxInd = max(mesh.cells[face.iL].var[controls.indicatorAMR[0]],
-							 // mesh.cells[face.iR].var[controls.indicatorAMR[0]]);
-				// newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
-				// newIndicatorAMR[face.iR] = max(newIndicatorAMR[face.iR],maxInd);
-			// }
-			// else if(face.getType() == MASCH_Face_Types::PROCESSOR){
-				// maxInd = max(mesh.cells[face.iL].var[controls.indicatorAMR[0]],
-							 // recvValues[num_proc]);
-				// newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
-				// ++num_proc;
-			// }
-			// else{
-				// maxInd = mesh.cells[face.iL].var[controls.indicatorAMR[0]];
-				// newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
-			// }
-		// }
+			// // double maxInd = 0.0;
+			// // if(face.getType() == MASCH_Face_Types::INTERNAL){
+				// // maxInd = max(mesh.cells[face.iL].var[controls.indicatorAMR[0]],
+							 // // mesh.cells[face.iR].var[controls.indicatorAMR[0]]);
+				// // newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
+				// // newIndicatorAMR[face.iR] = max(newIndicatorAMR[face.iR],maxInd);
+			// // }
+			// // else if(face.getType() == MASCH_Face_Types::PROCESSOR){
+				// // maxInd = max(mesh.cells[face.iL].var[controls.indicatorAMR[0]],
+							 // // recvValues[num_proc]);
+				// // newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
+				// // ++num_proc;
+			// // }
+			// // else{
+				// // maxInd = mesh.cells[face.iL].var[controls.indicatorAMR[0]];
+				// // newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
+			// // }
+		// // }
 		
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// mesh.cells[i].var[controls.indicatorAMR[0]] = newIndicatorAMR[i];
-		// }
-	// }
-	// // ======================
+		// // for(int i=0; i<mesh.cells.size(); ++i){
+			// // mesh.cells[i].var[controls.indicatorAMR[0]] = newIndicatorAMR[i];
+		// // }
+	// // }
+	// // // ======================
 	
 	
-	// if( (controls.iterReal+1) % controls.intervalRefine == 0){
-		// if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
-		// polyRefine(mesh, controls, 0);
-	// }
+	// // if( (controls.iterReal+1) % controls.intervalRefine == 0){
+		// // if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
+		// // polyRefine(mesh, controls, 0);
+	// // }
 	
-	// if( (controls.iterReal+1) % controls.intervalUnrefine == 0){
-		// if(rank==0) cout << "| exe. Poly AMR Un-refinement" << endl;
-		// polyUnrefine(mesh, controls, 0); 
-	// }
+	// // if( (controls.iterReal+1) % controls.intervalUnrefine == 0){
+		// // if(rank==0) cout << "| exe. Poly AMR Un-refinement" << endl;
+		// // polyUnrefine(mesh, controls, 0); 
+	// // }
 	
-	// // 추가적인 셀 값들
-	// mesh.cellsProcVar.resize(controls.nTotalCellVar,vector<double>());
-	// mesh.cellsProcGradientVar.resize(controls.nTotalCellVar,vector<vector<double>>());
-	// mesh.cellsGradientVar.resize(controls.nTotalCellVar,vector<vector<double>>());
+	// // // 추가적인 셀 값들
+	// // mesh.cellsProcVar.resize(controls.nTotalCellVar,vector<double>());
+	// // mesh.cellsProcGradientVar.resize(controls.nTotalCellVar,vector<vector<double>>());
+	// // mesh.cellsGradientVar.resize(controls.nTotalCellVar,vector<vector<double>>());
 	
-	// geometric.init(mesh);
-	// math.initLeastSquare(mesh); 
+	// // geometric.init(mesh);
+	// // math.initLeastSquare(mesh); 
 	
 }
 

@@ -10,6 +10,7 @@ using namespace std;
 #include "mesh.h"
 #include "load.h"
 #include "variables.h"
+#include "save.h"
 #include "log.h"
 // #include "controls.h"
 // #include "../species/species.h"
@@ -121,7 +122,7 @@ public:
 	
 	// vector<function<double(double* inp)>> boundaryFunct;
 	
-	string getFolderName(){
+	string getLoadFolderName(){
 		string foldername;
 		double starttime = stod((*this).startFrom);
 		std::ostringstream streamObj;
@@ -130,6 +131,47 @@ public:
 		if(starttime == 0.0) foldername = "./save/0/";
 		
 		return foldername;
+	}
+	string getSaveFolderName(double inp_time){
+		string foldername;
+		std::ostringstream streamObj;
+		streamObj << inp_time;
+		streamObj.precision(12);
+		foldername = "./save/" + streamObj.str() + "/";
+		
+		return foldername;
+	}
+	int getId_fieldVar(string inp_name){
+		if(fieldVar.find(inp_name) != fieldVar.end()){
+			return fieldVar[inp_name].id;
+		}
+		else{
+			cout << "#WARNING, fieldVar not there, " << inp_name << endl;
+		}
+	}
+	int getId_cellVar(string inp_name){
+		if(cellVar.find(inp_name) != cellVar.end()){
+			return cellVar[inp_name].id;
+		}
+		else{
+			cout << "#WARNING, cellVar not there, " << inp_name << endl;
+		}
+	}
+	int getId_faceVar(string inp_name){
+		if(faceVar.find(inp_name) != faceVar.end()){
+			return faceVar[inp_name].id;
+		}
+		else{
+			cout << "#WARNING, faceVar not there, " << inp_name << endl;
+		}
+	}
+	int getId_pointVar(string inp_name){
+		if(pointVar.find(inp_name) != pointVar.end()){
+			return pointVar[inp_name].id;
+		}
+		else{
+			cout << "#WARNING, pointVar not there, " << inp_name << endl;
+		}
 	}
 	
 	
@@ -156,7 +198,17 @@ public:
 	void setBoundaryConditions(MASCH_Mesh& mesh);
 	// void setBoundaryFunctions(MASCH_Mesh& mesh, MASCH_Variables& var);
 	void setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var);
+	void resetVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var,
+		vector<vector<double>>& org_xyz, vector<vector<int>>& cellConn,
+		string inp_option);
+	void resetVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var,
+		vector<int>& cell_ip, vector<int>& cellConn,
+		string inp_option);
+	
+	// 지오메트릭 관련
 	void setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var);
+	void setGeometricOnlyCell_xyz(MASCH_Mesh& mesh);
+	
 	
 	vector<double> limitMaxPrim, limitMinPrim;
 	void setMinMaxPrim();
@@ -167,6 +219,13 @@ public:
 	double minVolumeRefine = 1.e-16;
 	int maxCellsRefine = 10000000;
 	vector<double> indicatorCriterion;
+	
+	// species 관련
+	vector<string> spName;
+	
+	
+	// 초기화
+	void saveAfterInitial(MASCH_Mesh& mesh);
 };
 
 

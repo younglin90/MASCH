@@ -43,173 +43,127 @@ int main(int argc, char* argv[]) {
 	
 	// 필요한 객체들 생성
 	MASCH_Mesh_Save save;
-	MASCH_Control control;
+	MASCH_Control controls;
 	MASCH_Load load;
 	MASCH_Mesh mesh;
-	MASCH_Variables var;
 	MASCH_Solver solver;
+	MASCH_Variables var;
+	MASCH_Poly_AMR_Builder amr;
 	
 	// 기본 variables 셋팅
-	control.setVariablesBasic();
+	controls.setVariablesBasic();
 	// 셋팅 파일 로드
-	load.settingFiles("./setting/", control);
-	// 메쉬 파일 로드
-	load.meshFiles("./grid/0/", control, mesh);
-	// B.C. 셋팅
-	control.setBoundaryConditions(mesh);
-	// primitive 값 limit 셋팅
-	control.setMinMaxPrim();
-	// variable들 어레이 생성
-	control.setVariableArray(mesh, var);
+	load.settingFiles("./setting/", controls);
 	
 	// 초기조건 대입하고 저장 후 종료
-	if(mapArgv.find("-init") != mapArgv.end() ){
-		save.fvmFiles("./save/0/", rank, mesh, control, var);
+	if(mapArgv.find("-init") != mapArgv.end()){
+		controls.saveAfterInitial(mesh);
 		MPI::Finalize();
 		return EXIT_SUCCESS;
 	}
-	// sparse matrix의 CSR 포맷 셋팅
-	var.setSparCSR(mesh, control);
-	// 메쉬 지오메트릭 셋팅
-	control.setGeometric(mesh, var);
-	// B.C. 펑션 셋팅
-	solver.setBoundaryFunctions(mesh, control, var);
-	// 솔버 펑션 셋팅
-	solver.setFunctions(mesh, control);
-	// 그레디언트 계산시 필요한 값 셋팅
-	solver.calcGradient.init(mesh, control, var);
 	
-	MASCH_Poly_AMR_Builder amr;
-	amr.polyAMR(mesh, control, var, 0);
-	save.fvmFiles("./save/1/", rank, mesh, control, var);
+	// 메쉬 파일 로드
+	load.meshFiles(controls.getLoadFolderName(), controls, mesh);
+	// B.C. 셋팅
+	controls.setBoundaryConditions(mesh);
+	// primitive 값 limit 셋팅
+	controls.setMinMaxPrim();
+	// variable들 어레이 생성
+	controls.setVariableArray(mesh, var);
+	// cout << mesh.cells.size() << endl;
+	
+	// sparse matrix의 CSR 포맷 셋팅
+	var.setSparCSR(mesh, controls);
+	// 메쉬 지오메트릭 셋팅
+	controls.setGeometric(mesh, var);
+	// B.C. 펑션 셋팅
+	solver.setBoundaryFunctions(mesh, controls, var);
+	// 솔버 펑션 셋팅
+	solver.setFunctions(mesh, controls);
+	// 그레디언트 계산시 필요한 값 셋팅
+	solver.calcGradient.init(mesh, controls, var);
 	
 	// primitive 값 로드
-	// save.fvmFiles(control.getFolderName(), rank, mesh, control, var);
-	// // load.dpmFiles(foldername, mesh, controls);
+	var.fields[controls.fieldVar["time"].id] = 0.0;
+	load.fvmFiles(controls.getLoadFolderName(), rank, mesh, controls, var);
+	// DPM 파일 로드
+	// load.dpmFiles(foldername, mesh, controls);
+	
+	// 선형 솔버 값들 0.0 으로 만들어주기
+	var.clearLinearSystems();
+	// 원시변수 제외한 나머지 셀값 업데이트
+	solver.updateCellAddiValues(mesh, controls, var);
+	// 올드 값 초기화
+	solver.initOldValues(mesh, controls, var);
+	// proc 셀의 원시변수 mpi 넘기기
+	solver.updateProcRightCellPrimValues(mesh, controls, var);
+	// 셀 원시변수 제외한 나머지 proc 셀값 업데이트
+	solver.updateProcRightCellAddiValues(mesh, controls, var);
+	// 셀 그레디언트
+	solver.gradientTerms(mesh, controls, var);
+	// 고차 reconstruction
+	solver.highOrderTerms(mesh, controls, var);
+	// B.C. 원시변수 업데이트
+	solver.updateBoundaryFacePrimValues(mesh, controls, var);
+	// B.C. 원시변수 제외한 나머지 값 업데이트
+	solver.updateBoundaryFaceAddiValues(mesh, controls, var);
+	// 타임스텝 구하기
+	solver.calcTempSteps(mesh, controls, var);
 	
 	
-	
-	
-	
-	MPI::Finalize();
-	return EXIT_SUCCESS;
-	
-	
-	// control.log.push("cell values");
-	// {
-		// int id = control.cellVar["pressure"].id;
-		// auto cells = mesh.cells.data();
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-			// auto& cell = cells[i];
-			// auto cellVar_i = cellVar[i].data();
-			// cellVar_i[id] = 101325.0;
-		// }
-	// }
-	// {
-		// int id = control.cellVar["x-velocity"].id;
-		// auto cells = mesh.cells.data();
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-			// auto& cell = cells[i];
-			// auto cellVar_i = cellVar[i].data();
-			// cellVar_i[id] = 0.0;
-		// }
-	// }
-	// {
-		// int id = control.cellVar["y-velocity"].id;
-		// auto cells = mesh.cells.data();
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-			// auto& cell = cells[i];
-			// auto cellVar_i = cellVar[i].data();
-			// cellVar_i[id] = 0.0;
-		// }
-	// }
-	// {
-		// int id = control.cellVar["z-velocity"].id;
-		// auto cells = mesh.cells.data();
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-			// auto& cell = cells[i];
-			// auto cellVar_i = cellVar[i].data();
-			// cellVar_i[id] = 0.0;
-		// }
-	// }
-	// {
-		// int id = control.cellVar["temperature"].id;
-		// auto cells = mesh.cells.data();
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-			// auto& cell = cells[i];
-			// auto cellVar_i = cellVar[i].data();
-			// cellVar_i[id] = 300.0;
-		// }
-	// }
-	// {
-		// int id = control.cellVar["water"].id;
-		// auto cells = mesh.cells.data();
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-			// auto& cell = cells[i];
-			// auto cellVar_i = cellVar[i].data();
-			// cellVar_i[id] = 0.0;
-		// }
-	// }
-	// control.log.pop();
-	
-	// control.log.push("updateCellAddiValues");
-	// solver.updateCellAddiValues(mesh, control, var);
-	// control.log.pop();
-	// control.log.push("updateProcRightCellPrimValues");
-	// solver.updateProcRightCellPrimValues(mesh, control, var);
-	// control.log.pop();
-	// control.log.push("updateProcRightCellAddiValues");
-	// solver.updateProcRightCellAddiValues(mesh, control, var);
-	// control.log.pop();
-	// control.log.push("updateBoundaryFacePrimValues");
-	// solver.updateBoundaryFacePrimValues(mesh, control, var);
-	// control.log.pop();
-	// control.log.push("updateBoundaryFaceAddiValues");
-	// solver.updateBoundaryFaceAddiValues(mesh, control, var);
-	// control.log.pop();
-	// control.log.push("initOldValues");
-	// solver.initOldValues(mesh, control, var);
-	// control.log.pop();
-	
-	
-	// while( control.checkContinueRealTimeStep(var) ){
-	// while( var.fields[control.fieldVar["time"].id]<control.endTime )
+			// cout <<  
+			// var.fields[controls.fieldVar["time-step"].id] << endl;
+	int iter=0;
+	while( var.fields[controls.fieldVar["time"].id] < 4.0 )
 	{
+		// var.fields[controls.fieldVar["time-step"].id] *= 0.001;
 		
-		// solver.fvm(mesh, control, var);
+		amr.polyAMR_inline(mesh, controls, solver, var, iter);
+		
+		solver.fvm_inline(mesh, controls, var);
+		// solver.fvm(mesh, controls, var);
 		// solver.dpm(mesh, control, var.cells, var.particles);
 		
 		// var.updateRealTime(control);
 		
-		var.fields[control.fieldVar["time"].id] += 
-		var.fields[control.fieldVar["time-step"].id];
+	
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		if( (iter+1) % 10 == 0 ){
+			if(rank==0) cout << iter+1 << " " << var.fields[controls.fieldVar["time"].id] << 
+			" " << var.fields[controls.fieldVar["time-step"].id] << 
+			" " << var.fields[controls.fieldVar["residual"].id] << 
+			endl;
+			controls.log.show();
+		}
 		
-		// mesh.amr();
+		if(isnan(var.fields[controls.fieldVar["residual"].id]) ||
+		var.fields[controls.fieldVar["residual"].id] < -1.e12 ||
+		var.fields[controls.fieldVar["residual"].id] > 1.e12) break;
 	
-		// if( control.checkSaveFiles() ){
-			// save.fvmFiles("./save/1/", rank, mesh, control, var);
-			// // save.dpmFiles();
-			// // save.udfFiles();
-		// }
+		// if( controls.checkSaveFiles() )
+		if( (iter+1) % 100 == 0 )
+		{
+			string foldername;
+			std::ostringstream streamObj;
+			streamObj << var.fields[controls.fieldVar["time"].id];
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			save.fvmFiles(foldername, rank, mesh, controls, var);
+			// save.dpmFiles();
+			// save.udfFiles();
+		}
+		++iter;
+	// controls.log.show();
 	}
-	
-	control.log.show();
-	
-	save.fvmFiles("./save/1/", rank, mesh, control, var);
+	// save.fvmFiles("./save/test/", rank, mesh, controls, var);
 	
 	
-	MPI_Barrier(MPI_COMM_WORLD);
-	MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	
 	
 	MPI::Finalize();
 	return EXIT_SUCCESS;
+	
 }
 
 
@@ -254,3 +208,35 @@ void MASCH_Control::setMinMaxPrim(){
 
 
 
+
+		// cout << var.fields[controls.fieldVar["time-step"].id] << endl;
+		
+		// {
+					
+			// int id_dt = controls.fieldVar["time-step"].id;
+			// int id_vol = controls.cellVar["volume"].id;
+			// int id_x = controls.cellVar["x-velocity"].id;
+			// int id_y = controls.cellVar["y-velocity"].id;
+			// int id_z = controls.cellVar["z-velocity"].id;
+			// int id_c = controls.cellVar["speed of sound"].id;
+			// var.fields[id_dt] = 1.e12;
+			
+			// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
+				// double inp_val = pow(var.cells[i][id_vol],0.3)/(
+				// sqrt(
+				// var.cells[i][id_x]*var.cells[i][id_x]+
+				// var.cells[i][id_y]*var.cells[i][id_y]+
+				// var.cells[i][id_z]*var.cells[i][id_z])+
+				// var.cells[i][id_c]);
+				// var.fields[id_dt] = min(var.fields[id_dt],inp_val*0.0001);
+			// }
+			
+			// if(size>1){
+				// double tmp_fieldVar = var.fields[id_dt];
+				// double tmp_fieldVar_glo;
+				// MPI_Allreduce(&tmp_fieldVar, &tmp_fieldVar_glo, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+				// var.fields[id_dt] = tmp_fieldVar_glo;
+			// }
+			
+		// }
+		

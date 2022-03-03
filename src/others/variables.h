@@ -60,12 +60,19 @@ public:
 	double getSparD(int i, int iEq, int jEq);
 	void accumSparLR(int i, int iL, int iEq, int jEq, double inp);
 	void accumSparRL(int i, int iR, int iEq, int jEq, double inp);
+	void clearLinearSystems();
 	
 	void accumB(int i, int iEq, double inp);
 	double getB(int i, int iEq);
 	
 	void setX(int i, int iEq, double inp);
 	double getX(int i, int iEq);
+	
+	
+	// 임시변수
+	vector<double> tmp_sparA;
+	vector<double> tmp_B;
+	vector<double> tmp_X;
 	
 };
 

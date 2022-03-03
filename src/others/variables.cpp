@@ -7,6 +7,8 @@ void MASCH_Variables::setSparCSR(MASCH_Mesh& mesh, MASCH_Control& controls){
 	int nEq = controls.nEq;
 	int cellSize = mesh.cells.size();
 	
+	nCells = cellSize;
+	
 	// var.cellcell_displ = new int[mesh.cells.size()];
 	// var.face_LR_displ = new int[mesh.faces.size()];
 	// var.face_RL_displ = new int[mesh.faces.size()];
@@ -117,9 +119,21 @@ void MASCH_Variables::setSparCSR(MASCH_Mesh& mesh, MASCH_Control& controls){
 	Xvar.resize(nEq*mesh.cells.size());
 	Bvar.resize(nEq*mesh.cells.size());
 	
+	
+	// 임시 변수
+	tmp_sparA.resize(nEq*nEq*cellSize);
+	tmp_B.resize(nEq*cellSize);
+	tmp_X.resize(nEq*cellSize);
+	
+	
 }
 
 
+void MASCH_Variables::clearLinearSystems(){
+	std::fill(Avar.begin(), Avar.end(), 0.0);
+	std::fill(Xvar.begin(), Xvar.end(), 0.0);
+	std::fill(Bvar.begin(), Bvar.end(), 0.0);
+}
 
 
 
@@ -127,7 +141,9 @@ void MASCH_Variables::accumSparD(int i, int iEq, int jEq, double inp){
 	auto& var = (*this);
 	int str = i_str_CSR[nCells*iEq + i];
 	int tmp_i = str + (cellnFaces[i]+1)*jEq + cellcell_displ[i];
-	var.Avar[tmp_i] += inp;
+	var.Avar.at(tmp_i) += inp;
+	
+	// cout << var.Avar.size() << " " << nCells*5 + nCells << endl;
 	
 }
 
@@ -160,6 +176,7 @@ void MASCH_Variables::accumB(int i, int iEq, double inp){
 	auto& var = (*this);
 	int str = nCells*iEq;
 	int tmp_i = str + i;
+	// cout << var.Bvar.size() << " " << nCells << " " << i << endl;
 	var.Bvar[tmp_i] += inp;
 	
 }

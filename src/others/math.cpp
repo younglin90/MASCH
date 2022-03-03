@@ -146,20 +146,87 @@ void MASCH_Math::calcUnitNormals_Area3dPolygon(
 
 
 
-void MASCH_Math::GaussSeidelSOR(double* A, int N) { 
+void MASCH_Math::GaussSeidel(double* AA, int N) { 
 
+
+	double L[N][N], U[N][N];
+	double B[N], D[N], X[N];
+	
+	for(int i=0; i<N; ++i){
+		for(int j=0; j<N; ++j){
+			L[i][j]=0.0;
+			U[i][j]=0.0;
+		}
+		B[i]=0.0;
+	}
+	
+	double coeff;
+
+    // step 1: forward elimination
+	for(int k=1; k<N; ++k){
+		for(int i=k+1; i<N+1; ++i){
+			coeff=AA[(i-1)*N+k-1]/AA[(k-1)*N+k-1];
+			L[i-1][k-1]=coeff;
+			for(int j=k+1; j<N+1; ++j){
+				AA[(i-1)*N+j-1]=AA[(i-1)*N+j-1]-coeff*AA[(k-1)*N+j-1];
+			}
+		}
+	}
+
+    // Step 2: prepare L and U matrices 
+    // L matrix is a matrix of the elimination coefficient
+    // + the diagonal elements are 1.0
+	for(int i=1; i<N+1; ++i){
+		L[i-1][i-1]=1.0;
+	}
+    // U matrix is the upper triangular part of A
+	for(int j=1; j<N+1; ++j){
+		for(int i=1; i<j+1; ++i){
+			U[i-1][j-1]=AA[(i-1)*N+j-1];
+		}
+	}
+
+    // Step 3: compute columns of the inverse matrix C
+	for(int k=1; k<N+1; ++k){
+		B[k-1]=1.0;
+		D[0] = B[0];
+        // Step 3a: Solve Ld=b using the forward substitution
+		for(int i=2; i<N+1; ++i){
+			D[i-1]=B[i-1];
+			for(int j=1; j<i; ++j){
+				D[i-1]=D[i-1]-L[i-1][j-1]*D[j-1];
+			}
+		}
+        // Step 3b: Solve Ux=d using the back substitution
+		X[N-1] = D[N-1]/U[N-1][N-1];
+		for(int i=N-1; i>=1; --i){
+			X[i-1]=D[i-1];
+			for(int j=N; j>=i+1; --j){
+				X[i-1]=X[i-1]-U[i-1][j-1]*X[j-1];
+			}
+			X[i-1]=X[i-1]/U[i-1][i-1];
+		}
+        // Step 3c: fill the solutions x(n) into column k of C
+		for(int i=1; i<N+1; ++i){
+			AA[(i-1)*N+k-1] = X[i-1];
+		}
+		B[k-1]=0.0;
+	}
+
+
+
+}
+
+
+void MASCH_Math::GaussSeidelSOR(double* A, int N) { 
 
 	// double N = A.size();
 	
-	// double** L = new double*[N];
-	// double** U = new double*[N];
-	// for(int i=0; i<N; ++i){
-		// L[i] = new double[N];
-		// U[i] = new double[N];
-	// }
-	// double* B = new double[N];
-	// double* D = new double[N];
-	// double* X = new double[N];
+	// vector<vector<double>> L(N,vector<double>(N,0.0));
+	// vector<vector<double>> U(N,vector<double>(N,0.0));
+	// vector<double> B(N,0.0);
+	// vector<double> D(N,0.0);
+	// vector<double> X(N,0.0);
 	
 	double L[N][N];
 	double U[N][N];
@@ -167,15 +234,92 @@ void MASCH_Math::GaussSeidelSOR(double* A, int N) {
 	double D[N];
 	double X[N];
 	
+	for(int i=0; i<N; ++i){
+		B[i]=0.0; D[i]=0.0; X[i]=0.0;
+	}
+	
+	for(int k=0; k<N-1; ++k){  // 1~N-1
+		for(int i=k+1; i<N; ++i){  // 2~N
+			// double coeff = A[i][k]/A[k][k];
+			double coeff = A[i*N+k]/A[k*N+k];
+			L[i][k] = coeff;
+			for(int j=k+1; j<N; ++j){
+				// A[i][j] = A[i][j] - coeff*A[k][j];
+				A[i*N+j] = A[i*N+j] - coeff*A[k*N+j];
+			}
+		}
+	}
+	
+	for(int i=0; i<N; ++i){
+		L[i][i] = 1.0;
+	}
+	
+	for(int j=0; j<N; ++j){
+		for(int i=0; i<=j; ++i){
+			// U[i-1][j-1] = A[i-1][j-1];
+			U[i][j] = A[i*N+j];
+		}
+	}
+	
+	for(int k=0; k<N; ++k){
+		B[k] = 1.0;
+		D[0] = B[0];
+		for(int i=1; i<N; ++i){
+			D[i] = B[i];
+			for(int j=0; j<i-1; ++j){
+				D[i] = D[i] - L[i][j]*D[j];
+			}
+		}
+		
+		X[N-1] = D[N-1] / U[N-1][N-1];
+		
+		for(int i=N-2; i>=0; --i){ // N-1~1
+			X[i] = D[i];
+			for(int j=N-1; j>=i+1; --j){ // N~N,2
+				X[i] = X[i] - U[i][j]*X[j];
+			}
+			X[i] = X[i]/U[i][i];
+		}
+		
+		for(int i=0; i<N; ++i){
+			// A[i][k] = X[i];
+			A[i*N+k] = X[i];
+		}
+		
+		B[k] = 0.0;
+	}
+
+
+}
+
+
+
+
+void MASCH_Math::GaussSeidelSOR(vector<vector<double>>& vecA) { 
+
+
+	int N = vecA.size();
+	auto A = vecA.data();
+	
+	double L[N][N];
+	double U[N][N];
+	double B[N];
+	double D[N];
+	double X[N];
+	
+	for(int i=0; i<N; ++i){
+		B[i]=0.0; D[i]=0.0; X[i]=0.0;
+		for(int j=0; j<N; ++j){
+			L[i][j]=0.0; U[i][j]=0.0;
+		}
+	}
 	
 	for(int k=1; k<=N-1; ++k){
 		for(int i=k+1; i<=N; ++i){
-			// double coeff = A[i-1][k-1]/A[k-1][k-1];
-			double coeff = A[(i-1)*N+k-1]/A[(k-1)*N+k-1];
+			double coeff = A[i-1][k-1]/A[k-1][k-1];
 			L[i-1][k-1] = coeff;
 			for(int j=k+1; j<=N; ++j){
-				// A[i-1][j-1] = A[i-1][j-1] - coeff*A[k-1][j-1];
-				A[(i-1)*N+j-1] = A[(i-1)*N+j-1] - coeff*A[(k-1)*N+j-1];
+				A[i-1][j-1] = A[i-1][j-1] - coeff*A[k-1][j-1];
 			}
 		}
 	}
@@ -186,8 +330,7 @@ void MASCH_Math::GaussSeidelSOR(double* A, int N) {
 	
 	for(int j=1; j<=N; ++j){
 		for(int i=1; i<=j; ++i){
-			// U[i-1][j-1] = A[i-1][j-1];
-			U[i-1][j-1] = A[(i-1)*N+j-1];
+			U[i-1][j-1] = A[i-1][j-1];
 		}
 	}
 	
@@ -214,22 +357,73 @@ void MASCH_Math::GaussSeidelSOR(double* A, int N) {
 		}
 		
 		for(int i=1; i<=N; ++i){
-			// A[i-1][k-1] = X[i-1];
-			A[(i-1)*N+k-1] = X[i-1];
+			A[i-1][k-1] = X[i-1];
 		}
 		
 		B[k-1] = 0.0;
 	}
 
 
+
+	// int N = vecA.size();
+	// auto A = vecA.data();
+	
+	// double L[N][N];
+	// double U[N][N];
+	// double B[N];
+	// double D[N];
+	// double X[N];
+	
 	// for(int i=0; i<N; ++i){
-		// delete L[i];
-		// delete U[i];
+		// B[i]=0.0; D[i]=0.0; X[i]=0.0;
 	// }
-	// delete L;
-	// delete U;
-	// delete B;
-	// delete D;
-	// delete X;
+	
+	// for(int k=0; k<N-1; ++k){  // 1~N-1
+		// for(int i=k+1; i<N; ++i){  // 2~N
+			// double coeff = A[i][k]/A[k][k];
+			// L[i][k] = coeff;
+			// for(int j=k+1; j<N; ++j){
+				// A[i][j] = A[i][j] - coeff*A[k][j];
+			// }
+		// }
+	// }
+	
+	// for(int i=0; i<N; ++i){
+		// L[i][i] = 1.0;
+	// }
+	
+	// for(int j=1; j<=N; ++j){
+		// for(int i=1; i<=j; ++i){
+			// U[i-1][j-1] = A[i-1][j-1];
+		// }
+	// }
+	
+	// for(int k=0; k<N; ++k){
+		// B[k] = 1.0;
+		// D[0] = B[0];
+		// for(int i=1; i<N; ++i){
+			// D[i] = B[i];
+			// for(int j=0; j<i-1; ++j){
+				// D[i] = D[i] - L[i][j]*D[j];
+			// }
+		// }
+		
+		// X[N-1] = D[N-1] / U[N-1][N-1];
+		
+		// for(int i=N-2; i>=0; --i){ // N-1~1
+			// X[i] = D[i];
+			// for(int j=N-1; j>=i+1; --j){ // N~N,2
+				// X[i] = X[i] - U[i][j]*X[j];
+			// }
+			// X[i] = X[i]/U[i][i];
+		// }
+		
+		// for(int i=0; i<N; ++i){
+			// A[i][k] = X[i];
+		// }
+		
+		// B[k] = 0.0;
+	// }
+
 
 }
