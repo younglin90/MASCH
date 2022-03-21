@@ -13,6 +13,9 @@ invwall {
 viswall {
 	type = zeroGradient;
 }
+moving {
+	type = zeroGradient;
+}
 function{
 	type = zeroGradient;
 }

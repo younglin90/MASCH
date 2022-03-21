@@ -13,6 +13,10 @@ invwall {
 viswall {
 	type = noSlip;
 }
+moving {
+	type = fixedValue;
+	value = (1.0 0.0 0.0);
+}
 function {
 	type = zeroGradient;
 }

@@ -1,15 +1,12 @@
 // AMR
 AMR {
-	refine {
-		interval = 250000000;
-		maxLevel = 3;
-		indicator = (5.0 50.0);
-		bufferLayer = 2;
-		maxCells = 20000;
-		minVolume = 1.e-18;
-	}
-
-	unrefine {
-		interval = 100;
-	}
+	interval = 50;
+	maxLevel = 3;
+	maxBufferLayer = 2;
+	indicatorCellNames = (density);
+	indicatorCellValues = (0.0);
+	indicatorGradientNames = (density);
+	indicatorGradientValues = (100.0);
+	maxCells = 20000000;
+	minVolume = 1.e-25;
 }

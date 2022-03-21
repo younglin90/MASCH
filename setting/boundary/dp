@@ -15,7 +15,7 @@ viswall {
 }
 moving {
 	type = fixedValue;
-	value = 1.e5;
+	value = 0.0;
 }
 function {
 	type = zeroGradient;

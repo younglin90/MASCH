@@ -6,10 +6,10 @@ startFrom = 0;
 stopAt = 10.0;
 
 //
-timeStep = 3.e-7; //
+timeStep = 2.e-3; //
 adjustTimeStep = yes;
 maxCFL = 0.1;
-maxTimeStep = 1.e-5;
+maxTimeStep = 1.e-2;
 
 againWhenDiverge = no;
 multiCFL = 0.1;
@@ -17,13 +17,11 @@ minTimeStep = 1.e-12;
 
 // 
 saveControl = timeStep;
-saveInterval = 100;
+saveInterval = 200;
 saveFormat = binary;
 saveCompression = 6;
 writePrecision = 8;
-saveMeshData = ();
-saveGradientData = (pressure);
-saveThermodynamicData = (density);
-saveBodyForceData = ();
+saveCellValues = (density);
+saveGradientValues = (density);
 
 printLog = 1;

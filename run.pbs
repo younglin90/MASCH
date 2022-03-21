@@ -1,0 +1,44 @@
+#PBS -l nodes=5:ppn=67+1:ppn=45
+#PBS -q dque
+#PBS -N jet_in_cross_MASCH
+#PBS -o error
+#PBS -j oe
+echo
+echo
+echo ======================================================
+echo Working directory is $PBS_O_WORKDIR
+echo
+echo Running on host `hostname`
+echo
+echo Start time is `date`
+echo
+echo Running Directory is `pwd`
+echo
+echo This jobs runs on the following nodes :
+echo `cat $PBS_NODEFILE`
+
+NOP=$(wc -l $PBS_NODEFILE | awk '{print $1}')
+
+echo
+echo This job runs on the following process : $NOP
+echo
+echo ========================================================
+
+for i in `cat $PBS_NODEFILE | sort -u` ; do
+     echo "removing IPC shm segments on $i"
+done
+
+export P4_GLOBMEMSIZE=1073741824
+
+cd $PBS_O_WORKDIR
+
+cat $PBS_NODEFILE>./hostfile
+
+source $HOME/intel/oneapi/setvars.sh
+#export PATH=$PATH:~/SEMO/
+#export LD_LIBRARY_PATH=~/SEMO/lib/PETSc/lib:$LD_LIBRARY_PATH
+
+
+mpirun -genv I_MPI_DEBUG 5 -machinefile $PBS_NODEFILE -env I_MPI_FABRICS shm:tmi -np $NOP ~/MASCH/CompCoupledExplicit >> log
+#mpirun -genv I_MPI_DEBUG 5 -machinefile hostfile -env I_MPI_FABRICS shm:tmi -np 402 ~/SEMO/IncomPressure >> log
+#mpirun -machinefile $PBS_NODEFILE -np $NOP ~/SEMO/IncomPressure >> log
