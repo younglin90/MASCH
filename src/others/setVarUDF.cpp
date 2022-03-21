@@ -68,14 +68,14 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({cell},"temperature","T","K",prim,scal);
 	(*this).setVarible({cell},"mass fraction","Y","",prim,vec,
 						species,species_abb,species_shape_prim);
-						
+	
 	(*this).setVarible({cell},"old pressure","p","Pa","old",scal);
 	(*this).setVarible({cell},"old velocity","U","m/s","old",vec,
 						{"old x-velocity","old y-velocity","old z-velocity"},{"u","v","w"},
 						{"old","old","old"});
 	(*this).setVarible({cell},"old density","rho","kg/m^3","old",scal);
 	(*this).setVarible({cell},"old total enthalpy","Ht","J/kg","old",scal);
-						
+	
 	(*this).setVarible({cell},"old2 pressure","p","Pa","old",scal);
 	(*this).setVarible({cell},"old2 velocity","U","m/s","old",vec,
 						{"old2 x-velocity","old2 y-velocity","old2 z-velocity"},{"u","v","w"},
@@ -100,22 +100,27 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 			{"x-gradient pressure","y-gradient pressure","z-gradient pressure"},
 			{"dpdx","dpdy","dpdz"},
 			{"gradient","gradient","gradient"});
-			
+	
 	(*this).setVarible({cell},"gradient x-velocity","dudX","","gradient",vec,
 			{"x-gradient x-velocity","y-gradient x-velocity","z-gradient x-velocity"},
 			{"dudx","dudy","dudz"},
 			{"gradient","gradient","gradient"});
-			
+	
 	(*this).setVarible({cell},"gradient y-velocity","dvdX","","gradient",vec,
 			{"x-gradient y-velocity","y-gradient y-velocity","z-gradient y-velocity"},
 			{"dvdx","dvdy","dvdz"},
 			{"gradient","gradient","gradient"});
-			
+	
 	(*this).setVarible({cell},"gradient z-velocity","dwdX","","gradient",vec,
 			{"x-gradient z-velocity","y-gradient z-velocity","z-gradient z-velocity"},
 			{"dwdx","dwdy","dwdz"},
 			{"gradient","gradient","gradient"});
-			
+	
+	(*this).setVarible({cell},"gradient density","drhodX","","gradient",vec,
+			{"x-gradient density","y-gradient density","z-gradient density"},
+			{"drhodx","drhody","drhodz"},
+			{"gradient","gradient","gradient"});
+	
 	(*this).setVarible({cell},"viscosity","mu","Pa*s",thermo,scal);
 	
 	(*this).setVarible({face},"left pressure","p","Pa","value",scal);

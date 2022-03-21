@@ -1,27 +1,29 @@
-// 언어
+//
 language = kor;
 
-// 계산 시작 & 종료
-startFrom = 0.0;
+//
+startFrom = 0;
 stopAt = 10.0;
 
-// 시간전진 셋팅
-timeStep = 3.e-7; // 시간전진
+//
+timeStep = 3.e-7; //
 adjustTimeStep = yes;
-maxCFL = 0.01;
+maxCFL = 0.1;
 maxTimeStep = 1.e-5;
 
 againWhenDiverge = no;
 multiCFL = 0.1;
 minTimeStep = 1.e-12;
 
-// 세이브
+// 
 saveControl = timeStep;
-saveInterval = 5000;
+saveInterval = 100;
 saveFormat = binary;
 saveCompression = 6;
 writePrecision = 8;
 saveMeshData = ();
-saveGradientData = ();
+saveGradientData = (pressure);
 saveThermodynamicData = (density);
 saveBodyForceData = ();
+
+printLog = 1;

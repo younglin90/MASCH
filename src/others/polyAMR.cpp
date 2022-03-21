@@ -12,8 +12,8 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 	MASCH_Variables& var,
 	int iter){
 
-	// int rank = MPI::COMM_WORLD.Get_rank();
-	// int size = MPI::COMM_WORLD.Get_size();
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
 	
 	// // SEMO_Mesh_Geometric geometric;
 	// // SEMO_Utility_Math math;
@@ -57,7 +57,8 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 	// {
 		
 		// if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
-		// polyRefine(mesh, controls, indicatorValues, 0);
+	// // vector<bool> boolCellRefine(mesh.cells.size(),false);
+		// polyRefine(mesh, controls, indicatorValues, boolCellRefine, 0);
 		// controls.setVariableArray(mesh, var);
 		// controls.setGeometric(mesh, var);
 		// mesh.debug_procFace_unitNomals(0.8);

@@ -7,61 +7,75 @@ void MASCH_Solver::fvm_inline(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_V
     int rank = MPI::COMM_WORLD.Get_rank(); 
     int size = MPI::COMM_WORLD.Get_size();
 	
-	double CFL = 0.1;
+	double CFL = controls.maxCFL;
+	double coeffCellCFL = 1.0;
 	{
-		controls.log.push("calc1");
-		int id_dt = controls.getId_fieldVar("time-step");
-		int id_vol = controls.getId_cellVar("volume");
-		int id_p = controls.getId_cellVar("pressure");
-		int id_u = controls.getId_cellVar("x-velocity");
-		int id_v = controls.getId_cellVar("y-velocity");
-		int id_w = controls.getId_cellVar("z-velocity");
-		int id_T = controls.getId_cellVar("temperature");
-		int id_c = controls.getId_cellVar("speed of sound");
-		int id_rho = controls.getId_cellVar("density");
-		int id_Ht = controls.getId_cellVar("total enthalpy");
-		int id_drhodp = controls.getId_cellVar("density diff with pressure");
-		int id_drhodT = controls.getId_cellVar("density diff with temperature");
-		int id_dHtdp = controls.getId_cellVar("total enthalpy diff with pressure");
-		int id_dHtdT = controls.getId_cellVar("total enthalpy diff with temperature");
-		controls.log.pop();
+		// proc right cell 로 셀의 원시변수 넘기기
 		controls.log.push("calc2");
 		solver.updateProcRightCellPrimValues(mesh, controls, var);
 		// solver.updateProcRightCellAddiValues(mesh, controls, var);
-		
 		controls.log.pop();
+		
+		
+		// cell 추가적 변수
+		auto cellVar = var.cells.data();
 		controls.log.push("calc3");
 		for(int i=0; i<mesh.cells.size(); ++i){
-			var.cells[i][id_rho] = var.cells[i][id_p]/287.0/var.cells[i][id_T];
-			var.cells[i][id_c] = sqrt(1.4*287.0*var.cells[i][id_T]);
-			var.cells[i][id_Ht] = 1.4*717.0*var.cells[i][id_T] + 0.5*(
-				var.cells[i][id_u]*var.cells[i][id_u]+
-				var.cells[i][id_v]*var.cells[i][id_v]+
-				var.cells[i][id_w]*var.cells[i][id_w]);
-			
-			var.cells[i][id_drhodp] = var.cells[i][id_rho]/var.cells[i][id_p];
-			var.cells[i][id_drhodT] = -var.cells[i][id_rho]/var.cells[i][id_T];
-			var.cells[i][id_dHtdp] = 0.0;
-			var.cells[i][id_dHtdT] = 1.4*717.0;
+			auto cellVar_i = cellVar[i].data();
+			for(auto& sol : solver.calcCellAddiVal){
+				sol(cellVar_i);
+			}
 		}
 		controls.log.pop();
+		
+		// proc right cell 추가적 변수
 		controls.log.push("calc4");
-		for(auto& cells_i : var.procRightCells){
-			cells_i[id_rho] = cells_i[id_p]/287.0/cells_i[id_T];
-			cells_i[id_c] = sqrt(1.4*287.0*cells_i[id_T]);
-			cells_i[id_Ht] = 1.4*717.0*cells_i[id_T] + 0.5*(
-				cells_i[id_u]*cells_i[id_u]+
-				cells_i[id_v]*cells_i[id_v]+
-				cells_i[id_w]*cells_i[id_w]);
-			
-			cells_i[id_drhodp] = cells_i[id_rho]/cells_i[id_p];
-			cells_i[id_drhodT] = -cells_i[id_rho]/cells_i[id_T];
-			cells_i[id_dHtdp] = 0.0;
-			cells_i[id_dHtdT] = 1.4*717.0;
+		for(auto& cellVar_i : var.procRightCells){
+			for(auto& sol : solver.calcCellAddiVal){
+				sol(cellVar_i.data());
+			}
 		}
 		controls.log.pop();
+		
+	}
+	{
 		controls.log.push("calc5");
+		
+		
+		int id_dt = controls.getId_fieldVar("time-step");
+		int id_vol = controls.getId_cellVar("volume");
+		int id_u = controls.getId_cellVar("x-velocity");
+		int id_v = controls.getId_cellVar("y-velocity");
+		int id_w = controls.getId_cellVar("z-velocity");
+		int id_c = controls.getId_cellVar("speed-of-sound");
+		
+		auto fieldVar = var.fields.data();
 		var.fields[id_dt] = 1.e12;
+		// for(int i=0, ip=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
+			// auto& face = mesh.faces[i];
+			// auto cellVar_iL = cellVar[face.iL].data();
+			// if(face.getType()==MASCH_Face_Types::INTERNAL){
+				// auto cellVar_iR = cellVar[face.iR].data();
+				// for(auto& sol : solver.calcTempStepFace){
+					// sol(cellVar_iL,cellVar_iR,faceVar[i].data(),fieldVar);
+				// }
+			// }
+			// else if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// auto cellVar_iR = var.procRightCells[ip].data();
+				// for(auto& sol : solver.calcTempStepFace){
+					// sol(cellVar_iL,cellVar_iR,faceVar[i].data(),fieldVar);
+				// }
+				// ++ip;
+			// }
+			// else if(face.getType()==MASCH_Face_Types::BOUNDARY){
+				// for(auto& sol : solver.calcTempStepFace){
+					// sol(cellVar_iL,nullptr,faceVar[i].data(),fieldVar);
+				// }
+			// }
+		// }
+		
+		
+		
 		for(int i=0; i<mesh.cells.size(); ++i){
 			double mag_vel = sqrt(
 				var.cells[i][id_u]*var.cells[i][id_u]+
@@ -79,465 +93,297 @@ void MASCH_Solver::fvm_inline(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_V
 			MPI_Allreduce(&tmp_fieldVar, &tmp_fieldVar_glo, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 			var.fields[id_dt] = tmp_fieldVar_glo;
 		}
+		// MPI_Barrier(MPI_COMM_WORLD);
+		controls.log.pop();
 		var.fields[id_dt] *= CFL;
+		
+		
+		
+		// int id_CFL = controls.getId_cellVar("Courant-Friedrichs-Lewy number");
+		// double tmp_dt = coeffCellCFL*var.fields[id_dt];
+		// for(int i=0; i<mesh.cells.size(); ++i){
+			// double mag_vel = sqrt(
+				// var.cells[i][id_u]*var.cells[i][id_u]+
+				// var.cells[i][id_v]*var.cells[i][id_v]+
+				// var.cells[i][id_w]*var.cells[i][id_w]);
+			// double c = var.cells[i][id_c];
+			// double dt_cell = pow(var.cells[i][id_vol],0.3)/(mag_vel+c);
+			// var.cells[i][id_CFL] = tmp_dt/dt_cell;
+		// }
 		
 	}
 	{
-		controls.log.pop();
+		// controls.log.pop();
 		controls.log.push("calc8");
-		int id_p = controls.getId_cellVar("pressure");
-		int id_u = controls.getId_cellVar("x-velocity");
-		int id_v = controls.getId_cellVar("y-velocity");
-		int id_w = controls.getId_cellVar("z-velocity");
-		int id_T = controls.getId_cellVar("temperature");
-		int id_c = controls.getId_cellVar("speed of sound");
-		int id_rho = controls.getId_cellVar("density");
-		int id_Ht = controls.getId_cellVar("total enthalpy");
 		
-		int id_pL = controls.getId_faceVar("left pressure");
-		int id_uL = controls.getId_faceVar("left x-velocity");
-		int id_vL = controls.getId_faceVar("left y-velocity");
-		int id_wL = controls.getId_faceVar("left z-velocity");
-		int id_TL = controls.getId_faceVar("left temperature");
-		int id_cL = controls.getId_faceVar("left speed of sound");
-		int id_rhoL = controls.getId_faceVar("left density");
-		int id_HtL = controls.getId_faceVar("left total enthalpy");
-		
-		int id_pR = controls.getId_faceVar("right pressure");
-		int id_uR = controls.getId_faceVar("right x-velocity");
-		int id_vR = controls.getId_faceVar("right y-velocity");
-		int id_wR = controls.getId_faceVar("right z-velocity");
-		int id_TR = controls.getId_faceVar("right temperature");
-		int id_cR = controls.getId_faceVar("right speed of sound");
-		int id_rhoR = controls.getId_faceVar("right density");
-		int id_HtR = controls.getId_faceVar("right total enthalpy");
-		
-		int id_area = controls.getId_faceVar("area");
-		int id_nx = controls.getId_faceVar("x unit normal");
-		int id_ny = controls.getId_faceVar("y unit normal");
-		int id_nz = controls.getId_faceVar("z unit normal");
-		
-		int nEq = controls.nEq;
-		
+		// 바운더리 페이스 값들 정하기
+		int id_t = controls.getId_fieldVar("time");
 		auto cellVar = var.cells.data();
 		auto faceVar = var.faces.data();
+		auto fieldVar = var.fields.data();
 		auto procRightCellVar = var.procRightCells.data();
-		
-		controls.log.pop();
-		controls.log.push("calc9");
-		for(auto& boundary : mesh.boundaries){
+		for(int ibc=0, iter=0, SIZE=mesh.boundaries.size(); ibc<SIZE; ++ibc){
+			auto& boundary = mesh.boundaries[ibc];
 			if(boundary.getType()!=MASCH_Face_Types::BOUNDARY) continue;
+			auto calcSolPtr = solver.calcBoundFacePrimVal[iter].data();
+			int calcSolSize = solver.calcBoundFacePrimVal[iter].size();
+			auto calcAddSolPtr = solver.calcFaceAddiVal.data();
+			int calcAddSolSize = solver.calcFaceAddiVal.size();
 			int str = boundary.startFace;
 			int end = str + boundary.nFaces;
-			if(boundary.name=="invwall"){
-				for(int i=str; i<end; ++i){
-					auto& face = mesh.faces[i];
-					int iL = face.iL;
-					auto faceVar_i = faceVar[i].data();
-					auto cellVar_iL = cellVar[iL].data();
-					
-					faceVar_i[id_pL] = cellVar_iL[id_p];
-					faceVar_i[id_TL] = cellVar_iL[id_T];
-					
-					double u_vel = cellVar_iL[id_u];
-					double v_vel = cellVar_iL[id_v];
-					double w_vel = cellVar_iL[id_w];
-					double norVel = u_vel * faceVar_i[id_nx] + 
-									v_vel * faceVar_i[id_ny] + 
-									w_vel * faceVar_i[id_nz];
-					double invU = u_vel - norVel * faceVar_i[id_nx];
-					double invV = v_vel - norVel * faceVar_i[id_ny];
-					double invW = w_vel - norVel * faceVar_i[id_nz];
-					
-					faceVar_i[id_uL] = invU;
-					faceVar_i[id_vL] = invV;
-					faceVar_i[id_wL] = invW;
-					
-					faceVar_i[id_rhoL] = faceVar_i[id_pL]/287.0/faceVar_i[id_TL];
-					faceVar_i[id_cL] = sqrt(1.4*287.0*faceVar_i[id_TL]);
-					faceVar_i[id_HtL] = 1.4*717.0*faceVar_i[id_TL]+0.5*(
-						faceVar_i[id_uL]*faceVar_i[id_uL]+
-						faceVar_i[id_vL]*faceVar_i[id_vL]+
-						faceVar_i[id_wL]*faceVar_i[id_wL]);
-						
-					faceVar_i[id_pR]=faceVar_i[id_pL];
-					faceVar_i[id_uR]=faceVar_i[id_uL];
-					faceVar_i[id_vR]=faceVar_i[id_vL];
-					faceVar_i[id_wR]=faceVar_i[id_wL];
-					faceVar_i[id_TR]=faceVar_i[id_TL];
-					faceVar_i[id_rhoR]=faceVar_i[id_rhoL];
-					faceVar_i[id_cR]=faceVar_i[id_cL];
-					faceVar_i[id_HtR]=faceVar_i[id_HtL];
+			for(int i=str; i<end; ++i){
+				auto& face = mesh.faces[i];
+				int iL = face.iL;
+				// for(auto& sol : solver.calcBoundFacePrimVal[iter]){
+				for(int iSol=0; iSol<calcSolSize; ++iSol){
+					calcSolPtr[iSol](fieldVar[id_t],face.x,face.y,face.z,
+						cellVar[iL].data(),faceVar[i].data());
+				}
+				// for(auto& sol : solver.calcFaceAddiVal){
+				for(int iSol=0; iSol<calcAddSolSize; ++iSol){
+					calcAddSolPtr[iSol](faceVar[i].data());
 				}
 			}
-			else if(boundary.name=="viswall"){
-				for(int i=str; i<end; ++i){
-					auto& face = mesh.faces[i];
-					int iL = face.iL;
-					auto faceVar_i = faceVar[i].data();
-					auto cellVar_iL = cellVar[iL].data();
-					faceVar_i[id_pL] = cellVar_iL[id_p];
-					faceVar_i[id_TL] = cellVar_iL[id_T];
-					faceVar_i[id_uL] = 0.0;
-					faceVar_i[id_vL] = 0.0;
-					faceVar_i[id_wL] = 0.0;
-					
-					faceVar_i[id_rhoL] = faceVar_i[id_pL]/287.0/faceVar_i[id_TL];
-					faceVar_i[id_cL] = sqrt(1.4*287.0*faceVar_i[id_TL]);
-					faceVar_i[id_HtL] = 1.4*717.0*faceVar_i[id_TL]+0.5*(
-						faceVar_i[id_uL]*faceVar_i[id_uL]+
-						faceVar_i[id_vL]*faceVar_i[id_vL]+
-						faceVar_i[id_wL]*faceVar_i[id_wL]);
-						
-					faceVar_i[id_pR]=faceVar_i[id_pL];
-					faceVar_i[id_uR]=faceVar_i[id_uL];
-					faceVar_i[id_vR]=faceVar_i[id_vL];
-					faceVar_i[id_wR]=faceVar_i[id_wL];
-					faceVar_i[id_TR]=faceVar_i[id_TL];
-					faceVar_i[id_rhoR]=faceVar_i[id_rhoL];
-					faceVar_i[id_cR]=faceVar_i[id_cL];
-					faceVar_i[id_HtR]=faceVar_i[id_HtL];
-				}
-			}
-			else if(boundary.name=="supinlet"){
-				for(int i=str; i<end; ++i){
-					auto& face = mesh.faces[i];
-					int iL = face.iL;
-					auto faceVar_i = faceVar[i].data();
-					auto cellVar_iL = cellVar[iL].data();
-					faceVar_i[id_pL] = 1.0;
-					faceVar_i[id_TL] = 0.0035;
-					faceVar_i[id_uL] = 3.6;
-					faceVar_i[id_vL] = 0.0;
-					faceVar_i[id_wL] = 0.0;
-					
-					faceVar_i[id_rhoL] = faceVar_i[id_pL]/287.0/faceVar_i[id_TL];
-					faceVar_i[id_cL] = sqrt(1.4*287.0*faceVar_i[id_TL]);
-					faceVar_i[id_HtL] = 1.4*717.0*faceVar_i[id_TL]+0.5*(
-						faceVar_i[id_uL]*faceVar_i[id_uL]+
-						faceVar_i[id_vL]*faceVar_i[id_vL]+
-						faceVar_i[id_wL]*faceVar_i[id_wL]);
-						
-					faceVar_i[id_pR]=faceVar_i[id_pL];
-					faceVar_i[id_uR]=faceVar_i[id_uL];
-					faceVar_i[id_vR]=faceVar_i[id_vL];
-					faceVar_i[id_wR]=faceVar_i[id_wL];
-					faceVar_i[id_TR]=faceVar_i[id_TL];
-					faceVar_i[id_rhoR]=faceVar_i[id_rhoL];
-					faceVar_i[id_cR]=faceVar_i[id_cL];
-					faceVar_i[id_HtR]=faceVar_i[id_HtL];
-				}
-			}
-			else if(boundary.name=="outlet"){
-				for(int i=str; i<end; ++i){
-					auto& face = mesh.faces[i];
-					int iL = face.iL;
-					auto faceVar_i = faceVar[i].data();
-					auto cellVar_iL = cellVar[iL].data();
-					faceVar_i[id_pL] = cellVar_iL[id_p];
-					faceVar_i[id_TL] = cellVar_iL[id_T];
-					faceVar_i[id_uL] = cellVar_iL[id_u];
-					faceVar_i[id_vL] = cellVar_iL[id_v];
-					faceVar_i[id_wL] = cellVar_iL[id_w];
-					
-					faceVar_i[id_rhoL] = faceVar_i[id_pL]/287.0/faceVar_i[id_TL];
-					faceVar_i[id_cL] = sqrt(1.4*287.0*faceVar_i[id_TL]);
-					faceVar_i[id_HtL] = 1.4*717.0*faceVar_i[id_TL]+0.5*(
-						faceVar_i[id_uL]*faceVar_i[id_uL]+
-						faceVar_i[id_vL]*faceVar_i[id_vL]+
-						faceVar_i[id_wL]*faceVar_i[id_wL]);
-						
-					faceVar_i[id_pR]=faceVar_i[id_pL];
-					faceVar_i[id_uR]=faceVar_i[id_uL];
-					faceVar_i[id_vR]=faceVar_i[id_vL];
-					faceVar_i[id_wR]=faceVar_i[id_wL];
-					faceVar_i[id_TR]=faceVar_i[id_TL];
-					faceVar_i[id_rhoR]=faceVar_i[id_rhoL];
-					faceVar_i[id_cR]=faceVar_i[id_cL];
-					faceVar_i[id_HtR]=faceVar_i[id_HtL];
-				}
-			}
-			else{
-				cout << "#WARNING, NO boundary name" << endl;
-			}
-		}
-		
-		controls.log.pop();
-		controls.log.push("calc10");
-		
-		for(int i=0; i<mesh.cells.size(); ++i){
-			for(int j=0; j<nEq; ++j){
-				var.tmp_B[i*nEq+j]=0.0;
-			}
+			++iter;
 		}
 		controls.log.pop();
-		controls.log.push("calc11");
+	}
 		
+	{
+		controls.log.push("calc9.2");
+		// 그레디언트 구하기
+		solver.gradientTerms(mesh, controls, var);
+		// 그레디언트 proc risght cell로 넘기기
+		solver.updateProcRightCellGradValues(mesh, controls, var);
+		controls.log.pop();
+	}
+	{
+		controls.log.push("calc9.3");
+		// 하이오더 리컨스트럭션 + 추가적 변수들
+		auto cellVar = var.cells.data();
+		auto faceVar = var.faces.data();
+		auto fieldVar = var.fields.data();
+		auto procRightCellVar = var.procRightCells.data();
+		auto calcAddSolPtr = solver.calcFaceAddiVal.data();
+		int calcAddSolSize = solver.calcFaceAddiVal.size();
 		for(int i=0, ip=0; i<mesh.faces.size(); ++i){
 			auto& face = mesh.faces[i];
+			
+			if(face.getType()==MASCH_Face_Types::BOUNDARY) continue;
+			
 			int iL = face.iL; int iR = face.iR;
 			auto faceVar_i = faceVar[i].data();
 			auto cellVar_iL = cellVar[iL].data();
-		
-			double pL = cellVar_iL[id_p]; double pR = 0.0;
-			double uL = cellVar_iL[id_u]; double uR = 0.0;
-			double vL = cellVar_iL[id_v]; double vR = 0.0;
-			double wL = cellVar_iL[id_w]; double wR = 0.0;
-			double TL = cellVar_iL[id_T]; double TR = 0.0;
-			double rhoL = cellVar_iL[id_rho]; double rhoR = 0.0;
-			double cL = cellVar_iL[id_c]; double cR = 0.0;
-			double HtL = cellVar_iL[id_Ht]; double HtR = 0.0;
 			
+			// 하이 오더 리컨스트럭션
 			if(face.getType()==MASCH_Face_Types::INTERNAL){
-				pR = cellVar[iR][id_p];
-				uR = cellVar[iR][id_u];
-				vR = cellVar[iR][id_v];
-				wR = cellVar[iR][id_w];
-				TR = cellVar[iR][id_T];
-				rhoR = cellVar[iR][id_rho];
-				cR = cellVar[iR][id_c];
-				HtR = cellVar[iR][id_Ht];
-			}
-			else if(face.getType()==MASCH_Face_Types::BOUNDARY){
-				pL = faceVar_i[id_pL];
-				uL = faceVar_i[id_uL];
-				vL = faceVar_i[id_vL];
-				wL = faceVar_i[id_wL];
-				TL = faceVar_i[id_TL];
-				rhoL = faceVar_i[id_rhoL];
-				cL = faceVar_i[id_cL];
-				HtL = faceVar_i[id_HtL];
-				
-				pR = faceVar_i[id_pR];
-				uR = faceVar_i[id_uR];
-				vR = faceVar_i[id_vR];
-				wR = faceVar_i[id_wR];
-				TR = faceVar_i[id_TR];
-				rhoR = faceVar_i[id_rhoR];
-				cR = faceVar_i[id_cR];
-				HtR = faceVar_i[id_HtR];
+				for(auto& sol : solver.calcHO_FaceVal){
+					sol(var.fields.data(),cellVar_iL,cellVar[iR].data(),faceVar_i);
+				}
 			}
 			else if(face.getType()==MASCH_Face_Types::PROCESSOR){
-				pR = procRightCellVar[ip][id_p];
-				uR = procRightCellVar[ip][id_u];
-				vR = procRightCellVar[ip][id_v];
-				wR = procRightCellVar[ip][id_w];
-				TR = procRightCellVar[ip][id_T];
-				rhoR = procRightCellVar[ip][id_rho];
-				cR = procRightCellVar[ip][id_c];
-				HtR = procRightCellVar[ip][id_Ht];
-				
-				++ip;
+				for(auto& sol : solver.calcHO_FaceVal){
+					sol(var.fields.data(),cellVar_iL,procRightCellVar[ip++].data(),faceVar_i);
+				}
 			}
 			
-			{
-				double nvec[3];
-				nvec[0] = faceVar_i[id_nx];
-				nvec[1] = faceVar_i[id_ny];
-				nvec[2] = faceVar_i[id_nz];
-				double UnL = uL*nvec[0] + vL*nvec[1] + wL*nvec[2];
-				double UnR = uR*nvec[0] + vR*nvec[1] + wR*nvec[2];
-				
-				double Unhat = 0.5*(UnL+UnR);
-				double rhohat = 0.5*(rhoL+rhoR);
-				double chat= 0.5*(cL+cR);
-				
-				double ML = UnL/chat; 
-				double MR = UnR/chat;
-				double KLR = sqrt(0.5*(uL*uL+vL*vL+wL*wL+uR*uR+vR*vR+wR*wR));
-				double MLP = 0.5*(ML+abs(ML));
-				if( abs(ML) < 1.0 ) {
-					MLP = 0.25*(ML + 1.0)*(ML + 1.0);
-				}
-				double MRM = 0.5*(MR-abs(MR));
-				if( abs(MR) < 1.0 ) {
-					MRM = -0.25*(MR - 1.0)*(MR - 1.0);
-				}
-				double preP = 0.5*(1.0 + ( ML>0.0 ? 1.0 : -1.0 ) );
-				if( abs(ML) < 1.0 ) {
-					preP = 0.25*(ML+1.0)*(ML+1.0)*(2.0-ML);
-				} 
-				double preM = 0.5*(1.0 - ( MR>0.0 ? 1.0 : -1.0 ) );
-				if( abs(MR) < 1.0 ) {
-					preM = 0.25*(MR-1.0)*(MR-1.0)*(2.0+MR);
-				} 
-				
-				double Mbar = ( rhoL*abs(ML)+rhoR*abs(MR) ) / ( rhoL + rhoR );
-
-				// SLAU
-				double Mcy = min(1.0,KLR/chat);
-				double phi_c = (1.0-Mcy)*(1.0-Mcy);
-				double g_c = 1.0 + max( min(ML,0.0), -1.0 )*min( max(MR,0.0), 1.0 );
-				double D_L = ML+(1.0-g_c)*abs(ML);
-				double D_R = MR-(1.0-g_c)*abs(MR);
-				double D_rho = Mbar*g_c;
-				double MLPL = 0.5*(D_L+D_rho);
-				double MRMR = 0.5*(D_R-D_rho);
-
-				double mdot = rhoL*chat*MLPL + rhoR*chat*MRMR - 0.5*phi_c/chat*(pR-pL);
-
-				double f1L = mdot;
-				double f1R = 0.0;
-				if( mdot < 0.0 ) {
-					f1L = 0.0; f1R = mdot;
-				}
-
-				double PLR = 0.5*(pL+pR) - 
-							 0.5*Mcy*preP*preM*0.5*(pL+pR)/chat*(UnR-UnL) + 
-							 Mcy*0.5*(pL+pR)*(preP+preM-1.0) - 
-							 0.5*(preP-preM)*(pR-pL);
-				double area = var.faces[i][id_area];
-				
-				double flux[nEq];
-				flux[0] = (f1L+f1R)*area;
-				flux[1] = (f1L*uL + f1R*uR + PLR*nvec[0])*area;
-				flux[2] = (f1L*vL + f1R*vR + PLR*nvec[1])*area;
-				flux[3] = (f1L*wL + f1R*wR + PLR*nvec[2])*area;
-				flux[4] = (f1L*HtL+ f1R*HtR)*area;
+			// 추가적인 변수들
+			for(int iSol=0; iSol<calcAddSolSize; ++iSol){
+				calcAddSolPtr[iSol](faceVar[i].data());
+			}
 			
-				for(int j=0; j<nEq; ++j){
-					var.tmp_B[iL*nEq+j] -= (flux[j]);
+			
+		}
+		controls.log.pop();
+	}
+	
+	{
+		controls.log.push("calc10");
+		// 리니어 시스템 초기화
+		var.clearLinearSystems();
+		controls.log.pop();
+		
+	}
+	{
+		controls.log.push("calc11");
+		// 컨벡티브 + 디퓨젼 풀기
+		int nEq = controls.nEq;
+		double fluxA[nEq*nEq];
+		double fluxB[nEq];
+		auto cellVar = var.cells.data();
+		auto faceVar = var.faces.data();
+		auto fieldVar = var.fields.data();
+		auto procRightCellVar = var.procRightCells.data();
+		for(int i=0, SIZE=mesh.nInternalFaces; i<SIZE; ++i){
+			auto& face = mesh.faces[i];
+			int iL = face.iL;
+			int iR = face.iR;
+			
+			// 컨벡티브 텀
+			for(auto& sol : solver.calcConvFlux){
+				sol(cellVar[iL].data(), cellVar[iR].data(), 
+					faceVar[i].data(), fluxA, fluxB);
+			}
+			
+			if(checkImplicitConvFlux[0]==true){
+				// A sparse matrix 에 넣기
+			}
+			
+			for(int iEq=0; iEq<nEq; ++iEq){
+				var.accumB( iL, iEq, +fluxB[iEq] );
+				var.accumB( iR, iEq, -fluxB[iEq] );
+				// var.Bvalues[nEq*iL+iEq] += (+fluxB[iEq]);
+				// var.Bvalues[nEq*iR+iEq] += (-fluxB[iEq]);
+			}
+		}
+		for(int i=0, ip=0, SIZE=mesh.boundaries.size(); i<SIZE; ++i){
+			auto& boundary = mesh.boundaries[i];
+			int str = boundary.startFace;
+			int end = str + boundary.nFaces;
+			// double* cellVar_iR;
+			if(boundary.getType() == MASCH_Face_Types::BOUNDARY){
+				for(int i=str; i<end; ++i){
+					auto& face = mesh.faces[i];
+					int iL = face.iL;
+					
+					// 컨벡티브 텀
+					for(auto& sol : solver.calcConvFlux){
+						sol(cellVar[iL].data(), nullptr, 
+							faceVar[i].data(), fluxA, fluxB);
+					}
+								
+					if(checkImplicitConvFlux[0]==true){
+						// A sparse matrix 에 넣기
+					}
+					
+					for(int iEq=0; iEq<nEq; ++iEq){
+						var.accumB( iL, iEq, +fluxB[iEq] );
+						// var.Bvalues[nEq*iL+iEq] += (+fluxB[iEq]);
+					}
 				}
-				if(face.getType()==MASCH_Face_Types::INTERNAL){
-					for(int j=0; j<nEq; ++j){
-						var.tmp_B[iR*nEq+j] += (flux[j]);
+			}
+			else if(boundary.getType() == MASCH_Face_Types::PROCESSOR){
+				for(int i=str; i<end; ++i){
+					auto& face = mesh.faces[i];
+					int iL = face.iL;
+					
+					// 컨벡티브 텀
+					for(auto& sol : solver.calcConvFlux){
+						sol(cellVar[iL].data(), procRightCellVar[ip++].data(), 
+							faceVar[i].data(), fluxA, fluxB);
+					}
+								
+					if(checkImplicitConvFlux[0]==true){
+						// A sparse matrix 에 넣기
+					}
+					
+					for(int iEq=0; iEq<nEq; ++iEq){
+						var.accumB( iL, iEq, +fluxB[iEq] );
+						// var.Bvalues[nEq*iL+iEq] += (+fluxB[iEq]);
 					}
 				}
 			}
 		}
-		
+		controls.log.pop();
 	}
 	
 	
 	{
-		controls.log.pop();
 		controls.log.push("calc12");
+		// 시간텀
+		int nEq = controls.nEq;
+		double fluxA[nEq*nEq];
+		double fluxB[nEq];
+		auto cellVar = var.cells.data();
+		auto faceVar = var.faces.data();
+		auto fieldVar = var.fields.data();
+		auto procRightCellVar = var.procRightCells.data();
+		for(int i=0; i<mesh.cells.size(); ++i){
+			auto cellVar_i = cellVar[i].data();
+			for(auto item : solver.calcTemporal){
+				item(cellVar_i, fieldVar, fluxA, fluxB);
+			}
+			for(int iEq=0; iEq<nEq; ++iEq){
+				for(int jEq=0; jEq<nEq; ++jEq){
+					var.accumSparD( i, iEq, jEq, fluxA[iEq*nEq+jEq] );
+				}
+				var.accumB( i, iEq, fluxB[iEq] );
+			}
+		}
+		controls.log.pop();
+	}
 		
-		int id_dt = controls.getId_fieldVar("time-step");
+		
+	{
+		controls.log.push("calc14");
+		int nEq = controls.nEq;
+		int nSp = controls.nSp;
+		double fluxA[nEq*nEq];
+		double fluxB[nEq];
+		auto cellVar = var.cells.data();
+		auto faceVar = var.faces.data();
+		auto fieldVar = var.fields.data();
+		auto procRightCellVar = var.procRightCells.data();
+		int id_resi = controls.fieldVar["residual"].id;
 		int id_vol = controls.getId_cellVar("volume");
 		int id_p = controls.getId_cellVar("pressure");
 		int id_u = controls.getId_cellVar("x-velocity");
 		int id_v = controls.getId_cellVar("y-velocity");
 		int id_w = controls.getId_cellVar("z-velocity");
 		int id_T = controls.getId_cellVar("temperature");
-		int id_c = controls.getId_cellVar("speed of sound");
-		int id_rho = controls.getId_cellVar("density");
-		int id_Ht = controls.getId_cellVar("total enthalpy");
-		int id_drhodp = controls.getId_cellVar("density diff with pressure");
-		int id_drhodT = controls.getId_cellVar("density diff with temperature");
-		int id_dHtdp = controls.getId_cellVar("total enthalpy diff with pressure");
-		int id_dHtdT = controls.getId_cellVar("total enthalpy diff with temperature");
+		int id_Y[2];
+		for(int i=0; i<nSp; ++i){
+			string tmp_name = controls.cellVar["mass-fraction"].sub_name[i];
+			id_Y[i] = controls.getId_cellVar("mass-fraction-"+tmp_name);
+		}
 		
-		int nEq = controls.nEq;
-		
-		double dt = var.fields[id_dt];
-		int id_resi = controls.fieldVar["residual"].id;
-		
+		fieldVar[id_resi] = 0.0;
 		double tmp_volume = 0.0;
-		
-		auto cellVar = var.cells.data();
-		auto faceVar = var.faces.data();
-		auto fieldVar = var.fields.data();
-		auto procRightCellVar = var.procRightCells.data();
-		
-		controls.log.pop();
-		controls.log.push("calc13");
 		for(int i=0; i<mesh.cells.size(); ++i){
-			
 			double volume = var.cells[i][id_vol];
 			auto cellVar_i = cellVar[i].data();
 			
 			vector<vector<double>> matA(nEq,vector<double>(nEq,0.0));
 			
-			matA[0][0] = cellVar_i[id_drhodp] * volume / dt;
-			matA[0][4] = cellVar_i[id_drhodT] * volume / dt;
-			
-			matA[1][0] = cellVar_i[id_drhodp]*cellVar_i[id_u] * volume / dt;
-			matA[1][1] = cellVar_i[id_rho] * volume / dt;
-			matA[1][4] = cellVar_i[id_drhodT]*cellVar_i[id_u] * volume / dt;
-			
-			matA[2][0] = cellVar_i[id_drhodp]*cellVar_i[id_v] * volume / dt;
-			matA[2][2] = cellVar_i[id_rho] * volume / dt;
-			matA[2][4] = cellVar_i[id_drhodT]*cellVar_i[id_v] * volume / dt;
-			
-			matA[3][0] = cellVar_i[id_drhodp]*cellVar_i[id_w] * volume / dt;
-			matA[3][3] = cellVar_i[id_rho] * volume / dt;
-			matA[3][4] = cellVar_i[id_drhodT]*cellVar_i[id_w] * volume / dt;
-			
-			matA[4][0] = (cellVar_i[id_drhodp]*cellVar_i[id_Ht]+
-							cellVar_i[id_rho]*cellVar_i[id_dHtdp]-1.0) * volume / dt;
-			matA[4][1] = cellVar_i[id_rho]*cellVar_i[id_u] * volume / dt;
-			matA[4][2] = cellVar_i[id_rho]*cellVar_i[id_v] * volume / dt;
-			matA[4][3] = cellVar_i[id_rho]*cellVar_i[id_w] * volume / dt;
-			matA[4][4] = (cellVar_i[id_drhodT]*cellVar_i[id_Ht]+
-							cellVar_i[id_rho]*cellVar_i[id_dHtdT]) * volume / dt;
-				
-			// math.GaussSeidel(matA.data(), nEq);
-			math.GaussSeidelSOR(matA);
-			// math.GaussSeidel(A.data(), B.data(), X.data(), nEq);
-			
-			
-			for(int jEq=0; jEq<nEq; ++jEq){
-				double tmp_val = 0.0;
-				for(int iEq=0; iEq<nEq; ++iEq){
-					// tmp_val += A[nEq*jEq+iEq]*var.tmp_B[nEq*i+iEq];
-					tmp_val += matA[jEq][iEq]*var.tmp_B[nEq*i+iEq];
+			for(int iEq=0; iEq<nEq; ++iEq){
+				for(int jEq=0; jEq<nEq; ++jEq){
+					matA[iEq][jEq] = var.getSparD(i, iEq, jEq);
 				}
-				var.tmp_X[nEq*i+jEq] = tmp_val;
-				
 			}
 			
-			// vector<double> matA(nEq*nEq);
+			math.GaussSeidelSOR(matA);
 			
-			// matA[0*nEq+0] = cellVar_i[id_drhodp] * volume / dt;
-			// matA[0*nEq+4] = cellVar_i[id_drhodT] * volume / dt;
+			for(int iEq=0; iEq<nEq; ++iEq){
+				double tmp_val = 0.0;
+				for(int jEq=0; jEq<nEq; ++jEq){
+					// tmp_val += matA[iEq][jEq]*var.Bvalues[nEq*i+jEq];
+					// tmp_val += matA[iEq][jEq]*var.Bvalues[mesh.cells.size()*jEq+i];
+					tmp_val += matA[iEq][jEq]*var.getB(i, jEq);
+				}
+				var.Xvalues[nEq*i+iEq] = tmp_val;
+			}
+			cellVar_i[id_p] += var.Xvalues[nEq*i+0];
+			cellVar_i[id_u] += var.Xvalues[nEq*i+1];
+			cellVar_i[id_v] += var.Xvalues[nEq*i+2];
+			cellVar_i[id_w] += var.Xvalues[nEq*i+3];
+			cellVar_i[id_T] += var.Xvalues[nEq*i+4];
+			cellVar_i[id_Y[0]] += var.Xvalues[nEq*i+5];
 			
-			// matA[1*nEq+0] = cellVar_i[id_drhodp]*cellVar_i[id_u] * volume / dt;
-			// matA[1*nEq+1] = cellVar_i[id_rho] * volume / dt;
-			// matA[1*nEq+4] = cellVar_i[id_drhodT]*cellVar_i[id_u] * volume / dt;
+			// if(cellVar_i[id_p]<1000.0) cellVar_i[id_p]=1000.0;
+			// if(cellVar_i[id_T]<100.0) cellVar_i[id_T]=100.0;
+			// if(cellVar_i[id_T]>800.0) cellVar_i[id_T]=800.0;
 			
-			// matA[2*nEq+0] = cellVar_i[id_drhodp]*cellVar_i[id_v] * volume / dt;
-			// matA[2*nEq+2] = cellVar_i[id_rho] * volume / dt;
-			// matA[2*nEq+4] = cellVar_i[id_drhodT]*cellVar_i[id_v] * volume / dt;
-			
-			// matA[3*nEq+0] = cellVar_i[id_drhodp]*cellVar_i[id_w] * volume / dt;
-			// matA[3*nEq+3] = cellVar_i[id_rho] * volume / dt;
-			// matA[3*nEq+4] = cellVar_i[id_drhodT]*cellVar_i[id_w] * volume / dt;
-			
-			// matA[4*nEq+0] = (cellVar_i[id_drhodp]*cellVar_i[id_Ht]+
-							// cellVar_i[id_rho]*cellVar_i[id_dHtdp]-1.0) * volume / dt;
-			// matA[4*nEq+1] = cellVar_i[id_rho]*cellVar_i[id_u] * volume / dt;
-			// matA[4*nEq+2] = cellVar_i[id_rho]*cellVar_i[id_v] * volume / dt;
-			// matA[4*nEq+3] = cellVar_i[id_rho]*cellVar_i[id_w] * volume / dt;
-			// matA[4*nEq+4] = (cellVar_i[id_drhodT]*cellVar_i[id_Ht]+
-							// cellVar_i[id_rho]*cellVar_i[id_dHtdT]) * volume / dt;
-				
-			// math.GaussSeidel(matA.data(), nEq);
-			
-			// for(int jEq=0; jEq<nEq; ++jEq){
-				// double tmp_val = 0.0;
-				// for(int iEq=0; iEq<nEq; ++iEq){
-					// // tmp_val += A[nEq*jEq+iEq]*var.tmp_B[nEq*i+iEq];
-					// tmp_val += matA[jEq*nEq+iEq]*var.tmp_B[nEq*i+iEq];
-				// }
-				// var.tmp_X[nEq*i+jEq] = tmp_val;
-				
-			// }
-			
-			cellVar_i[id_p] += var.tmp_X[nEq*i+0];
-			cellVar_i[id_u] += var.tmp_X[nEq*i+1];
-			cellVar_i[id_v] += var.tmp_X[nEq*i+2];
-			cellVar_i[id_w] += var.tmp_X[nEq*i+3];
-			cellVar_i[id_T] += var.tmp_X[nEq*i+4];
+			cellVar_i[id_Y[0]] = max(0.0,min(1.0,cellVar_i[id_Y[0]]));
+			cellVar_i[id_Y[1]] = 1.0-cellVar_i[id_Y[0]];
 			
 			for(int jEq=0; jEq<nEq; ++jEq){
-				double tmp_resi = var.tmp_X[nEq*i+jEq]*volume;
+				double tmp_resi = var.Xvalues[nEq*i+jEq]*volume;
 				fieldVar[id_resi] += tmp_resi*tmp_resi;
 				tmp_volume += volume;
 			}
 		}
-		controls.log.pop();
-		controls.log.push("calc14");
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		if(size>1){
 			vector<double> tmp_send(2,0.0);
 			tmp_send[0] = (var.fields[id_resi]);
@@ -556,23 +402,12 @@ void MASCH_Solver::fvm_inline(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_V
 	}
 	
 	
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	
 	

@@ -1,4 +1,4 @@
-air{
+water{
 	type = fixedValue;
-	value = 1.0;
+	value = 0.0;
 }

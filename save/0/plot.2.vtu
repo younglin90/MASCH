@@ -25,20 +25,17 @@ AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAASwAAAAAAAAA=eJztxTENAAAIA7A5w78bJCyY4GqfJmcntm3b
      <DataArray type="Float64" Name="temperature" format="binary">
 AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAAUwAAAAAAAAA=eJztxSEBADAIADBLknsSUIgCdHoxWrzF1WY2ezJu19i2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bdu2bX/6AVaV8tM=
      </DataArray>
-     <DataArray type="Float64" Name="x-velocity" format="binary">
-AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAATAAAAAAAAAA=eJztxTENAAAIAzADiMJ/mCeCCa72aeZUx7Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt27Zt++kF1h8fIA==
-     </DataArray>
-     <DataArray type="Float64" Name="y-velocity" format="binary">
-AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAANQAAAAAAAAA=eJztwTEBAAAAwqD1T20LL6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+BnlgAAE=
-     </DataArray>
-     <DataArray type="Float64" Name="z-velocity" format="binary">
-AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAANQAAAAAAAAA=eJztwTEBAAAAwqD1T20LL6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+BnlgAAE=
-     </DataArray>
-     <DataArray type="Float64" Name="speed of sound" format="binary">
+     <DataArray type="Float64" Name="mass-fraction-water" format="binary">
 AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAANQAAAAAAAAA=eJztwTEBAAAAwqD1T20LL6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+BnlgAAE=
      </DataArray>
      <DataArray type="Float64" Name="density" format="binary">
 AQAAAAAAAABgeQAAAAAAAGB5AAAAAAAANQAAAAAAAAA=eJztwTEBAAAAwqD1T20LL6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC+BnlgAAE=
+     </DataArray>
+     <DataArray type="Float64" Name="velocity" NumberOfComponents="3" format="binary">
+AQAAAAAAAAAgbAEAAAAAACBsAQAAAAAAAwEAAAAAAAA=eJztyKENADAIALAdwFH7P/ATwSLRrWzliP+W8t5777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++9995777333nvvvffee++996dv8fMfIA==
+     </DataArray>
+     <DataArray type="Float64" Name="gradient pressure" NumberOfComponents="3" format="binary">
+AQAAAAAAAAAgbAEAAAAAACBsAQAAAAAAcQAAAAAAAAA=eJztwTEBAAAAwqD1T20JT6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4GmwvAAE=
      </DataArray>
     </CellData>
     <Points>
@@ -73,13 +70,13 @@ AQAAAAAAAABcdwAAAAAAAFx3AAAAAAAArBUAAAAAAAA=eJwt3fMf2GXbBuBntm3bRqtZzbZt1Lyabbaa
 
  </DataArray>
  <DataArray type="Char" Name="bcName" format="ascii">
-invwall outlet supinlet viswall procBoundary2to3 
+invwall supinlet supoutlet viswall procBoundary2to3 
  </DataArray>
  <DataArray type="Int32" Name="bcStartFace" format="ascii">
-7639 15407 15407 15485 15602 
+7639 15407 15485 15485 15602 
  </DataArray>
  <DataArray type="Int32" Name="bcNFaces" format="ascii">
-7768 0 78 117 63 
+7768 78 0 117 63 
  </DataArray>
  <DataArray type="Int32" Name="bcNeighbProcNo" format="ascii">
 -1 -1 -1 -1 3 

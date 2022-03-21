@@ -39,7 +39,7 @@ public:
 	int level;
 	double x, y, z;
 	
-	vector<double> var;
+	// vector<double> var;
 	
 	vector<int> istencil;
 	
@@ -59,7 +59,7 @@ private:
 	
 public:
 	MASCH_Face(){
-		unitNormals.resize(3,0.0);
+		// unitNormals.resize(3,0.0);
 		level=0;
 		iR=0;
 		// thereR = false;
@@ -74,19 +74,19 @@ public:
 
 	int level;
 	int group;
-	vector<double> areaNormals;
-	vector<double> unitNormals;
-	double area;
-	double wL;
-	double distLR;
-	double alpha;
-	vector<double> vecLF;
-	vector<double> vecRF;
-	vector<double> vecLR;
-	vector<double> unitNomalsLR;
-	vector<double> vecSkewness;
-	vector<double> vecLdL;
-	vector<double> vecRdR;
+	// vector<double> areaNormals;
+	// vector<double> unitNormals;
+	// double area;
+	// double wL;
+	// double distLR;
+	// double alpha;
+	// vector<double> vecLF;
+	// vector<double> vecRF;
+	// vector<double> vecLR;
+	// vector<double> unitNomalsLR;
+	// vector<double> vecSkewness;
+	// vector<double> vecLdL;
+	// vector<double> vecRdR;
 	
 	
 	void setL(MASCH_Cell* inp){
@@ -114,9 +114,9 @@ public:
 	vector<int> ipoints;
 	double x, y, z;
 	
-	vector<double> values;
+	// vector<double> values;
 	
-	vector<int> istencils;
+	// vector<int> istencils;
 		
 		
 };
@@ -150,13 +150,14 @@ public:
 	int group;
 	vector<int> ipoints;
 	vector<int> ifaces;
+	vector<int> iparcels;
 	
 	double x, y, z;
 	double volume;
 	
 	vector<int> iStencils;
 	vector<int> recv_iStencils;
-	vector<double> vars;
+	// vector<double> vars;
 	
 	int RCM;
 	int invRCM;
@@ -186,13 +187,47 @@ public:
 	// bool thereR;
 	string name;
 	vector<string> types;
-	vector<double> values;
+	// vector<double> values;
 	int nFaces;
 	int startFace;
 	int myProcNo;
 	int rightProcNo = -1;
 };
 
+
+
+enum class MASCH_Parcel_Types{
+	INSIDE,
+	WALL,
+	OUTSIDE,
+	ESCAPE,
+	REFLECT,
+	TO_BE_FORCE_EVAPORATION,
+	TO_INTER_RIGHT,
+	TO_PROCS_RIGHT,
+	TO_BE_DELETE,
+	NONE
+	// interior, reflect, escape, wall-jet
+};
+
+
+class MASCH_Parcel{
+private:
+	MASCH_Parcel_Types type_;
+
+public:
+	MASCH_Parcel() {}
+	
+	void setType(MASCH_Parcel_Types in){
+		type_ = in;
+	}
+	MASCH_Parcel_Types& getType(){
+		return type_;
+	}
+	// MASCH_Parcel_Types type;
+	// int iproc;
+	int icell;
+};
 
 
 
@@ -216,6 +251,10 @@ public:
 		boundaries.push_back(MASCH_Boundary());
 		return *this;
 	}
+	MASCH_Mesh& addParcel(){
+		parcels.push_back(MASCH_Parcel());
+		return *this;
+	}
 	
 	MASCH_Point& point(int inp){
 		return points[inp];
@@ -228,6 +267,9 @@ public:
 	}
 	MASCH_Boundary& boundary(int inp){
 		return boundaries[inp];
+	}
+	MASCH_Parcel& parcel(int inp){
+		return parcels[inp];
 	}
 	
 	
@@ -257,6 +299,7 @@ public:
 	vector<MASCH_Face> faces;
 	vector<MASCH_Cell> cells;
 	vector<MASCH_Boundary> boundaries;
+	vector<MASCH_Parcel> parcels;
 	
 	// 페이스 갯수 관련
 	int nInternalFaces;

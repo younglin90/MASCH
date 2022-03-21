@@ -1,7 +1,8 @@
 #pragma once
+#include <iomanip>
 #include <vector>
 #include <chrono>
-#include <filesystem>
+// #include <filesystem>
 #include <stack>
 #include <cstring>
 using namespace std;
@@ -37,7 +38,8 @@ private:
 	int levelNow = 0;
 	vector<string> logCalcName;
 	vector<string> logCalcFront;
-	vector<chrono::microseconds> logCalcTime;
+	// vector<chrono::microseconds> logCalcTime;
+	vector<chrono::milliseconds> logCalcTime;
 	// MASCH_MPI mpi;
 public:
 	MASCH_TimeSystem& push(string inp_name);
@@ -45,7 +47,8 @@ public:
 	void show();
 	void clear();
 
-	chrono::microseconds showCalcTime();
+	// chrono::microseconds showCalcTime();
+	chrono::milliseconds showCalcTime();
 	
 	string now();
 

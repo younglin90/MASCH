@@ -4,7 +4,7 @@
 /*
 The MIT License
 
-Copyright (c) 2012-2021 Denis Demidov <dennis.demidov@gmail.com>
+Copyright (c) 2012-2022 Denis Demidov <dennis.demidov@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,9 @@ THE SOFTWARE.
 
 #include <memory>
 
-#include <amgcl/backend/builtin.hpp>
 #include <amgcl/util.hpp>
+#include <amgcl/backend/builtin.hpp>
+#include <amgcl/backend/detail/mixing.hpp>
 #include <amgcl/mpi/inner_product.hpp>
 #include <amgcl/mpi/distributed_matrix.hpp>
 
@@ -54,9 +55,15 @@ class schur_pressure_correction {
             );
 
     public:
-        typedef typename USolver::backend_type backend_type;
+        typedef
+            typename backend::detail::common_scalar_backend<
+                typename USolver::backend_type,
+                typename PSolver::backend_type
+                >::type
+            backend_type;
 
         typedef typename backend_type::value_type value_type;
+        typedef typename math::scalar_of<value_type>::type scalar_type;
         typedef typename backend_type::matrix     bmatrix;
         typedef typename backend_type::vector     vector;
         typedef typename backend_type::params     backend_params;
@@ -74,18 +81,36 @@ class schur_pressure_correction {
 
             std::vector<char> pmask;
 
+            // Variant of block preconditioner to use in apply()
+            // 1: schur pressure correction:
+            //      S p = fp - Kpu Kuu^-1 fu
+            //      Kuu u = fu - Kup p
+            // 2: Block triangular:
+            //      S p = fp
+            //      Kuu u = fu - Kup p
+            int type;
+
             // Approximate Kuu^-1 with inverted diagonal of Kuu during
             // construction of matrix-less Schur complement.
             // When false, USolver is used instead.
             bool approx_schur;
 
-            params() : approx_schur(true) {}
+            // Use 1/sum_j(abs(Kuu_{i,j})) instead of dia(Kuu)^-1
+            // as approximation for the Kuu^-1 (as in SIMPLEC algorithm)
+            bool simplec_dia;
+
+            int verbose;
+
+            params() : type(1), approx_schur(false), simplec_dia(true), verbose(0) {}
 
 #ifndef AMGCL_NO_BOOST
             params(const boost::property_tree::ptree &p)
                 : AMGCL_PARAMS_IMPORT_CHILD(p, usolver),
                   AMGCL_PARAMS_IMPORT_CHILD(p, psolver),
-                  AMGCL_PARAMS_IMPORT_VALUE(p, approx_schur)
+                  AMGCL_PARAMS_IMPORT_VALUE(p, type),
+                  AMGCL_PARAMS_IMPORT_VALUE(p, approx_schur),
+                  AMGCL_PARAMS_IMPORT_VALUE(p, simplec_dia),
+                  AMGCL_PARAMS_IMPORT_VALUE(p, verbose)
             {
                 size_t n = 0;
 
@@ -133,7 +158,10 @@ class schur_pressure_correction {
                             );
                 }
 
-                check_params(p, {"usolver", "psolver", "approx_schur", "pmask_size"},
+                check_params(p, {
+                        "usolver", "psolver", "type", "approx_schur",
+                        "simplec_dia", "pmask_size", "verbose"
+                        },
                         {"pmask", "pmask_pattern"});
             }
 
@@ -141,7 +169,10 @@ class schur_pressure_correction {
             {
                 AMGCL_PARAMS_EXPORT_CHILD(p, path, usolver);
                 AMGCL_PARAMS_EXPORT_CHILD(p, path, psolver);
+                AMGCL_PARAMS_EXPORT_VALUE(p, path, type);
                 AMGCL_PARAMS_EXPORT_VALUE(p, path, approx_schur);
+                AMGCL_PARAMS_EXPORT_VALUE(p, path, simplec_dia);
+                AMGCL_PARAMS_EXPORT_VALUE(p, path, verbose);
             }
 #endif
         } prm;
@@ -407,24 +438,28 @@ class schur_pressure_correction {
             tmp = backend_type::create_vector(nu, bprm);
 
             if (prm.approx_schur) {
-                AMGCL_TIC("approx_schur");
-                auto m = std::make_shared<backend::numa_vector<value_type>>(nu, false);
+                std::shared_ptr<backend::numa_vector<value_type>> Kuu_dia;
+                AMGCL_TIC("Kuu diagonal");
+                if (prm.simplec_dia) {
+                    Kuu_dia = std::make_shared<backend::numa_vector<value_type>>(nu, false);
 #pragma omp parallel
-                for(ptrdiff_t i = 0; i < nu; ++i) {
-                    value_type v = math::zero<value_type>();
-                    for(ptrdiff_t j = Kuu_loc->ptr[i], e = Kuu_loc->ptr[i+1]; j < e; ++j) {
-                        if (Kuu_loc->col[j] == i) {
-                            v = math::inverse(Kuu_loc->val[j]);
-                            break;
+                    for(ptrdiff_t i = 0; i < nu; ++i) {
+                        value_type s = math::zero<value_type>();
+                        for(ptrdiff_t j = Kuu_loc->ptr[i], e = Kuu_loc->ptr[i+1]; j < e; ++j) {
+                            s += math::norm(Kuu_loc->val[j]);
                         }
+                        for(ptrdiff_t j = Kuu_rem->ptr[i], e = Kuu_rem->ptr[i+1]; j < e; ++j) {
+                            s += math::norm(Kuu_rem->val[j]);
+                        }
+                        (*Kuu_dia)[i] = math::inverse(s);
                     }
-                    (*m)[i] = v;
+                } else {
+                    Kuu_dia = diagonal(*Kuu_loc, /*invert = */true);
                 }
 
-                M = backend_type::copy_vector(m, bprm);
-                AMGCL_TOC("approx_schur");
+                M = backend_type::copy_vector(Kuu_dia, bprm);
+                AMGCL_TOC("Kuu diagonal");
             }
-            AMGCL_TOC("other");
 
             // Scatter/Gather matrices
             AMGCL_TIC("scatter/gather");
@@ -509,55 +544,77 @@ class schur_pressure_correction {
 
         template <class Vec1, class Vec2>
         void apply(const Vec1 &rhs, Vec2 &&x) const {
+            const auto one = math::identity<scalar_type>();
+            const auto zero = math::zero<scalar_type>();
+
             AMGCL_TIC("split variables");
-            backend::spmv(1, *x2u, rhs, 0, *rhs_u);
-            backend::spmv(1, *x2p, rhs, 0, *rhs_p);
+            backend::spmv(one, *x2u, rhs, zero, *rhs_u);
+            backend::spmv(one, *x2p, rhs, zero, *rhs_p);
             AMGCL_TOC("split variables");
 
-            // Ai u = rhs_u
-            AMGCL_TIC("solve U");
-            backend::clear(*u);
-            report("U1", (*U)(*rhs_u, *u));
-            AMGCL_TOC("solve U");
+            if (prm.type == 1) {
+                // Ai u = rhs_u
+                AMGCL_TIC("solve U");
+                backend::clear(*u);
+                report("U1", (*U)(*rhs_u, *u));
+                AMGCL_TOC("solve U");
 
-            // rhs_p -= Kpu u
-            AMGCL_TIC("solve P");
-            backend::spmv(-1, *Kpu, *u, 1, *rhs_p);
+                // rhs_p -= Kpu u
+                AMGCL_TIC("solve P");
+                backend::spmv(-one, *Kpu, *u, one, *rhs_p);
 
-            // S p = rhs_p
-            backend::clear(*p);
-            report("P", (*P)(*this, *rhs_p, *p));
-            AMGCL_TOC("solve P");
+                // S p = rhs_p
+                backend::clear(*p);
+                report("P", (*P)(*this, *rhs_p, *p));
+                AMGCL_TOC("solve P");
 
-            // rhs_u -= Kup p
-            AMGCL_TIC("Update U");
-            backend::spmv(-1, *Kup, *p, 1, *rhs_u);
+                // rhs_u -= Kup p
+                AMGCL_TIC("Update U");
+                backend::spmv(-one, *Kup, *p, one, *rhs_u);
 
-            // Ai u = rhs_u
-            backend::clear(*u);
-            report("U2", (*U)(*rhs_u, *u));
-            AMGCL_TOC("Update U");
+                // Ai u = rhs_u
+                backend::clear(*u);
+                report("U2", (*U)(*rhs_u, *u));
+                AMGCL_TOC("Update U");
+            } else if (prm.type == 2) {
+                // S p = rhs_p
+                AMGCL_TIC("solve P");
+                backend::clear(*p);
+                report("P", (*P)(*this, *rhs_p, *p));
+                AMGCL_TOC("solve P");
+
+                // Ai u = fu - Kup p
+                AMGCL_TIC("solve U");
+                backend::spmv(-one, *Kup, *p, one, *rhs_u);
+                backend::clear(*u);
+                report("U", (*U)(*rhs_u, *u));
+                AMGCL_TOC("solve U");
+            }
 
             AMGCL_TIC("merge variables");
-            backend::spmv(1, *u2x, *u, 0, x);
-            backend::spmv(1, *p2x, *p, 1, x);
+            backend::spmv(one, *u2x, *u, zero, x);
+            backend::spmv(one, *p2x, *p, one, x);
             AMGCL_TOC("merge variables");
         }
 
         template <class Alpha, class Vec1, class Beta, class Vec2>
         void spmv(Alpha alpha, const Vec1 &x, Beta beta, Vec2 &y) const {
+            const auto one = math::identity<scalar_type>();
+            const auto zero = math::zero<scalar_type>();
+
             // y = beta y + alpha S x, where S = Kpp - Kpu Kuu^-1 Kup
             AMGCL_TIC("matrix-free spmv");
             backend::spmv(alpha, P->system_matrix(), x, beta, y);
 
-            backend::spmv(1, *Kup, x, 0, *tmp);
+            backend::spmv(one, *Kup, x, zero, *tmp);
+
             if (prm.approx_schur) {
-                backend::vmul(1, *M, *tmp, 0, *u);
+                backend::vmul(one, *M, *tmp, zero, *u);
             } else {
                 backend::clear(*u);
                 (*U)(*tmp, *u);
             }
-            backend::spmv(-alpha, *Kpu, *u, 1, y);
+            backend::spmv(-alpha, *Kpu, *u, one, y);
             AMGCL_TOC("matrix-free spmv");
         }
     private:
@@ -575,8 +632,9 @@ class schur_pressure_correction {
 #ifdef AMGCL_DEBUG
         template <typename I, typename E>
         void report(const std::string &name, const std::tuple<I, E> &c) const {
-            if (comm.rank == 0)
+            if (comm.rank == 0 && prm.report >= 1) {
                 std::cout << name << " (" << std::get<0>(c) << ", " << std::get<1>(c) << ")\n";
+            }
         }
 #else
         template <typename I, typename E>

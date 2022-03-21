@@ -2099,6 +2099,7 @@ vector<int>& to_new_cell_id
 	mesh.setFaceLevels();
 	mesh.setCellStencils();
 	mesh.setNumberOfFaces();
+	mesh.cellsGlobal();
 	
 	//************************************
 

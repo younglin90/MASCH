@@ -1,10 +1,12 @@
 CCOMPLR = mpiicpc
 
-CFLAGS = -std=c++17 -c
+CFLAGS = -std=c++17 -c -fPIC
 # CFLAGS = -std=c++17 -c -O3 -fPIC -xCORE-AVX512 -ipo -no-prec-div
-# CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math -hfp4 -ipo -no-prec-div
+# CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math -hfp4 -ipo -no-prec-div 
 
-EXE = SEMO
+SHELL = /bin/bash
+sp    = /-\|/
+idx		=	0
 
 LIBINCLUDE = \
              -Ilib/zlib\
@@ -88,6 +90,7 @@ SOURCES_LOAD = \
   src/others/load.cpp\
   src/others/load_settingFiles.cpp\
   src/others/load_vtuFiles.cpp\
+  src/others/load_prim_vtuFiles.cpp\
   src/others/load_openFoam.cpp\
 
 OBJECTS = $(SOURCES:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
@@ -170,6 +173,28 @@ SOURCES_CombineMesh = src/test/combineMesh.cpp\
 
 OBJECTS_CombineMesh = $(SOURCES_CombineMesh:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
 
+
+SOURCES_Others = \
+  src/others/variables.cpp\
+  src/others/solvers.cpp\
+  src/others/AMGCL.cpp\
+  src/others/fvm.cpp\
+  src/others/dpm.cpp\
+  src/others/math.cpp\
+  src/others/gradient.cpp\
+  src/others/curvature.cpp\
+  src/others/controls.cpp\
+  src/others/controls_geometric.cpp\
+  src/others/mpi.cpp\
+  src/others/mesh.cpp\
+  src/others/log.cpp\
+  src/others/polyAMR.cpp\
+  src/others/polyAMR_inline.cpp\
+  src/others/polyRefine.cpp\
+  src/others/polyUnrefine.cpp\
+  src/others/repartitioning.cpp\
+  src/others/repartParMETIS.cpp\
+
 # test1
 EXE_MultiComponent = MultiComponent
 
@@ -186,25 +211,134 @@ SOURCES_MultiComponent = \
   src/main/flow/compressible/multicomponent/setTempUDF.cpp\
   src/main/flow/compressible/multicomponent/setVarUDF.cpp\
   src/main/flow/compressible/multicomponent/setTempStepUDF.cpp\
-  src/others/variables.cpp\
-  src/others/solvers.cpp\
-  src/others/fvm.cpp\
-  src/others/fvm_inline.cpp\
-  src/others/math.cpp\
-  src/others/gradient.cpp\
-  src/others/controls.cpp\
-  src/others/controls_geometric.cpp\
-  src/others/mpi.cpp\
-  src/others/mesh.cpp\
-  src/others/log.cpp\
-  src/others/polyAMR.cpp\
-  src/others/polyAMR_inline.cpp\
-  src/others/polyRefine.cpp\
-  src/others/polyUnrefine.cpp\
-  src/others/repartitioning.cpp\
-  src/others/repartParMETIS.cpp\
+  src/main/flow/compressible/multicomponent/setUpdatePrimUDF.cpp\
+  src/main/flow/compressible/multicomponent/setSegEq.cpp\
+  src/main/flow/compressible/multicomponent/setBoundUDF.cpp\
 
-OBJECTS_MultiComponent = $(SOURCES_MultiComponent:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
+OBJECTS_MultiComponent = $(SOURCES_MultiComponent:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
+
+
+EXE_Potential = Potential
+
+SOURCES_Potential = \
+  src/main/flow/potential/potential.cpp\
+  src/main/flow/potential/setAddiUDF.cpp\
+  src/main/flow/potential/setConvUDF.cpp\
+  src/main/flow/potential/setDiffUDF.cpp\
+  src/main/flow/potential/setFaceValUDF.cpp\
+  src/main/flow/potential/setGradUDF.cpp\
+  src/main/flow/potential/setHOUDF.cpp\
+  src/main/flow/potential/setOldVarUDF.cpp\
+  src/main/flow/potential/setSourUDF.cpp\
+  src/main/flow/potential/setTempUDF.cpp\
+  src/main/flow/potential/setVarUDF.cpp\
+  src/main/flow/potential/setTempStepUDF.cpp\
+  src/main/flow/potential/setUpdatePrimUDF.cpp\
+  src/main/flow/potential/setSegEq.cpp\
+  src/main/flow/potential/setBoundUDF.cpp\
+
+EXE_Laplace = Laplace
+
+SOURCES_Laplace = \
+  src/main/pde/laplace/laplace.cpp\
+  src/main/pde/laplace/setAddiUDF.cpp\
+  src/main/pde/laplace/setConvUDF.cpp\
+  src/main/pde/laplace/setDiffUDF.cpp\
+  src/main/pde/laplace/setFaceValUDF.cpp\
+  src/main/pde/laplace/setGradUDF.cpp\
+  src/main/pde/laplace/setHOUDF.cpp\
+  src/main/pde/laplace/setOldVarUDF.cpp\
+  src/main/pde/laplace/setSourUDF.cpp\
+  src/main/pde/laplace/setTempUDF.cpp\
+  src/main/pde/laplace/setVarUDF.cpp\
+  src/main/pde/laplace/setTempStepUDF.cpp\
+  src/main/pde/laplace/setUpdatePrimUDF.cpp\
+  src/main/pde/laplace/setSegEq.cpp\
+  src/main/pde/laplace/setBoundUDF.cpp\
+
+
+OBJECTS_Laplace = $(SOURCES_Laplace:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
+EXE_INCOMP = InComp
+FOLDER_INCOMP = src/main/flow/incompressible
+SOURCES_INCOMP = \
+  $(FOLDER_INCOMP)/main.cpp\
+  $(FOLDER_INCOMP)/setVarUDF.cpp\
+  $(FOLDER_INCOMP)/setSegEq.cpp\
+  $(FOLDER_INCOMP)/setBoundUDF.cpp\
+  $(FOLDER_INCOMP)/setGradUDF.cpp\
+  $(FOLDER_INCOMP)/setAddiUDF.cpp\
+  $(FOLDER_INCOMP)/setHOReconUDF.cpp\
+  $(FOLDER_INCOMP)/setOldVarUDF.cpp\
+  $(FOLDER_INCOMP)/setTimeStepUDF.cpp\
+  $(FOLDER_INCOMP)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_INCOMP)/setTermsFaceLoopUDF.cpp\
+  $(FOLDER_INCOMP)/setUpdatePrimUDF.cpp\
+
+OBJECTS_INCOMP = $(SOURCES_INCOMP:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
+
+EXE_CompCoupledImplicit = CompCoupledImplicit
+FOLDER_CompCoupledImplicit = src/main/flow/compCoupledImplicit
+SOURCES_CompCoupledImplicit = \
+  $(FOLDER_CompCoupledImplicit)/main.cpp\
+  $(FOLDER_CompCoupledImplicit)/setVarUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setSegEq.cpp\
+  $(FOLDER_CompCoupledImplicit)/setBoundUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setGradUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setCurvatureUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setAddiUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setHOReconUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setOldVarUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setTimeStepUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setTermsFaceLoopUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setUpdatePrimUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setDPMUDF.cpp\
+
+OBJECTS_CompCoupledImplicit = $(SOURCES_CompCoupledImplicit:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
+EXE_CompCoupledExplicit = CompCoupledExplicit
+FOLDER_CompCoupledExplicit = src/main/flow/compCoupledExplicit
+SOURCES_CompCoupledExplicit = \
+  $(FOLDER_CompCoupledExplicit)/main.cpp\
+  $(FOLDER_CompCoupledExplicit)/setVarUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setSegEq.cpp\
+  $(FOLDER_CompCoupledExplicit)/setBoundUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setGradUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setCurvatureUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setAddiUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setHOReconUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setOldVarUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setTimeStepUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setTermsFaceLoopUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setUpdatePrimUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setDPMUDF.cpp\
+
+OBJECTS_CompCoupledExplicit = $(SOURCES_CompCoupledExplicit:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
+EXE_CompCoupledExplicitDPM = CompCoupledExplicitDPM
+FOLDER_CompCoupledExplicitDPM = src/main/flow/compCoupledExplicitDPM
+SOURCES_CompCoupledExplicitDPM = \
+  $(FOLDER_CompCoupledExplicitDPM)/main.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setVarUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setSegEq.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setBoundUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setGradUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setCurvatureUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setAddiUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setHOReconUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setOldVarUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setTimeStepUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setTermsFaceLoopUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setUpdatePrimUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setDPMUDF.cpp\
+
+OBJECTS_CompCoupledExplicitDPM = $(SOURCES_CompCoupledExplicitDPM:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
 
 # # potential flow
 # EXE_POTENTIAL = Potential
@@ -372,9 +506,14 @@ COTEXT  = "\033[1;31m Compiling\033[0m\033[1m $< \033[0m"
 
 # all : $(EXE)
 
-EXE_ALL = $(EXE_PARTITION) $(EXE_MultiComponent) 
 
-OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_MultiComponent)
+EXE_ALL = $(EXE_PARTITION) $(EXE_CompCoupledImplicit) $(EXE_CompCoupledExplicit) $(EXE_CompCoupledExplicitDPM) 
+
+OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_CompCoupledImplicit) $(OBJECTS_CompCoupledExplicit) $(OBJECTS_CompCoupledExplicitDPM)
+
+# EXE_ALL = $(EXE_PARTITION) $(EXE_MultiComponent) $(EXE_Potential) 
+
+# OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_MultiComponent) $(OBJECTS_Potential)
 
 #EXE_ALL = $(EXE_CompDensitySingle) $(EXE_PARTITION) $(EXE_test1) $(EXE_CombineMesh)
 
@@ -406,6 +545,30 @@ $(EXE_CombineMesh) : $(OBJECTS_CombineMesh)
 $(EXE_MultiComponent) : $(OBJECTS_MultiComponent)
 	@$(CCOMPLR) -o $@ $(OBJECTS_MultiComponent) $(LIBRARIES)
 	@echo -e "\033[1;31m MultiComponent CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_Potential) : $(OBJECTS_Potential)
+	@$(CCOMPLR) -o $@ $(OBJECTS_Potential) $(LIBRARIES)
+	@echo -e "\033[1;31m Potential CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_Laplace) : $(OBJECTS_Laplace)
+	@$(CCOMPLR) -o $@ $(OBJECTS_Laplace) $(LIBRARIES)
+	@echo -e "\033[1;31m Laplace CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_INCOMP) : $(OBJECTS_INCOMP)
+	@$(CCOMPLR) -o $@ $(OBJECTS_INCOMP) $(LIBRARIES)
+	@echo -e "\033[1;31m InComp CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_CompCoupledImplicit) : $(OBJECTS_CompCoupledImplicit)
+	@$(CCOMPLR) -o $@ $(OBJECTS_CompCoupledImplicit) $(LIBRARIES)
+	@echo -e "\033[1;31m " $(EXE_CompCoupledImplicit) " CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_CompCoupledExplicit) : $(OBJECTS_CompCoupledExplicit)
+	@$(CCOMPLR) -o $@ $(OBJECTS_CompCoupledExplicit) $(LIBRARIES)
+	@echo -e "\033[1;31m " $(EXE_CompCoupledExplicit) " CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_CompCoupledExplicitDPM) : $(OBJECTS_CompCoupledExplicitDPM)
+	@$(CCOMPLR) -o $@ $(OBJECTS_CompCoupledExplicitDPM) $(LIBRARIES)
+	@echo -e "\033[1;31m " $(EXE_CompCoupledExplicitDPM) " CODE compile/link complete \033[0m" | tee -a make.log
 
 ifeq ("x","y")
 $(EXE_CompDensityDual) : $(OBJECTS_CompDensityDual)

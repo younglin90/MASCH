@@ -748,52 +748,52 @@ void MASCH_Mesh::setFaceLevels(){
 
 
 
-void MASCH_TMP_MPI_Alltoallv(vector<vector<int>>& inp_send_value, vector<vector<int>>& recv_value){
+// void MASCH_TMP_MPI_Alltoallv(vector<vector<int>>& inp_send_value, vector<vector<int>>& recv_value){
 
-	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
-	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	// int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
 	
-	// displs.clear();
+	// // displs.clear();
 	
-	vector<int> send_counts(size,0);
-	for(int ip=0; ip<size; ++ip){
-		send_counts[ip] = inp_send_value[ip].size();
-	}
-	vector<int> send_displs(size+1,0);
-	for(int ip=0; ip<size; ++ip) send_displs[ip+1] = send_displs[ip] + send_counts[ip];
+	// vector<int> send_counts(size,0);
+	// for(int ip=0; ip<size; ++ip){
+		// send_counts[ip] = inp_send_value[ip].size();
+	// }
+	// vector<int> send_displs(size+1,0);
+	// for(int ip=0; ip<size; ++ip) send_displs[ip+1] = send_displs[ip] + send_counts[ip];
 	
-	vector<int> recv_counts(size,0);
-    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
-	
-	
-	vector<int> recv_displs(size+1,0);
-	for(int ip=0; ip<size; ++ip) recv_displs[ip+1] = recv_displs[ip] + recv_counts[ip];
+	// vector<int> recv_counts(size,0);
+    // MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, MPI_COMM_WORLD);
 	
 	
-	vector<int> send_value;
-	for(int ip=0; ip<size; ++ip){
-		for(auto& item : inp_send_value[ip]){
-			send_value.push_back(item);
-		}
-	}
+	// vector<int> recv_displs(size+1,0);
+	// for(int ip=0; ip<size; ++ip) recv_displs[ip+1] = recv_displs[ip] + recv_counts[ip];
 	
-	vector<int> tmp_recv_value(recv_displs[size]);
-	MPI_Alltoallv( send_value.data(), send_counts.data(), send_displs.data(), MPI_INT, 
-				   tmp_recv_value.data(), recv_counts.data(), recv_displs.data(), MPI_INT, 
-				   MPI_COMM_WORLD);
+	
+	// vector<int> send_value;
+	// for(int ip=0; ip<size; ++ip){
+		// for(auto& item : inp_send_value[ip]){
+			// send_value.push_back(item);
+		// }
+	// }
+	
+	// vector<int> tmp_recv_value(recv_displs[size]);
+	// MPI_Alltoallv( send_value.data(), send_counts.data(), send_displs.data(), MPI_INT, 
+				   // tmp_recv_value.data(), recv_counts.data(), recv_displs.data(), MPI_INT, 
+				   // MPI_COMM_WORLD);
 				   
-	recv_value.clear();
-	recv_value.resize(size);
-	for(int ip=0; ip<size; ++ip){
-		int str = recv_displs[ip];
-		int end = recv_displs[ip+1];
-		for(int i=str; i<end; ++i){
-			recv_value[ip].push_back(tmp_recv_value[i]);
-		}
-	}
+	// recv_value.clear();
+	// recv_value.resize(size);
+	// for(int ip=0; ip<size; ++ip){
+		// int str = recv_displs[ip];
+		// int end = recv_displs[ip+1];
+		// for(int i=str; i<end; ++i){
+			// recv_value[ip].push_back(tmp_recv_value[i]);
+		// }
+	// }
 
 
-}
+// }
 
 
 
@@ -805,6 +805,7 @@ void MASCH_Mesh::setCellStencils(){
 	int rank = MPI::COMM_WORLD.Get_rank(); 
 	int size = MPI::COMM_WORLD.Get_size(); 
 	
+	MASCH_MPI mpi;
 	
 	vector<vector<int>> pointStencils(mesh.points.size()); 
 	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
@@ -832,6 +833,8 @@ void MASCH_Mesh::setCellStencils(){
 		}
 	}
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C1" << endl;
 	
 	vector<vector<int>> send_cells(size); 
 	vector<vector<int>> send_point_id(size); 
@@ -844,6 +847,9 @@ void MASCH_Mesh::setCellStencils(){
 			}
 		}
 	}
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C2" << endl;
 	
 	vector<vector<int>> send_real_cells(size); 
 	vector<vector<int>> send_real_cells_idLocal(size); 
@@ -864,25 +870,37 @@ void MASCH_Mesh::setCellStencils(){
 			}
 			else{
 				int send_id = cells_idLocal[id_cell];
-				cells_idLocal[id_cell] = send_id;
+				// cells_idLocal[id_cell] = send_id;
 				send_real_cells_idLocal[ip].push_back(send_id);
 				send_real_points_id[ip].push_back(id_point);
 			}
 		}
 	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C3" << endl;
 	
 	vector<vector<int>> save_recv_cellStencils(mesh.cells.size()); 
 	if(size>1){ 
 		vector<vector<int>> recv_real_cells_idLocal(size); 
 		vector<vector<int>> recv_real_points_id(size);
 		vector<vector<int>> recv_n_cells(size);
-		MASCH_TMP_MPI_Alltoallv(send_real_cells_idLocal, recv_real_cells_idLocal);
-		MASCH_TMP_MPI_Alltoallv(send_real_points_id, recv_real_points_id);
-		MASCH_TMP_MPI_Alltoallv(send_n_cells, recv_n_cells);
-		vector<int> str_n_cells(size,0);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "d1" << endl;
+		mpi.Alltoallv(send_real_cells_idLocal, recv_real_cells_idLocal);//MASCH_TMP_MPI_Alltoallv(send_real_cells_idLocal, recv_real_cells_idLocal);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "d2" << endl;
+		mpi.Alltoallv(send_real_points_id, recv_real_points_id);//MASCH_TMP_MPI_Alltoallv(send_real_points_id, recv_real_points_id);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "d3" << endl;
+		mpi.Alltoallv(send_n_cells, recv_n_cells);//MASCH_TMP_MPI_Alltoallv(send_n_cells, recv_n_cells);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "d4 " << recv_n_cells.size() << " " << recv_n_cells[rank].size() << endl;
+		vector<int> str_n_cells(size+1,0);
 		for(int ip=0; ip<size; ++ip){
 			str_n_cells[ip+1] = str_n_cells[ip] + recv_n_cells[ip][0];
 		}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "d5" << endl;
 		
 		for(int ip=0; ip<size; ++ip){
 			int str = str_n_cells[ip];
@@ -903,6 +921,8 @@ void MASCH_Mesh::setCellStencils(){
 		
 	}
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C4" << endl;
 	
 	send_StencilCellsId.clear();
 	send_countsStencilCells.clear();
@@ -923,6 +943,8 @@ void MASCH_Mesh::setCellStencils(){
 	for(int ip=0, iter=0; ip<size; ++ip){
 		send_displsStencilCells[ip+1] = send_displsStencilCells[ip] + send_countsStencilCells[ip];
 	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C5" << endl;
 	if(size>1){ 
 		recv_countsStencilCells.resize(size,0);
 		recv_displsStencilCells.resize(size+1,0);
@@ -934,6 +956,8 @@ void MASCH_Mesh::setCellStencils(){
 		for(int ip=0; ip<size; ++ip) recv_displsStencilCells[ip+1] = recv_displsStencilCells[ip] + recv_countsStencilCells[ip];
 	}
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C6" << endl;
 	
 	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
 		mesh.cells[i].recv_iStencils.clear();
@@ -941,6 +965,8 @@ void MASCH_Mesh::setCellStencils(){
 			mesh.cells[i].recv_iStencils.push_back(icell);
 		}
 	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "C7" << endl;
 	
 	
 }

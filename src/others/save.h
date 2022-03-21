@@ -1,15 +1,17 @@
 #pragma once
 #include <iostream>
-#include <filesystem>
+// #include <filesystem>
 #include <cstring>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <mpi.h>
 #include <zlib.h>
+#include <sys/stat.h>
 // #include "../species/species.h"
 // #include "../test1/mesh.h" 
 #include "controls.h" 
+
 
 using namespace std;
 
@@ -27,6 +29,7 @@ public:
     ~MASCH_Mesh_Save() {
     }
 	
+	void mkdirs(char *dir_path);
 	
 	int Base64encode_len(int len);
 	int Base64encode(char *encoded, const char *string, int len);
@@ -56,7 +59,12 @@ public:
 		
 	void fvmFiles(string folder, int myRank, MASCH_Mesh& in, 
 		MASCH_Control& controls, MASCH_Variables& var);
+	void parcels(string folder, int myRank, MASCH_Mesh& in, 
+		MASCH_Control& controls, MASCH_Variables& var);
+	void fvmFiles_boundary(string folder, int myRank, MASCH_Mesh& in, 
+		MASCH_Control& controls, MASCH_Variables& var);
 		
+
 	// void particles(
 		// string folder, 
 		// MASCH_Mesh &in, 

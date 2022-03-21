@@ -41,10 +41,13 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	controls.writePrecision = stoi(controls.controlDictMap["writePrecision"]);
 	
 	// 세이브 시킬 데이터 목록
-	controls.saveMeshData = load.extractVector(controls.controlDictMap["saveMeshData"]);
-	controls.saveGradientData = load.extractVector(controls.controlDictMap["saveGradientData"]);
-	controls.saveThermodynamicData = load.extractVector(controls.controlDictMap["saveThermodynamicData"]);
-	controls.saveBodyForceData = load.extractVector(controls.controlDictMap["saveBodyForceData"]);
+	// controls.saveMeshData = load.extractVector(controls.controlDictMap["saveMeshData"]);
+	// controls.saveGradientData = load.extractVector(controls.controlDictMap["saveGradientData"]);
+	// controls.saveThermodynamicData = load.extractVector(controls.controlDictMap["saveThermodynamicData"]);
+	// controls.saveBodyForceData = load.extractVector(controls.controlDictMap["saveBodyForceData"]);
+	// controls.saveFaceValues = load.extractVector(controls.controlDictMap["saveFaceValues"]);
+	controls.saveCellValues = load.extractVector(controls.controlDictMap["saveCellValues"]);
+	controls.saveGradientValues = load.extractVector(controls.controlDictMap["saveGradientValues"]);
 
 	// 화학종 파일 읽어서 map 에 넣기
 	string speciesFile = folderName + "/species";
@@ -94,6 +97,10 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	string fvSolutionFile = folderName + "/fvSolution";
 	load.extractFile(fvSolutionFile, controls.fvSolutionMap);
 	
+	// 컨트롤 파일 읽어서 map 에 넣기
+	string controlParcelsFile = folderName + "/controlParcels";
+	load.extractFile(controlParcelsFile, controls.controlParcelsMap);
+	
 	
 	//=====================================
 	// using var = MASCH_Control_Variable_Set;
@@ -104,26 +111,28 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	
 	
 	// 바운더리 컨디션 파일 읽어서 map 에 넣기
-	for(auto& inp_abb : controls.supPrimVarAbbs){
-		string abb = inp_abb;
+	for(auto& inp : controls.supPrimNames){
 		string boundaryName = folderName + "/boundary/";
-		boundaryName += abb;
+		boundaryName += controls.cellVar[inp].abb;
 		map<string, string> tmp_map;
 		load.extractFile(boundaryName, tmp_map);
-		controls.boundaryMap.push_back(tmp_map);
+		controls.boundaryMap.insert(make_pair(inp,tmp_map));
 	}
 	
 	
 	// 초기화 파일 
-	for(auto& inp_abb : controls.supPrimVarAbbs){
-		string abb = inp_abb;
+	for(auto& inp : controls.supPrimNames){
 		string initialName = folderName + "/initial/";
-		initialName += abb;
+		initialName += controls.cellVar[inp].abb;
 		map<string, string> tmp_map;
 		load.extractFile(initialName, tmp_map);
-		controls.initialMap.push_back(tmp_map);
+		controls.initialMap.insert(make_pair(inp,tmp_map));
+		// controls.initialMap.push_back(tmp_map);
 	}
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 }
 

@@ -4,59 +4,66 @@
 void MASCH_Control::setVariablesBasic(){
 	
 	string scal = "scalar";
+	string vec3 = "vector3";
 	string vec = "vector";
 	string cell = "cell";
 	string face = "face";
 	string point = "point";
 	string field = "field";
 	
-	(*this).setVarible({field},"time","t","sec.","physics",scal);
-	(*this).setVarible({field},"time-step","dt","sec.","physics",scal);
-	(*this).setVarible({field},"residual","","","physics",scal);
+	// 필드 기본값
+	(*this).setVarible({field},"time","t","sec.","",scal);
+	(*this).setVarible({field},"time-step","dt","sec.","",scal);
+	(*this).setVarible({field},"residual","","","",scal);
 	
-	(*this).setVarible({face},"area","dA","m^2","mesh",scal);
-	(*this).setVarible({face},"unit normal vector","nvec","","mesh",vec,
-						{"x unit normal","y unit normal","z unit normal"},{"nx","ny","nz"},
-							{"mesh","mesh","mesh"});
+	// 페이스 기본값
+	(*this).setVarible({face},"area","dA","m^2","",scal);
+	(*this).setVarible({face},"unit normal vector","nvec","","",vec3,
+						{"x unit normal","y unit normal","z unit normal"},{"nx","ny","nz"},{"","",""});
 	(*this).setVarible({face},"distance vector of between left and right cell",
-						"vLR","m","mesh",vec,{
+						"vLR","m","",vec3,{
 						"x distance of between left and right cell",
 						"y distance of between left and right cell",
 						"z distance of between left and right cell"},
-						{"xLR","yLR","zLR"},
-							{"mesh","mesh","mesh"});
-	(*this).setVarible({face},"distance weight","Wc","","mesh",scal);
-	(*this).setVarible({face},"distance of between left and right cell","dLR","","mesh",scal);
-	(*this).setVarible({face},"cosine angle of between face normal and cells","alpha","","mesh",scal);
-	(*this).setVarible({face},"skewness vector","vSkew",
-						"m","mesh",vec,{
-							"x skewness",
-							"y skewness",
-							"z skewness"},{"xSkew","ySkew","zSkew"},
-							{"mesh","mesh","mesh"});
-	(*this).setVarible({face},"Courant-Friedrichs-Lewy number","CFL","","numeric",scal);
+						{"xLR","yLR","zLR"},{"","",""});
+	(*this).setVarible({face},"distance weight","Wc","","",scal);
+	(*this).setVarible({face},"distance of between left and right cell","dLR","","",scal);
+	(*this).setVarible({face},"cosine angle of between face normal and cells","alpha","","",scal);
+	(*this).setVarible({face},"skewness vector","vSkew","m","",vec3,{"x skewness","y skewness","z skewness"},
+						{"xSkew","ySkew","zSkew"},{"","",""});
+	(*this).setVarible({face},"Courant-Friedrichs-Lewy number","CFL","","",scal);
 	
-	(*this).setVarible({cell},"Courant-Friedrichs-Lewy number","CFL","","numeric",scal);
-	(*this).setVarible({cell},"pseudo time-step","dtau","sec.","numeric",scal);
+	// 셀 기본값
+	(*this).setVarible({cell},"Courant-Friedrichs-Lewy number","CFL","","",scal);
+	(*this).setVarible({cell},"pseudo time-step","dtau","sec.","",scal);
 	(*this).setVarible({cell},"volume","V","m^3","mesh",scal);
 	(*this).setVarible({cell},"distance vector project to face normal","vCN",
-						"m","mesh",vec,{
-							"x distance project to face normal",
-							"y distance project to face normal",
-							"z distance project to face normal"},{"xCN","yCN","zCN"},
-							{"mesh","mesh","mesh"});
+						"m","mesh",vec3,{
+						"x distance project to face normal",
+						"y distance project to face normal",
+						"z distance project to face normal"},{"xCN","yCN","zCN"},{"","",""});
 	
 	(*this).setVarible({cell},"coeff of least square","coeffLS",
 						"","mesh",vec,{
-							"coeff(1,1) of least square",
-							"coeff(1,2) of least square",
-							"coeff(1,3) of least square",
-							"coeff(2,2) of least square",
-							"coeff(2,3) of least square",
-							"coeff(3,3) of least square"},
-							{"coeffLS1","coeffLS2","coeffLS3","coeffLS4","coeffLS5","coeffLS6"},
-							{"mesh","mesh","mesh","mesh","mesh","mesh"});
+						"(1,1)","(1,2)","(1,3)","(2,2)","(2,3)","(3,3)"},
+						{"coeffLS1","coeffLS2","coeffLS3","coeffLS4","coeffLS5","coeffLS6"},
+						{"","","","","",""});
 	
+	(*this).setVarible({face},"left cell to face normal vector shortest distant","","m","",vec3,
+		{"left cell to face normal vector shortest x distance",
+		 "left cell to face normal vector shortest y distance",
+		 "left cell to face normal vector shortest z distance"},{"","",""},{"","",""});
+	(*this).setVarible({face},"right cell to face normal vector shortest distant","","m","",vec3,
+		{"right cell to face normal vector shortest x distance",
+		 "right cell to face normal vector shortest y distance",
+		 "right cell to face normal vector shortest z distance"},{"","",""},{"","",""});
+	
+	
+	(*this).setVarible({face},"unit normal of between left and right cell",
+						"vLR","m","",vec3,{
+						"x unit normal of between left and right cell",
+						"y unit normal of between left and right cell",
+						"z unit normal of between left and right cell"},{"","",""},{"","",""});
 }
 
 
@@ -74,18 +81,52 @@ void MASCH_Control::setPrimitiveValues(){
 	
 	// primitive 에서 중복되지 않게 벡터와 스칼라만 빼오기
 	vector<string> vectorPrim;
+	vector<string> vector3Prim;
 	vector<string> tmp_primitive;
 	for(auto& [name, tmp_var] : controls.cellVar){
 		if(tmp_var.role=="primitive" &&
 		tmp_var.shape=="vector"
 		){
 			vectorPrim.push_back(name);
+			// cout << name << endl;
 		}
-		if(tmp_var.role=="primitive"){
+		else if(tmp_var.role=="primitive" &&
+		tmp_var.shape=="vector3"
+		){
+			vector3Prim.push_back(name);
+		}
+		else if(tmp_var.role=="primitive"){
 			tmp_primitive.push_back(name);
+			// cout << name << endl;
 		}
 	}
+	
+	controls.primAllScalarNames = tmp_primitive;
+	for(auto& item : tmp_primitive){
+		controls.primAllScalarIds.push_back(
+		controls.getId_cellVar(item)
+		);
+	}
+	controls.primVector3Names = vector3Prim;
+	controls.primVectorNames = vectorPrim;
+	
+	// controls.nEq = tmp_primitive.size();
+	// cout << controls.nEq << endl;
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
 	for(auto& prim : vectorPrim){
+		for(auto& sub_name : controls.cellVar[prim].sub_name){
+			string tmp_name = prim;
+			tmp_name += ("-" + sub_name);
+			if(find(tmp_primitive.begin(),tmp_primitive.end(),tmp_name)!=tmp_primitive.end()){
+				tmp_primitive.erase(remove(tmp_primitive.begin(), tmp_primitive.end(), tmp_name), tmp_primitive.end());
+			}
+		}
+	}
+	for(auto& prim : vector3Prim){
 		for(auto& sub_name : controls.cellVar[prim].sub_name){
 			if(find(tmp_primitive.begin(),tmp_primitive.end(),sub_name)!=tmp_primitive.end()){
 				tmp_primitive.erase(remove(tmp_primitive.begin(), tmp_primitive.end(), sub_name), tmp_primitive.end());
@@ -93,45 +134,58 @@ void MASCH_Control::setPrimitiveValues(){
 		}
 	}
 	
-	int iter=0;
-	int iter_nPrim=0;
-	for(auto& item : tmp_primitive){
-		controls.primitiveMap.insert(make_pair(item,iter));
-		controls.supPrimVarNames.push_back(item);
-		controls.supPrimVarAbbs.push_back(controls.cellVar[item].abb);
-		vector<string> tmp_string;
-		vector<unsigned short> tmp_unshort;
-		if(controls.cellVar[item].shape != "vector") {
-			tmp_string.push_back(item);
-			tmp_unshort.push_back(controls.cellVar[item].id);
-			++iter_nPrim;
-		}
-		else{
-			int iter2 = 0;
-			for(auto& item2 : controls.cellVar[item].sub_name){
-				if(controls.cellVar[item].sub_role[iter2++] != "primitive")
-					continue;
-			// cout << item2 << endl;
-				tmp_string.push_back(item2);
-				tmp_unshort.push_back(controls.cellVar[item2].id);
-				++iter_nPrim;
-			}
-		}
-		
-		for(auto& item : tmp_string){
-			controls.primVarNames.push_back(item);
-		}
-		for(auto& item : tmp_unshort){
-			controls.primVarIds.push_back(item);
-		}
-		controls.supPrimVarSizes.push_back(tmp_string.size());
-		
-		++iter;
-	}
-	controls.nPrim = iter_nPrim;
-	controls.nSupPrim = controls.supPrimVarNames.size();
+	controls.primScalarNames = tmp_primitive;
 	
-	controls.nEq = iter_nPrim;
+	for(auto& item : controls.primScalarNames){
+		controls.supPrimNames.push_back(item);
+	}
+	for(auto& item : controls.primVector3Names){
+		controls.supPrimNames.push_back(item);
+	}
+	for(auto& item : controls.primVectorNames){
+		controls.supPrimNames.push_back(item);
+	}
+	
+	
+	// int iter=0;
+	// int iter_nPrim=0;
+	// for(auto& item : tmp_primitive){
+		// controls.primitiveMap.insert(make_pair(item,iter));
+		// controls.supPrimVarNames.push_back(item);
+		// controls.supPrimVarAbbs.push_back(controls.cellVar[item].abb);
+		// vector<string> tmp_string;
+		// vector<unsigned short> tmp_unshort;
+		// if(controls.cellVar[item].shape != "vector") {
+			// tmp_string.push_back(item);
+			// tmp_unshort.push_back(controls.cellVar[item].id);
+			// ++iter_nPrim;
+		// }
+		// else{
+			// int iter2 = 0;
+			// for(auto& item2 : controls.cellVar[item].sub_name){
+				// if(controls.cellVar[item].sub_role[iter2++] != "primitive")
+					// continue;
+			// // cout << item2 << endl;
+				// tmp_string.push_back(item2);
+				// tmp_unshort.push_back(controls.cellVar[item2].id);
+				// ++iter_nPrim;
+			// }
+		// }
+		
+		// for(auto& item : tmp_string){
+			// controls.primVarNames.push_back(item);
+		// }
+		// for(auto& item : tmp_unshort){
+			// controls.primVarIds.push_back(item);
+		// }
+		// controls.supPrimVarSizes.push_back(tmp_string.size());
+		
+		// ++iter;
+	// }
+	// controls.nPrim = iter_nPrim;
+	// controls.nSupPrim = controls.supPrimVarNames.size();
+	
+	// controls.nEq = iter_nPrim;
 	
 }
 
@@ -146,8 +200,7 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 	int nProcFaces = mesh.nProcessorFaces;
 	int nPoints = mesh.points.size();
 	int nBoundaries = mesh.boundaries.size();
-	// int nParticles = controls.parcel.size();
-	int nParticles = 0;
+	int nParcels = mesh.parcels.size();
 	
 	// var.nCells = nCells;
 	
@@ -162,8 +215,8 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 	var.procRightCells.resize(nProcFaces);
 	var.points.resize(nPoints);
 	var.boundaries.resize(nBoundaries);
+	var.parcels.resize(nParcels);
 	
-	var.parcel.resize(nParticles);
 	
 	// int nVarCell = controls.cell.varSize;
 	// int nVarFace = controls.face.varSize;
@@ -178,7 +231,7 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 			++nVarBoundary;
 		}
 	}
-	int nVarParticle = 100;
+	// int nVarParticle = 100;
 	
 	// cout << nVarBoundary << endl;
 	
@@ -199,8 +252,8 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 	}
 	// for(int i=0; i<nBoundaries; ++i) var.boundaries[i] = new double[nVarBoundary];
 	for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-	for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
 	
+	for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
 	
 	
 }
@@ -262,16 +315,16 @@ string inp_option){
 		int nProcFaces = mesh.nProcessorFaces;
 		int nPoints = mesh.points.size();
 		int nBoundaries = mesh.boundaries.size();
-		// int nParticles = controls.parcel.size();
-		int nParticles = 0;
+		int nParcels = mesh.parcels.size();
 		
 		var.cells.resize(nCells);
 		var.faces.resize(nFaces);
 		var.procRightCells.resize(nProcFaces);
 		var.points.resize(nPoints);
 		var.boundaries.resize(nBoundaries);
+		var.parcels.resize(nParcels);
 		
-		var.parcel.resize(nParticles);
+		// var.parcels.resize(nParticles);
 		
 		int nVarBoundary = 0;
 		for(auto& [name, tmp_var] : controls.cellVar){
@@ -294,7 +347,7 @@ string inp_option){
 			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
 		}
 		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-		for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+		for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
 	
 		
 		
@@ -370,16 +423,14 @@ string inp_option){
 		int nProcFaces = mesh.nProcessorFaces;
 		int nPoints = mesh.points.size();
 		int nBoundaries = mesh.boundaries.size();
-		// int nParticles = controls.parcel.size();
-		int nParticles = 0;
+		int nParcels = mesh.parcels.size();
 		
 		var.cells.resize(nCells);
 		var.faces.resize(nFaces);
 		var.procRightCells.resize(nProcFaces);
 		var.points.resize(nPoints);
 		var.boundaries.resize(nBoundaries);
-		
-		var.parcel.resize(nParticles);
+		var.parcels.resize(nParcels);
 		
 		int nVarBoundary = 0;
 		for(auto& [name, tmp_var] : controls.cellVar){
@@ -402,7 +453,7 @@ string inp_option){
 			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
 		}
 		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-		for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+		for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
 	
 		// MPI_Barrier(MPI_COMM_WORLD);
 		// cout << "44" << endl;
@@ -502,7 +553,7 @@ string inp_option){
 		var.points.resize(nPoints);
 		var.boundaries.resize(nBoundaries);
 		
-		var.parcel.resize(nParticles);
+		// var.parcel.resize(nParticles);
 		
 		int nVarBoundary = 0;
 		for(auto& [name, tmp_var] : controls.cellVar){
@@ -525,7 +576,7 @@ string inp_option){
 			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
 		}
 		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-		for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+		// for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
 	
 		
 		int rank = MPI::COMM_WORLD.Get_rank();
@@ -584,64 +635,99 @@ void MASCH_Control::setBoundaryConditions(MASCH_Mesh& mesh){
 	MASCH_Load load;
 	
 	
-	int nPrimitive = controls.nPrim;
+	// int nPrimitive = controls.nPrim;
 	
-	// cout << nPrimitive << endl;
-	// cout << controls.nSupPrim << endl;
 	
-	for(int i=0; i<mesh.boundaries.size(); ++i){
-		auto& boundary = mesh.boundaries[i];
+
+	
+	
+	// for(int i=0; i<mesh.boundaries.size(); ++i){
+		// auto& boundary = mesh.boundaries[i];
 		
-		if(boundary.getType()==MASCH_Face_Types::BOUNDARY){
-			boundary.types.resize(nPrimitive,"");
-			boundary.values.resize(nPrimitive,0.0);
-			string name = boundary.name;
-			{
-				int iter=0;
-				int iter2=0;
-				for(auto& item : controls.boundaryMap){
-					string tmp_nametype = name;
-					tmp_nametype += ".type";
-					string tmp_namevalue = name;
-					tmp_namevalue += ".value";
-					string type_name = item[tmp_nametype];
+		// if(boundary.getType()==MASCH_Face_Types::BOUNDARY){
+			// boundary.types.resize(nPrimitive,"");
+			// boundary.values.resize(nPrimitive,0.0);
+			// string name = boundary.name;
+			// {
+				// for(auto& prim_name : controls.primScalarNames){
+					// string type = controls.boundaryMap[prim_name]["type"];
+					// int id = controls.getId_cellVar(prim_name);
 					
-					// int tmp_size = controls.primVarNames[iter].size();
-					int tmp_size = controls.supPrimVarSizes[iter];
+					// vec_inpId.push_back(vector<int>());
+					// vec_inpId.back().push_back(id);
 					
-					if(tmp_size==1){
-						boundary.types[iter2] = type_name;
-						if(type_name=="fixedValue"){
-							boundary.values[iter2] = stod(item[tmp_namevalue]);
-						}
-						++iter2;
-					}
-					else{
-						vector<string> output = 
-						load.extractVector(item[tmp_namevalue]);
-						for(int ii=0; ii<tmp_size; ++ii){
-							// cout << controls.primVarNames[iter].size() << endl;
-							string sub_primName = controls.primVarNames[iter2];
-							boundary.types[iter2] = type_name;
-							if(type_name=="fixedValue"){
-								boundary.values[iter2] = stod(output[ii]);
-								// cout << item[tmp_namevalue] << endl;
-								// boundary.values[iter2] = stod(item[tmp_namevalue])
-							}
-							else if(type_name=="slip"){
+					// if(type=="fixedValue"){
+						// double value = stod(controls.boundaryMap[prim_name]["value"]);
+						// calcInitial.push_back(
+						// [value, id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+							// cells[id] = value;
+							// return 0;
+						// });
+						// // calcBoundFacePrimVal
+					// }
+					// else if(type=="function"){
+						// string inp_file = controls.boundaryMap[prim_name]["file"];
+						// string inp_funct_name = controls.boundaryMap[prim_name]["name"];
+						// void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+						// char *error = nullptr;
+						// if (handle) {
+							// using setFunc_t = int(*)(double, double, double, double, int*, double*);
+							// setFunc_t setFunction;
+							// *(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+							// calcInitial.push_back(*setFunction);
+						// }
+						// else{
+							// cout << "#WARNING : file not there, " << inp_file << endl;
+						// }
+					// }
+				// }
+				
+				
+				// // int iter=0;
+				// // int iter2=0;
+				// // for(auto& item : controls.boundaryMap){
+					// // string tmp_nametype = name;
+					// // tmp_nametype += ".type";
+					// // string tmp_namevalue = name;
+					// // tmp_namevalue += ".value";
+					// // string type_name = item[tmp_nametype];
+					
+					// // // int tmp_size = controls.primVarNames[iter].size();
+					// // int tmp_size = controls.supPrimVarSizes[iter];
+					
+					// // if(tmp_size==1){
+						// // boundary.types[iter2] = type_name;
+						// // if(type_name=="fixedValue"){
+							// // boundary.values[iter2] = stod(item[tmp_namevalue]);
+						// // }
+						// // ++iter2;
+					// // }
+					// // else{
+						// // vector<string> output = 
+						// // load.extractVector(item[tmp_namevalue]);
+						// // for(int ii=0; ii<tmp_size; ++ii){
+							// // // cout << controls.primVarNames[iter].size() << endl;
+							// // string sub_primName = controls.primVarNames[iter2];
+							// // boundary.types[iter2] = type_name;
+							// // if(type_name=="fixedValue"){
+								// // boundary.values[iter2] = stod(output[ii]);
+								// // // cout << item[tmp_namevalue] << endl;
+								// // // boundary.values[iter2] = stod(item[tmp_namevalue])
+							// // }
+							// // else if(type_name=="slip"){
 								
-							}
-							else if(type_name=="noSlip"){
+							// // }
+							// // else if(type_name=="noSlip"){
 								
-							}
-							++iter2;
-						}
-					}
-					++iter;
-				}
-			}
-		}
-	}
+							// // }
+							// // ++iter2;
+						// // }
+					// // }
+					// // ++iter;
+				// // }
+			// }
+		// }
+	// }
 	
 }
 
@@ -702,6 +788,21 @@ void MASCH_Control::setVarible(vector<string> save_where, string name, string ab
 				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
 				)));
 				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
+					string tmp_name = name;
+					tmp_name += ("-" + sub_name[j]);
+					fieldVar.insert(
+					make_pair(tmp_name, MASCH_Control_Variable_Set(
+					nFieldVar,tmp_name,sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
+					)));
+					++nFieldVar;
+				}
+			}
+			else{
+				fieldVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
 					fieldVar.insert(
 					make_pair(sub_name[j], MASCH_Control_Variable_Set(
 					nFieldVar,sub_name[j],sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
@@ -719,6 +820,21 @@ void MASCH_Control::setVarible(vector<string> save_where, string name, string ab
 				++nCellVar;
 			}
 			else if(shape=="vector"){
+				cellVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
+					string tmp_name = name;
+					tmp_name += ("-" + sub_name[j]);
+					cellVar.insert(
+					make_pair(tmp_name, MASCH_Control_Variable_Set(
+					nCellVar,tmp_name,sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
+					)));
+					++nCellVar;
+				}
+			}
+			else{
 				cellVar.insert(
 				make_pair(name, MASCH_Control_Variable_Set(
 				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
@@ -747,6 +863,21 @@ void MASCH_Control::setVarible(vector<string> save_where, string name, string ab
 				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
 				)));
 				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
+					string tmp_name = name;
+					tmp_name += ("-" + sub_name[j]);
+					faceVar.insert(
+					make_pair(tmp_name, MASCH_Control_Variable_Set(
+					nFaceVar,tmp_name,sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
+					)));
+					++nFaceVar;
+				}
+			}
+			else{
+				faceVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
 					faceVar.insert(
 					make_pair(sub_name[j], MASCH_Control_Variable_Set(
 					nFaceVar,sub_name[j],sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
@@ -769,11 +900,63 @@ void MASCH_Control::setVarible(vector<string> save_where, string name, string ab
 				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
 				)));
 				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
+					string tmp_name = name;
+					tmp_name += ("-" + sub_name[j]);
+					pointVar.insert(
+					make_pair(tmp_name, MASCH_Control_Variable_Set(
+					nPointVar,tmp_name,sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
+					)));
+					++nPointVar;
+				}
+			}
+			else{
+				pointVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
 					pointVar.insert(
 					make_pair(sub_name[j], MASCH_Control_Variable_Set(
 					nPointVar,sub_name[j],sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
 					)));
 					++nPointVar;
+				}
+			}
+		}
+		if(item=="parcel"){
+			if(shape=="scalar"){
+				parcelVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				nParcelVar,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				++nParcelVar;
+			}
+			else if(shape=="vector"){
+				parcelVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
+					string tmp_name = name;
+					tmp_name += ("-" + sub_name[j]);
+					parcelVar.insert(
+					make_pair(tmp_name, MASCH_Control_Variable_Set(
+					nParcelVar,tmp_name,sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
+					)));
+					++nParcelVar;
+				}
+			}
+			else{
+				parcelVar.insert(
+				make_pair(name, MASCH_Control_Variable_Set(
+				-5,name,abb,unit,role,shape,sub_name,sub_abb,sub_role
+				)));
+				for(int j=0, SIZE=sub_name.size(); j<SIZE; ++j){
+					parcelVar.insert(
+					make_pair(sub_name[j], MASCH_Control_Variable_Set(
+					nParcelVar,sub_name[j],sub_abb[j],unit,sub_role[j],"scalar",{""},{""},{""}
+					)));
+					++nParcelVar;
 				}
 			}
 		}
@@ -791,106 +974,226 @@ void MASCH_Control::saveAfterInitial(MASCH_Mesh& mesh){
 	
 	// 메쉬 파일 로드
 	MASCH_Load load;
-	load.meshFiles("./grid/0/", controls, mesh);
 	// variable들 어레이 생성
 	MASCH_Variables var;
 	controls.setVariableArray(mesh, var);
 	
-	// 값 초기화
-	int ii=0;
-	for(auto& inp_abb : controls.supPrimVarAbbs){
-		if(inp_abb=="p") {
-			int id = controls.cellVar["pressure"].id;
-			double value = stod(controls.initialMap[ii]["value"]);
-			int iter = 0;
-			for(auto& cell : var.cells){
-				cell[id] = value;
-				++iter;
+	// controls.setGeometric(mesh, var);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	vector<vector<int>> vec_inpId;
+	
+	// 초기화 함수
+	using funct_type = 
+	function<int(double time, double x, double y, double z, int* inp_id, double* cells)>;
+	vector<funct_type> calcInitial;
+	
+	for(auto& name : controls.primScalarNames){
+		string type = controls.initialMap[name]["type"];
+		int id = controls.getId_cellVar(name);
+		
+		vec_inpId.push_back(vector<int>());
+		vec_inpId.back().push_back(id);
+		
+		if(type=="fixedValue"){
+			double value = stod(controls.initialMap[name]["value"]);
+			calcInitial.push_back(
+			[value, id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+				cells[id] = value;
+				return 0;
+			});
+		}
+		else if(type=="function"){
+			string inp_file = controls.initialMap[name]["file"];
+			string inp_funct_name = controls.initialMap[name]["name"];
+			void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+			char *error = nullptr;
+			if (handle) {
+				using setFunc_t = int(*)(double, double, double, double, int*, double*);
+				setFunc_t setFunction;
+				*(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+				calcInitial.push_back(*setFunction);
+			}
+			else{
+				cout << "#WARNING : file not there, " << inp_file << endl;
 			}
 		}
-		if(inp_abb=="T") {
-			int id = controls.cellVar["temperature"].id;
-			double value = stod(controls.initialMap[ii]["value"]);
-			int iter = 0;
-			for(auto& cell : var.cells){
-				cell[id] = value;
-				++iter;
-			}
-		}
-		if(inp_abb=="U") {
-			int id0 = controls.cellVar["x-velocity"].id;
-			int id1 = controls.cellVar["y-velocity"].id;
-			int id2 = controls.cellVar["z-velocity"].id;
-			vector<string> output = load.extractVector(controls.initialMap[ii]["value"]);
-			double value0 = stod(output[0]);
-			double value1 = stod(output[1]);
-			double value2 = stod(output[2]);
-			int iter = 0;
-			for(auto& cell : var.cells){
-				cell[id0] = value0;
-				cell[id1] = value1;
-				cell[id2] = value2;
-				++iter;
-			}
+	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	for(auto& name : controls.primVector3Names){
+		string type = controls.initialMap[name]["type"];
+		vector<string> sub_names = controls.cellVar[name].sub_name;
+		vector<int> sub_id;
+		for(auto& item : sub_names){
+			sub_id.push_back(controls.getId_cellVar(item));
 		}
 		
-		++ii;
+		vec_inpId.push_back(sub_id);
+		
+		if(type=="fixedValue"){
+			vector<string> s_value = load.extractVector(controls.initialMap[name]["value"]);
+			vector<double> value;
+			for(auto& item : s_value){
+				value.push_back(stod(item));
+			}
+			calcInitial.push_back(
+			[value, sub_id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+				cells[sub_id[0]] = value[0];
+				cells[sub_id[1]] = value[1];
+				cells[sub_id[2]] = value[2];
+				return 0;
+			});
+		}
+		else if(type=="function"){
+			string inp_file = controls.initialMap[name]["file"];
+			string inp_funct_name = controls.initialMap[name]["name"];
+			void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+			char *error = nullptr;
+			if (handle) {
+				using setFunc_t = int(*)(double, double, double, double, int*, double*);
+				setFunc_t setFunction;
+				*(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+				calcInitial.push_back(*setFunction);
+			}
+			else{
+				cout << "#WARNING : file not there, " << inp_file << endl;
+			}
+		}
 	}
-	// if(controls.initialMap[0]["type"] == "fixedValue"){
-		// int id = controls.cellVar["pressure"].id;
-		// double value = stod(controls.initialMap[0]["value"]);
-		// int iter = 0;
-		// for(auto& cell : var.cells){
-			// cell[id] = value;
-			// ++iter;
-		// }
-	// }
-	
-	// if(controls.initialMap[2]["type"] == "fixedValue"){
-		// int id0 = controls.cellVar["x-velocity"].id;
-		// int id1 = controls.cellVar["y-velocity"].id;
-		// int id2 = controls.cellVar["z-velocity"].id;
-		// vector<string> output = load.extractVector(controls.initialMap[2]["value"]);
-		// double value0 = stod(output[0]);
-		// double value1 = stod(output[1]);
-		// double value2 = stod(output[2]);
-		// int iter = 0;
-		// for(auto& cell : var.cells){
-			// cell[id0] = value0;
-			// cell[id1] = value1;
-			// cell[id2] = value2;
-			// ++iter;
-		// }
-	// }
-	
-	// if(controls.initialMap[1]["type"] == "fixedValue"){
-		// int id = controls.cellVar["temperature"].id;
-		// double value = stod(controls.initialMap[1]["value"]);
-		// int iter = 0;
-		// for(auto& cell : var.cells){
-			// cell[id] = value;
-			// ++iter;
-		// }
-	// }
-	
-	// // if(controls.initialMap[0]["water.type"] == "fixedValue"){
-		// // int id = controls.cellVar["water"].id;
-		// // double value = stod(controls.initialMap[0]["water.value"]);
-		// // int iter = 0;
-		// // for(auto& cell : var.cells){
-			// // cell[id] = value;
-			// // ++iter;
-		// // }
-	// // }
-	
+	for(auto& sup_name : controls.primVectorNames){
+		vector<string> sub_names = controls.cellVar[sup_name].sub_name;
+		vector<string> sub_roles = controls.cellVar[sup_name].sub_role;
+		int iter=0;
+		for(auto& name : sub_names){
+			if(sub_roles[iter]!="primitive") continue;
+			string type = controls.initialMap[sup_name][name+".type"];
+			int id = controls.getId_cellVar(sup_name+"-"+name);
+			
+			vec_inpId.push_back(vector<int>());
+			vec_inpId.back().push_back(id);
+		
+			if(type=="fixedValue"){
+				double value = stod(controls.initialMap[sup_name][name+".value"]);
+				calcInitial.push_back(
+				[value, id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+					cells[id] = value;
+					return 0;
+				});
+			}
+			else if(type=="function"){
+				string inp_file = controls.initialMap[sup_name][name+".file"];
+				string inp_funct_name = controls.initialMap[sup_name][name+".name"];
+				void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+				char *error = nullptr;
+				if (handle) {
+					using setFunc_t = int(*)(double, double, double, double, int*, double*);
+					setFunc_t setFunction;
+					*(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+					calcInitial.push_back(*setFunction);
+				}
+				else{
+					cout << "#WARNING : file not there, " << inp_file << endl;
+				}
+			}
+			++iter;
+		}
+	}
 	
 	
 	var.fields[controls.fieldVar["time"].id] = 0.0;
-	
+	{
+		int iter=0;
+		for(auto& cellVar : var.cells){
+			auto& cell = mesh.cells[iter];
+			auto cellVar_ptr = cellVar.data();
+			int iter2 = 0;
+			for(auto& funct : calcInitial){
+				funct(0.0,cell.x,cell.y,cell.z,vec_inpId[iter2].data(),cellVar_ptr);
+				++iter2;
+			}
+			++iter;
+		}
+	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	// save 하기
 	MASCH_Mesh_Save save;
 	save.fvmFiles("./save/0/", rank, mesh, controls, var);
-	// save.vtu("./save/0/", rank, mesh);
+	save.fvmFiles_boundary("./save/0/", rank, mesh, controls, var);
 
+}
+
+
+
+
+void MASCH_Control::save_fvmFiles(MASCH_Mesh& mesh, MASCH_Variables& var){
+	auto& controls = (*this);
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	MASCH_Mesh_Save save;
+		
+	double tmp_time = var.fields[controls.fieldVar["time"].id];
+	double tmp_timestep = var.fields[controls.fieldVar["time-step"].id];
+	if(controls.saveControl == "timeStep"){
+		if((controls.iterReal+1) % controls.saveInTimeStep == 0){
+			string foldername;
+			std::ostringstream streamObj;
+			streamObj << tmp_time;
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			save.fvmFiles(foldername, rank, mesh, controls, var);
+			// save.fvmFiles_boundary(foldername, rank, mesh, controls, var);
+		}
+	}
+	else if(controls.saveControl == "runTime"){
+		int jung = tmp_time / controls.saveInRunTime;
+		double namuji = tmp_time - (double)jung * controls.saveInRunTime;
+		if(namuji < tmp_timestep && namuji >= 0.0){
+			string foldername;
+			std::ostringstream streamObj;
+			streamObj << tmp_time;
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			save.fvmFiles(foldername, rank, mesh, controls, var);
+			// save.fvmFiles_boundary(foldername, rank, mesh, controls, var);
+		}
+	}
+	
+}
+
+
+bool MASCH_Control::check_isnan(double value){
+	if(std::isnan(value) || value < -1.e12 || value > 1.e12){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+
+
+void MASCH_Control::show_residual(MASCH_Variables& var){
+	auto& controls = (*this);
+	
+    int rank = MPI::COMM_WORLD.Get_rank(); 
+    int size = MPI::COMM_WORLD.Get_size();
+	
+	if( (controls.iterReal+1) % stoi(controls.controlDictMap["printLog"]) == 0 ){
+		cout << scientific; cout.precision(2);
+		if(rank==0) cout << 
+		"| iReal = " << controls.iterReal+1 << 
+		", " << "iPseudo = " << controls.iterPseudo+1 << 
+		", " << "t = " << var.fields[controls.getId_fieldVar("time")] << 
+		", " << "dt = " << var.fields[controls.getId_fieldVar("time-step")] << 
+		", " << "resi = " << var.fields[controls.getId_fieldVar("residual")] << 
+		" |" << endl;
+		cout << fixed; cout.precision(0);
+		controls.log.show();
+	}
 }

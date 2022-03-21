@@ -131,24 +131,6 @@ void MASCH_Mesh_Load::loadDatasAtVTU(
 
 
 
-void MASCH_Load::meshFiles(string folderName, MASCH_Control& controls, MASCH_Mesh& mesh){
-	
-	MASCH_Mesh_Load mesh_load;
-	
-	
-	
-	mesh_load.vtu(folderName, controls, mesh);
-	
-	
-	
-	
-}
-
-
-
-
-
-
 
 
 
@@ -402,21 +384,5 @@ void MASCH_Mesh_Load::readCompress(
 	
 	
 	
-}
-
-
-
-
-
-
-void MASCH_Load::fvmFiles(
-	string folderName, 
-	int rank,
-	MASCH_Mesh& mesh,
-	MASCH_Control& controls, 
-	MASCH_Variables& var){
-		
-	MASCH_Mesh_Load mesh_load;
-	mesh_load.vtuPrimitive(folderName, rank, controls, mesh, var);
 }
 

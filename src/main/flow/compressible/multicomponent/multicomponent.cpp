@@ -57,6 +57,8 @@ int main(int argc, char* argv[]) {
 	
 	// 초기조건 대입하고 저장 후 종료
 	if(mapArgv.find("-init") != mapArgv.end()){
+		load.meshFiles("./grid/0/", controls, mesh);
+		controls.setGeometricOnlyCell_xyz(mesh);
 		controls.saveAfterInitial(mesh);
 		MPI::Finalize();
 		return EXIT_SUCCESS;
@@ -64,101 +66,86 @@ int main(int argc, char* argv[]) {
 	
 	// 메쉬 파일 로드
 	load.meshFiles(controls.getLoadFolderName(), controls, mesh);
-	// B.C. 셋팅
-	controls.setBoundaryConditions(mesh);
-	// primitive 값 limit 셋팅
-	controls.setMinMaxPrim();
+	
 	// variable들 어레이 생성
 	controls.setVariableArray(mesh, var);
-	// cout << mesh.cells.size() << endl;
 	
-	// sparse matrix의 CSR 포맷 셋팅
-	var.setSparCSR(mesh, controls);
 	// 메쉬 지오메트릭 셋팅
 	controls.setGeometric(mesh, var);
 	// B.C. 펑션 셋팅
 	solver.setBoundaryFunctions(mesh, controls, var);
+	
 	// 솔버 펑션 셋팅
 	solver.setFunctions(mesh, controls);
 	// 그레디언트 계산시 필요한 값 셋팅
 	solver.calcGradient.init(mesh, controls, var);
 	
 	// primitive 값 로드
-	var.fields[controls.fieldVar["time"].id] = 0.0;
+	var.fields[controls.fieldVar["time"].id] = stod(controls.startFrom);
+	
 	load.fvmFiles(controls.getLoadFolderName(), rank, mesh, controls, var);
+	
+	// sparse matrix의 CSR 포맷 셋팅
+	var.setSparCSR(mesh, controls);
+	
 	// DPM 파일 로드
 	// load.dpmFiles(foldername, mesh, controls);
 	
-	// 선형 솔버 값들 0.0 으로 만들어주기
-	var.clearLinearSystems();
-	// 원시변수 제외한 나머지 셀값 업데이트
-	solver.updateCellAddiValues(mesh, controls, var);
-	// 올드 값 초기화
-	solver.initOldValues(mesh, controls, var);
-	// proc 셀의 원시변수 mpi 넘기기
-	solver.updateProcRightCellPrimValues(mesh, controls, var);
-	// 셀 원시변수 제외한 나머지 proc 셀값 업데이트
-	solver.updateProcRightCellAddiValues(mesh, controls, var);
-	// 셀 그레디언트
-	solver.gradientTerms(mesh, controls, var);
-	// 고차 reconstruction
-	solver.highOrderTerms(mesh, controls, var);
-	// B.C. 원시변수 업데이트
-	solver.updateBoundaryFacePrimValues(mesh, controls, var);
-	// B.C. 원시변수 제외한 나머지 값 업데이트
-	solver.updateBoundaryFaceAddiValues(mesh, controls, var);
-	// 타임스텝 구하기
-	solver.calcTempSteps(mesh, controls, var);
-	
-	
-			// cout <<  
-			// var.fields[controls.fieldVar["time-step"].id] << endl;
-	int iter=0;
-	while( var.fields[controls.fieldVar["time"].id] < 4.0 )
-	{
-		// var.fields[controls.fieldVar["time-step"].id] *= 0.001;
-		
-		amr.polyAMR_inline(mesh, controls, solver, var, iter);
-		
-		solver.fvm_inline(mesh, controls, var);
-		// solver.fvm(mesh, controls, var);
-		// solver.dpm(mesh, control, var.cells, var.particles);
-		
-		// var.updateRealTime(control);
-		
-	
-		// MPI_Barrier(MPI_COMM_WORLD);
-		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-		if( (iter+1) % 10 == 0 ){
-			if(rank==0) cout << iter+1 << " " << var.fields[controls.fieldVar["time"].id] << 
-			" " << var.fields[controls.fieldVar["time-step"].id] << 
-			" " << var.fields[controls.fieldVar["residual"].id] << 
-			endl;
-			controls.log.show();
-		}
-		
-		if(isnan(var.fields[controls.fieldVar["residual"].id]) ||
-		var.fields[controls.fieldVar["residual"].id] < -1.e12 ||
-		var.fields[controls.fieldVar["residual"].id] > 1.e12) break;
-	
-		// if( controls.checkSaveFiles() )
-		if( (iter+1) % 100 == 0 )
-		{
-			string foldername;
-			std::ostringstream streamObj;
-			streamObj << var.fields[controls.fieldVar["time"].id];
-			streamObj.precision(12);
-			foldername = "./save/" + streamObj.str() + "/";
-			save.fvmFiles(foldername, rank, mesh, controls, var);
-			// save.dpmFiles();
-			// save.udfFiles();
-		}
-		++iter;
-	// controls.log.show();
+	// 초기 셋팅
+	for(int iSegEq=0, nSegEq=controls.nEq.size(); iSegEq<nSegEq; ++iSegEq){
+		// proc right cell 로 셀의 원시변수 넘기기
+		solver.updateProcRightCellPrimValues(mesh, controls, var, iSegEq);
+		// 원시변수 제외한 나머지 셀값 업데이트
+		solver.updateCellAddiValues(mesh, controls, var, iSegEq);
+		// 셀 원시변수 제외한 나머지 proc 셀값 업데이트
+		solver.updateProcRightCellAddiValues(mesh, controls, var, iSegEq);
+		// 타임스텝 구하기
+		solver.calcTempSteps(mesh, controls, var, iSegEq);
+		// B.C. 원시변수 업데이트
+		solver.updateBoundaryFacePrimValues(mesh, controls, var, iSegEq);
+		// 셀 그레디언트
+		solver.gradientTerms(mesh, controls, var, iSegEq);
+		// 셀 그레디언트 proc right cell 로 넘기기
+		solver.updateProcRightCellGradValues(mesh, controls, var, iSegEq);
+		// 고차 reconstruction
+		solver.highOrderTerms(mesh, controls, var, iSegEq);
 	}
-	// save.fvmFiles("./save/test/", rank, mesh, controls, var);
 	
 	
+	
+	// 메인 솔버
+	controls.iterReal=0;
+	bool bool_resi_isnan = false;
+	while( 
+	var.fields[controls.getId_fieldVar("time")] < controls.stopAt || 
+	!bool_resi_isnan
+	){
+		// amr.polyAMR_inline(mesh, controls, solver, var, controls.iterReal);
+		
+		// 시간 업데이트
+		var.fields[controls.fieldVar["time"].id] +=
+		var.fields[controls.fieldVar["time-step"].id];
+		
+		for(int iSegEq=0, nSegEq=controls.nEq.size(); iSegEq<nSegEq; ++iSegEq){
+			
+			// solver.fvm_inline(mesh, controls, var);
+			solver.fvm(mesh, controls, var, iSegEq);
+			// solver.dpm(mesh, control, var.cells, var.particles);
+			
+			controls.show_residual(var);
+			if(controls.check_isnan(var.fields[controls.getId_fieldVar("residual")])) 
+				bool_resi_isnan=true;
+		}
+	
+		controls.save_fvmFiles(mesh, var);
+		
+		++controls.iterReal;
+	}
+	
+	
+	
+	
+	controls.show_residual(var);
 	
 	
 	MPI::Finalize();

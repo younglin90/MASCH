@@ -32,15 +32,15 @@ public:
 	// double** edges;
 	// double** boundaries;
 	// double* fields;
-	vector<vector<double>> parcel;
+	vector<vector<double>> parcels;
 	
 	
 	
-	vector<int> j_displ_CSR;
-	vector<int> i_str_CSR;
-	vector<double> Avar;
-	vector<double> Xvar;
-	vector<double> Bvar;
+	vector<vector<int>> j_displ_CSR;
+	vector<vector<int>> i_str_CSR;
+	vector<vector<double>> Avalues;
+	vector<vector<double>> Xvalues;
+	vector<vector<double>> Bvalues;
 	// double* Avar;
 	// double* Xvar;
 	// double* Bvar;
@@ -56,23 +56,23 @@ public:
 	
 	void setSparCSR(MASCH_Mesh& mesh, MASCH_Control& controls);
 	
-	void accumSparD(int i, int iEq, int jEq, double inp);
-	double getSparD(int i, int iEq, int jEq);
-	void accumSparLR(int i, int iL, int iEq, int jEq, double inp);
-	void accumSparRL(int i, int iR, int iEq, int jEq, double inp);
-	void clearLinearSystems();
+	void accumSparD(int iSegEq, int i, int iEq, int jEq, double inp);
+	double getSparD(int iSegEq, int i, int iEq, int jEq);
+	void accumSparLR(int iSegEq, int i, int iL, int iEq, int jEq, double inp);
+	void accumSparRL(int iSegEq, int i, int iR, int iEq, int jEq, double inp);
+	void clearLinearSystems(int iSegEq);
 	
-	void accumB(int i, int iEq, double inp);
-	double getB(int i, int iEq);
+	void accumB(int iSegEq, int i, int iEq, double inp);
+	double getB(int iSegEq, int i, int iEq);
 	
-	void setX(int i, int iEq, double inp);
-	double getX(int i, int iEq);
+	void setX(int iSegEq, int i, int iEq, double inp);
+	double getX(int iSegEq, int i, int iEq);
 	
 	
 	// 임시변수
-	vector<double> tmp_sparA;
-	vector<double> tmp_B;
-	vector<double> tmp_X;
+	// vector<double> tmp_sparA;
+	// vector<double> tmp_B;
+	// vector<double> tmp_X;
 	
 };
 

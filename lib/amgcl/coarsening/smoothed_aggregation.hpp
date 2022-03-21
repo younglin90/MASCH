@@ -4,7 +4,7 @@
 /*
 The MIT License
 
-Copyright (c) 2012-2021 Denis Demidov <dennis.demidov@gmail.com>
+Copyright (c) 2012-2022 Denis Demidov <dennis.demidov@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -199,7 +199,7 @@ struct smoothed_aggregation {
                     if (A.col[j] == i || !aggr.strong_connection[j])
                         dia += A.val[j];
                 }
-                dia = -omega * math::inverse(dia);
+                if (!math::is_zero(dia)) dia = -omega * math::inverse(dia);
 
                 ptrdiff_t row_beg = P->ptr[i];
                 ptrdiff_t row_end = row_beg;

@@ -1,8 +1,8 @@
 // AMR
 AMR {
 	refine {
-		interval = 100;
-		maxLevel = 2;
+		interval = 250000000;
+		maxLevel = 3;
 		indicator = (5.0 50.0);
 		bufferLayer = 2;
 		maxCells = 20000;

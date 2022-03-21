@@ -12,7 +12,16 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	vector<vector<double>> indicatorCriterion,
 	vector<vector<double>>& indicatorValues,
 	vector<vector<int>>& child_new_cell_id_of_org,
+	vector<bool>& boolCellPreserved,
+	vector<bool>& boolCellRefine,
+	vector<bool>& boolCellUnrefine,
 	int iter){
+		
+		
+
+	int nBuffers = 3;
+		
+		
 		
 		
 	// int maxLevel_AMR = controls.maxLevelRefine;
@@ -43,6 +52,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	child_new_cell_id_of_org.clear();
 	child_new_cell_id_of_org.resize(beforeCellSize);
+	
 	
 
 	// //=======================================
@@ -90,11 +100,10 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START0" << endl;
 	
 	
-	
-	MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0 && iter==1) cout << "START" << endl;
 	
 	if(rank==0){
 		cout << "┌────────────────────────────────────────────────────" << endl;
@@ -122,39 +131,64 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// int maxCells_AMR = controls.maxCellsRefine;
 	
 	// refine 되는 셀 조사
-	vector<bool> boolCellRefine(mesh.cells.size(),false);
+	// vector<bool> boolCellRefine(mesh.cells.size(),false);
 	// cout << maxCells_AMR << endl;
-	if(mesh.cells.size()<maxCells_AMR){
+	// if(mesh.cells.size()<maxCells_AMR){
+		bool boolMaxCells = false;
+		if(mesh.cells.size()>maxCells_AMR) boolMaxCells = true;
+		// cout << mesh.cells.size() << " " << minVolume_AMR << endl;
 		for(int i=0; i<mesh.cells.size(); ++i){
-			for(int indi=0; indi<indicatorCriterion.size(); ++indi)
-			{
-				for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
-				{
-					double indicatorRefine_AMR = indicatorCriterion.at(indi).at(level);
-					if( mesh.cells.at(i).level < level+1 ){
-						if( indicatorValues.at(indi).at(i) > indicatorRefine_AMR ){
-							boolCellRefine[i] = true;
-						}
-					}				
-				}
-			}
+			// for(int indi=0; indi<indicatorCriterion.size(); ++indi)
+			// {
+				// for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
+				// {
+					// double indicatorRefine_AMR = indicatorCriterion.at(indi).at(level);
+					// if( mesh.cells.at(i).level < level+1 ){
+						// if( indicatorValues.at(indi).at(i) > indicatorRefine_AMR ){
 							// boolCellRefine[i] = true;
+						// }
+					// }				
+				// }
+			// }
+							// // boolCellRefine[i] = true;
 			
-				// if( 
-				// (rank==0 && distr(eng) > 0.8) ||
-				// (rank==1 && distr(eng) > 100.0) ||
-				// (rank==2 && distr(eng) > 100.0) ||
-				// (rank==3 && distr(eng) > 100.0) 
-				// ){
-					// cout << mesh.cells[i].volume << endl;
-					// boolCellRefine[i] = true;
-				// }	
+				// // if( 
+				// // (rank==0 && distr(eng) > 0.8) ||
+				// // (rank==1 && distr(eng) > 100.0) ||
+				// // (rank==2 && distr(eng) > 100.0) ||
+				// // (rank==3 && distr(eng) > 100.0) 
+				// // ){
+					// // cout << mesh.cells[i].volume << endl;
+					// // boolCellRefine[i] = true;
+				// // }	
 			
-			// if(mesh.cells[i].volume < minVolume_AMR) boolCellRefine[i] = false;
+			// if(mesh.cells[i].volume < minVolume_AMR) {
+				// cout << mesh.cells[i].volume << " " << minVolume_AMR << endl;
+				// boolCellRefine[i] = false;
+			// }
 			if(mesh.cells[i].level >= maxLevel_AMR) boolCellRefine[i] = false;
 			if(mesh.cells[i].level < 0) boolCellRefine[i] = false;
+			if(boolMaxCells) boolCellRefine[i] = false;
+			// if(boolCellPreserved[i] == true) boolCellRefine[i] = false;
 		} 
-	}
+		
+		
+	// }
+	
+	
+		// for(int i=0; i<mesh.cells.size(); ++i){
+			// boolCellPreserved[i] = true;
+		// }
+	
+	// this->bufferLayerRefine(mesh, boolCellRefine, maxLevel_AMR, nBuffers);
+	
+	
+	
+	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START1" << endl;
+	
 	
 	// amr 정보 mpi 교환
 	vector<int> cLevel_recv;
@@ -251,9 +285,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0 && iter==1) cout << "GOOD1" << endl;
-	
-	
+	// if(rank==0) cout << "START2" << endl;
 	
 	
 	
@@ -443,6 +475,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START3" << endl;
+	
 	
 	
 	
@@ -604,15 +639,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0 && iter==1) cout << "GOOD2" << endl;
-	
-	
-	
-	
-	
-	
-	
-	
+	// if(rank==0) cout << "START4" << endl;
 	
 	
 	
@@ -710,6 +737,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 			
 	}
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START5" << endl;
 	
 	
 	// =====================================
@@ -819,6 +849,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START6" << endl;
 	
 	
 	
@@ -950,6 +983,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 		
 	}
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START7" << endl;
 	
 	
 	// 페이스 넘버링
@@ -1127,6 +1163,10 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	int tmpCellNum = totalCellNum-1;
 	mesh.cells.resize(totalCellNum,MASCH_Cell());
+	// for(int i=orgCellSize-1; i>=0; --i){
+	boolCellPreserved.resize(totalCellNum);
+	boolCellRefine.resize(totalCellNum);
+	boolCellUnrefine.resize(totalCellNum);
 	for(int i=orgCellSize-1; i>=0; --i){
 		int subCellSize = groupCell_Levels[i].size();
 		
@@ -1137,6 +1177,11 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 			
 			child_new_cell_id_of_org[i][j] = tmpCellNum;
 			
+			boolCellRefine[tmpCellNum] = boolCellRefine[i];
+			boolCellUnrefine[tmpCellNum] = boolCellUnrefine[i];
+			boolCellPreserved[tmpCellNum] = boolCellPreserved[i];
+			// boolCellPreserved[tmpCellNum] = true;
+			
 			
 			
 			mesh.cells[tmpCellNum].ipoints.clear();
@@ -1145,6 +1190,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 		}
 	}
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START8" << endl;
 	
 	
 	// mesh.check();
@@ -1157,6 +1205,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	mesh.setNumberOfFaces();
 	// mesh.informations();
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "START9" << endl;
 	
 	
 	
@@ -1607,6 +1658,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(rank==0){
 		cout << "-> completed" << endl;
 		cout << 

@@ -5,7 +5,7 @@ void MASCH_Solver::setDiffFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 	
 	auto& solver = (*this);
 	
-	checkImplicitLaplFlux.push_back(false);
+	// checkImplicitLaplFlux.push_back(false);
 	
 	{
 		using US = unsigned short;
@@ -85,8 +85,9 @@ void MASCH_Solver::setDiffFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 		id_pR,id_uR,id_vR,id_wR,id_TR,id_YR,id_rhoR,id_cR,id_HtR,
 		id_mu,id_dudx,id_dudy,id_dudz,id_dvdx,id_dvdy,id_dvdz,
 		id_dwdx,id_dwdy,id_dwdz,id_Wc,id_dLR](
-		double* cellsL, double* cellsR, 
-		double* faces, double* fluxA, double* fluxB) ->int {
+		double* cellsL, double* cellsR, double* faces, 
+		double* fluxA_LL, double* fluxA_RR, 
+		double* fluxA_LR, double* fluxA_RL, double* fluxB) ->int {
 			double muL, muR;
 			double uL, uR, vL, vR, wL, wR, rhoL, rhoR;
 			double dudxL,dudyL,dudzL,dvdxL,dvdyL,dvdzL,dwdxL,dwdyL,dwdzL;
@@ -168,8 +169,9 @@ void MASCH_Solver::setDiffFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 		id_pR,id_uR,id_vR,id_wR,id_TR,id_YR,id_rhoR,id_cR,id_HtR,
 		id_mu,id_dudx,id_dudy,id_dudz,id_dvdx,id_dvdy,id_dvdz,
 		id_dwdx,id_dwdy,id_dwdz,id_Wc](
-		double* cellsL, double* cellsR, 
-		double* faces, double* fluxA, double* fluxB) ->int {
+		double* cellsL, double* cellsR, double* faces, 
+		double* fluxA_LL, double* fluxA_RR, 
+		double* fluxA_LR, double* fluxA_RL, double* fluxB) ->int {
 			double muL, muR;
 			double uL, uR, vL, vR, wL, wR, rhoL, rhoR;
 			double dudxL,dudyL,dudzL,dvdxL,dvdyL,dvdzL,dwdxL,dwdyL,dwdzL;

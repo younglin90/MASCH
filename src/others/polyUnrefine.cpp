@@ -10,10 +10,21 @@
 void MASCH_Poly_AMR_Builder::polyUnrefine(
 	MASCH_Mesh& mesh, 
 	MASCH_Control& controls,
+	int maxLevel_AMR, 
 	vector<vector<double>> indicatorCriterion,
 	vector<vector<double>>& indicatorValues,
 	vector<vector<int>>& child_org_cell_id_of_new,
+	vector<bool>& boolCellPreserved,
+	vector<bool>& boolCellRefine,
+	vector<bool>& boolCellUnrefine,
 	int iter){
+		
+		
+		
+	int nBuffers = 3;
+	
+	
+		
 
 	MASCH_MPI mpi;
 
@@ -55,41 +66,241 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	// mesh.cells.size() <<
 	// endl;
 	
-	vector<bool> boolCellUnrefine(mesh.cells.size(),false);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+	// vector<bool> boolBufferPreserved(mesh.cells.size(),false);
+	// {
+		// vector<int> cLevel_recv;
+		// this->mpiLevels(mesh, cLevel_recv);
+		
+		// for(int iLevel=maxLevel_AMR-1; iLevel>=1; --iLevel){
+			// for(int i=0; i<mesh.nInternalFaces; ++i){
+				// auto& face = mesh.faces[i];
+				// int iL = face.iL;
+				// int iR = face.iR;
+				// auto& cellL = mesh.cells[iL];
+				// auto& cellR = mesh.cells[iR];
+				// if(cellL.level==iLevel && cellL.level < cellR.level){
+					// boolBufferPreserved[iL]=true;
+				// }
+				// if(cellR.level==iLevel && cellL.level > cellR.level){
+					// boolBufferPreserved[iR]=true;
+				// }
+			// }
+			// int ip=0;
+			// for(auto& boundary : mesh.boundaries){
+				// int str = boundary.startFace;
+				// int end = str + boundary.nFaces;
+				// if(boundary.getType() == MASCH_Face_Types::PROCESSOR){
+					// for(int i=str; i<end; ++i){
+						// auto& face = mesh.faces[i];
+						// int iL = face.iL;
+						// auto& cellL = mesh.cells[iL];
+						// if(cellL.level==iLevel && cellL.level < cLevel_recv[ip]){
+							// boolBufferPreserved[iL]=true;
+						// }
+						// ++ip;
+					// }
+				// }
+			// }	
+			// for(int iBuffer=0; iBuffer<nBuffers; ++iBuffer){
+				// vector<int> boolBufferPreserved_recv;
+				// if(size>1){
+					// vector<int> tmp_send;
+					// for(int i=0; i<mesh.faces.size(); ++i){
+						// auto& face = mesh.faces[i];
+						// if(face.getType() == MASCH_Face_Types::PROCESSOR){
+							// if(boolBufferPreserved[face.iL]==true){
+								// tmp_send.push_back(1);
+							// }
+							// else{
+								// tmp_send.push_back(0);
+							// }
+						// }
+					// }
+					// boolBufferPreserved_recv.resize(tmp_send.size(),0);
+					// MPI_Alltoallv( tmp_send.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+								   // boolBufferPreserved_recv.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+								   // MPI_COMM_WORLD);
+							   
+				// }
+				// for(int i=0; i<mesh.nInternalFaces; ++i){
+					// auto& face = mesh.faces[i];
+					// int iL = face.iL;
+					// int iR = face.iR;
+					// auto& cellL = mesh.cells[iL];
+					// auto& cellR = mesh.cells[iR];
+					// if(cellL.level==iLevel && 
+					// cellL.level <= cellR.level &&
+					// boolBufferPreserved[iR]==true){
+						// boolBufferPreserved[iL]=true;
+					// }
+					// if(cellR.level==iLevel && 
+					// cellR.level <= cellL.level &&
+					// boolBufferPreserved[iL]==true){
+						// boolBufferPreserved[iR]=true;
+					// }
+				// }
+				// int ip=0;
+				// for(auto& boundary : mesh.boundaries){
+					// int str = boundary.startFace;
+					// int end = str + boundary.nFaces;
+					// if(boundary.getType() == MASCH_Face_Types::PROCESSOR){
+						// for(int i=str; i<end; ++i){
+							// auto& face = mesh.faces[i];
+							// int iL = face.iL;
+							// auto& cellL = mesh.cells[iL];
+							// if(cellL.level==iLevel && 
+							// cellL.level <= cLevel_recv[ip] &&
+							// boolBufferPreserved_recv[ip]==1){
+								// boolBufferPreserved[iL]=true;
+							// }
+							// ++ip;
+						// }
+					// }
+				// }	
+			// }
+		// }
+	// }		
+					
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+	
+	
+	// vector<bool> boolCellUnrefine(mesh.cells.size(),true);
 	for(int i=0; i<mesh.cells.size(); ++i){
 		
-		for(int indi=0; indi<indicatorCriterion.size(); ++indi)
-		{
-			for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
-			{
-				double indicatorRefine_AMR = indicatorCriterion.at(indi).at(level);
-				if( mesh.cells[i].level > level ){
-					if( indicatorValues.at(indi).at(i) <= indicatorRefine_AMR ){
-						boolCellUnrefine[i] = true;
-					}
-				}				
-			}
-		}
-		// for(int level=0; level<controls.indicatorCriterion.size(); ++level){
-			// double indicatorRefine_AMR = controls.indicatorCriterion[level];
-			// if( mesh.cells[i].level > level ){
-				// if( mesh.cells[i].var[controls.indicatorAMR[0]] <= indicatorRefine_AMR ){
-					// boolCellUnrefine[i] = true;
-				// }
-			// }					
+		// for(int indi=0; indi<indicatorCriterion.size(); ++indi)
+		// {
+			// for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
+			// {
+				// double indicatorRefine_AMR = indicatorCriterion.at(indi).at(level);
+				// if( mesh.cells[i].level > level ){
+					// if( indicatorValues.at(indi).at(i) <= indicatorRefine_AMR ){
+						
+					// }
+					// else{
+						// boolCellUnrefine[i] = false;
+					// }
+				// }				
+			// }
 		// }
-		// if( 
-		// (rank==0 && distr(eng) > 100.0) ||
-		// (rank==1 && distr(eng) > 0.0) ||
-		// (rank==2 && distr(eng) > 0.0) ||
-		// (rank==3 && distr(eng) > 0.0) 
-		// ){
-			// boolCellUnrefine[i] = true;
-		// }
+		// // for(int level=0; level<controls.indicatorCriterion.size(); ++level){
+			// // double indicatorRefine_AMR = controls.indicatorCriterion[level];
+			// // if( mesh.cells[i].level > level ){
+				// // if( mesh.cells[i].var[controls.indicatorAMR[0]] <= indicatorRefine_AMR ){
+					// // boolCellUnrefine[i] = true;
+				// // }
+			// // }					
+		// // }
+		// // if( 
+		// // (rank==0 && distr(eng) > 100.0) ||
+		// // (rank==1 && distr(eng) > 0.0) ||
+		// // (rank==2 && distr(eng) > 0.0) ||
+		// // (rank==3 && distr(eng) > 0.0) 
+		// // ){
+			// // boolCellUnrefine[i] = true;
+		// // }
 		
 		// 만약 셀의 레벨이 0 이면, false
 		if(mesh.cells[i].level <= 0) boolCellUnrefine[i] = false;
+		// if(boolCellPreserved[i] == true) boolCellUnrefine[i] = false;
+		
+		
+		// if(boolBufferPreserved[i] == true) boolCellUnrefine[i] = false;
+		
+		
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+	// // 대각선 방향에서, 레벨 차이 2 이상이면 리파인
+	// {
+		// // processor faces
+		// vector<int> recv_value;
+		// if(size>1){
+
+			// vector<int> send_value;
+			// send_value.reserve(mesh.send_StencilCellsId.size());
+			// for(auto& icell : mesh.send_StencilCellsId){
+				// send_value.push_back(mesh.cells[icell].level);
+			// }
+			// recv_value.resize(mesh.recv_displsStencilCells[size]);
+			// MPI_Alltoallv( send_value.data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_INT, 
+						   // recv_value.data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_INT, 
+						   // MPI_COMM_WORLD);
+			
+		// }
+		// vector<int> tmp_maxLevel(mesh.cells.size());
+		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
+			// auto& cell = mesh.cells[i];
+			// int maxInd = -100;
+			// for(auto& icell : cell.iStencils){
+				// maxInd = max(mesh.cells[icell].level,maxInd);
+			// }
+			// for(auto& icell : cell.recv_iStencils){
+				// maxInd = max(recv_value[icell],maxInd);
+			// }
+			// tmp_maxLevel[i] = maxInd;
+		// }
+		// int inp_size = indicatorValues.size();
+		// for(int i=0; i<mesh.cells.size(); ++i){
+			// auto& cell = mesh.cells[i];
+			// int my_level = cell.level;
+			// if(my_level <= 0) continue;
+			// if(boolCellPreserved[i] == true) continue;
+			// if(boolBufferPreserved[i] == true) continue;
+			// if(my_level<tmp_maxLevel[i]-2){
+				// boolCellUnrefine[i] = false;
+			// }
+		// }
+	// }
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	// this->bufferLayerUnrefine(mesh, boolCellUnrefine, nBuffers);
+	
+	
+	
+	
+	
 	
 		// MPI_Barrier(MPI_COMM_WORLD);
 		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
@@ -98,7 +309,7 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	vector<int> cUnrefine_recv;
 	this->mpiLevelRefine(mesh, boolCellUnrefine, cLevel_recv, cUnrefine_recv);
 	
-	restrictCellUnrefine(mesh, boolCellUnrefine, cLevel_recv, cUnrefine_recv);
+	this->restrictCellUnrefine(mesh, boolCellUnrefine, cLevel_recv, cUnrefine_recv);
 	
 	this->mpiRefines(mesh, boolCellUnrefine, cUnrefine_recv);
 	
@@ -182,15 +393,21 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	
 	child_org_cell_id_of_new.clear();
 	child_org_cell_id_of_new.resize(totalCellNum);
+	boolCellPreserved.resize(totalCellNum);
+	// boolCellUnrefine.resize(totalCellNum);
 	for(int i=0, iter=0; i<mesh.cells.size(); ++i){
 		if(groupCells_id[i] == -1){
 			child_org_cell_id_of_new[iter].push_back(i);
+			boolCellPreserved[iter]=false;
+			// boolCellUnrefine[iter]=false;
 			++iter;
 		}
 		else{
 			int tmp_id = groupCells_id[i];
 			for(auto& j : groupCellsUnrefine[tmp_id].ichild){
 				child_org_cell_id_of_new[iter].push_back(i);
+				boolCellPreserved[iter]=true;
+				// boolCellUnrefine[iter]=true;
 				++i;
 			}
 			--i;

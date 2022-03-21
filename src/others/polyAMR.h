@@ -120,6 +120,23 @@ public:
 		MASCH_Variables& var,
 		int iter);
 		
+
+	void calcIndicators(
+		MASCH_Mesh& mesh, 
+		MASCH_Control& controls,
+		MASCH_Variables& var,
+		int maxBuffer,
+		int maxLevel,
+		int maxCells,
+		double minVolume_AMR,
+		vector<vector<double>>& indicatorCriterion,
+		vector<vector<int>>& indicatorAMR_id, 
+		vector<bool>& boolCellRefine, 
+		vector<bool>& boolCellUnrefine,
+		vector<bool>& boolCellPreserved
+		);
+		
+		
 	// 리파인 관련
 	void polyRefine(
 		MASCH_Mesh& mesh, 
@@ -128,6 +145,9 @@ public:
 		vector<vector<double>> indicatorCriterion,
 		vector<vector<double>>& indicatorValues,
 		vector<vector<int>>& child_new_cell_id_of_org,
+		vector<bool>& boolCellPreserved,
+		vector<bool>& boolCellRefine,
+		vector<bool>& boolCellUnrefine,
 		int iter);
 		
 	void mpiLevelRefine(
@@ -297,9 +317,13 @@ public:
 	void polyUnrefine(
 		MASCH_Mesh& mesh, 
 		MASCH_Control& controls,
+		int maxLevel_AMR, 
 		vector<vector<double>> indicatorCriterion,
 		vector<vector<double>>& indicatorValues,
 		vector<vector<int>>& child_org_cell_id_of_new,
+		vector<bool>& boolCellPreserved,
+		vector<bool>& boolCellRefine,
+		vector<bool>& boolCellUnrefine,
 		int iter);
 		
 	void sortCellCanUnrefine(

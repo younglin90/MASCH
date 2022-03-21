@@ -7,41 +7,42 @@ void MASCH_Solver::setTempFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 	auto& solver = (*this);
 	{
 		using US = unsigned short;
-		int id_p = controls.cellVar["pressure"].id;
-		int id_u = controls.cellVar["x-velocity"].id;
-		int id_v = controls.cellVar["y-velocity"].id;
-		int id_w = controls.cellVar["z-velocity"].id;
-		int id_T = controls.cellVar["temperature"].id;
+		int id_p = controls.getId_cellVar("pressure");
+		int id_u = controls.getId_cellVar("x-velocity");
+		int id_v = controls.getId_cellVar("y-velocity");
+		int id_w = controls.getId_cellVar("z-velocity");
+		int id_T = controls.getId_cellVar("temperature");
 		
-		int nSp = controls.cellVar["mass fraction"].sub_name.size();
+		// int nSp = controls.cellVar["mass-fraction"].sub_name.size();
+		int nSp = controls.nSp;
+		
 		vector<int> id_Y(nSp);
 		for(int i=0; i<nSp; ++i){
-			string tmp_name = controls.cellVar["mass fraction"].sub_name[i];
-			id_Y[i] = controls.cellVar[tmp_name].id;
+			string tmp_name = controls.cellVar["mass-fraction"].sub_name[i];
+			id_Y[i] = controls.getId_cellVar("mass-fraction-"+tmp_name);
 		}
-		
-		int id_rho = controls.cellVar["density"].id;
-		int id_c = controls.cellVar["speed of sound"].id;
-		int id_Ht = controls.cellVar["total enthalpy"].id;
-		
-		int id_drhodp = controls.cellVar["density diff with pressure"].id;
-		int id_drhodT = controls.cellVar["density diff with temperature"].id;
-		int id_dHtdp = controls.cellVar["total enthalpy diff with pressure"].id;
-		int id_dHtdT = controls.cellVar["total enthalpy diff with temperature"].id;
+		int id_c = controls.getId_cellVar("speed-of-sound");
+		int id_rho = controls.getId_cellVar("density");
+		int id_Ht = controls.getId_cellVar("total-enthalpy");
+		int id_drhodp = controls.getId_cellVar("density-diff-with-pressure");
+		int id_drhodT = controls.getId_cellVar("density-diff-with-temperature");
+		int id_dHtdp = controls.getId_cellVar("total-enthalpy-diff-with-pressure");
+		int id_dHtdT = controls.getId_cellVar("total-enthalpy-diff-with-temperature");
 		vector<int> id_drhodY(nSp);
 		vector<int> id_dHtdY(nSp);
 		for(int i=0; i<nSp; ++i){
-			string tmp_name1 = controls.cellVar["density diff with mass fraction"].sub_name[i];
-			string tmp_name2 = controls.cellVar["total enthalpy diff with mass fraction"].sub_name[i];
-			id_drhodY[i] = controls.cellVar[tmp_name1].id;
-			id_dHtdY[i] = controls.cellVar[tmp_name2].id;
+			string tmp_name1 = controls.cellVar["density-diff-with-mass-fraction"].sub_name[i];
+			string tmp_name2 = controls.cellVar["total-enthalpy-diff-with-mass-fraction"].sub_name[i];
+			id_drhodY[i] = controls.getId_cellVar("density-diff-with-mass-fraction-"+tmp_name1);
+			id_dHtdY[i] = controls.getId_cellVar("total-enthalpy-diff-with-mass-fraction-"+tmp_name2);
 		}
 		
+		
 		// 메쉬관련
-		int id_volume = controls.cellVar["volume"].id;
+		int id_volume = controls.getId_cellVar("volume");
 		
 		// 필드값
-		int id_dt = controls.fieldVar["time-step"].id;
+		int id_dt = controls.getId_fieldVar("time-step");
 		
 		solver.calcTemporal.push_back(
 		[id_volume,nSp,id_p,id_u,id_v,id_w,id_T,id_Y,
@@ -51,19 +52,6 @@ void MASCH_Solver::setTempFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			int iter=0;
 			double volume = cells[id_volume];
 			double dt = fields[id_dt];
-			
-			// cout << cells[id_volume] << " " <<
-			// dt << " " <<
-			// cells[id_drhodp] << " " <<
-			// cells[id_drhodT] << " " <<
-			// cells[id_u] << " " <<
-			// cells[id_v] << " " <<
-			// cells[id_w] << " " <<
-			// cells[id_rho] << " " <<
-			// cells[id_Ht] << " " <<
-			// cells[id_dHtdp] << " " <<
-			// cells[id_dHtdT] << " " <<
-			// endl;
 			
 			fluxA[iter++] = cells[id_drhodp] * volume / dt;
 			fluxA[iter++] = 0.0;

@@ -62,7 +62,7 @@ public:
 };
 
 
-class MASCH_Load {
+class MASCH_Load : public MASCH_Mesh_Load {
 public:
 	string fileName;
 	ifstream inputFile;

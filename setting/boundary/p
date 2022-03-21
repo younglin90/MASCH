@@ -2,7 +2,7 @@ supinlet {
 	type = fixedValue;
 	value = 1.0;
 }
-outlet {
+supoutlet {
 	type = zeroGradient;
 }
 
@@ -11,5 +11,8 @@ invwall {
 }
 
 viswall {
+	type = zeroGradient;
+}
+function {
 	type = zeroGradient;
 }

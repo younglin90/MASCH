@@ -1,6 +1,25 @@
 
 #include "./save.h"
 
+void MASCH_Mesh_Save::mkdirs(char *dir_path){
+	char buff[1024];
+	char *p_dir = buff;
+	
+	strcpy(buff, dir_path);
+	buff[1024-1] = '\0';
+	
+	while(*p_dir){
+		if('/'==*p_dir){
+			*p_dir = '\0';
+			mkdir(buff,0777);
+			*p_dir = '/';
+		}
+		p_dir ++;
+	}
+	
+}
+
+
 template void MASCH_Mesh_Save::writeAscii<int>(ofstream& out, vector<int>& vecInp);
 template void MASCH_Mesh_Save::writeAscii<double>(ofstream& out, vector<double>& vecInp);
 template<typename T>
@@ -920,7 +939,10 @@ void MASCH_Mesh_Save::vtu(string folder, int myRank, MASCH_Mesh &mesh){
 	int rank = MPI::COMM_WORLD.Get_rank();
 	
 	// 폴더 만들기
-    auto ret = filesystem::create_directories(folder);
+    // auto ret = filesystem::create_directories(folder);
+	char folder_name[1000];
+	strcpy(folder_name, folder.c_str());
+	mkdirs(folder_name);
 	
 	ofstream outputFile;
 	string filenamePlot = folder + "plot." + to_string(myRank) + ".vtu";
@@ -1001,22 +1023,59 @@ void MASCH_Mesh_Save::vtu(string folder, int myRank, MASCH_Mesh &mesh){
 	
 	outputFile << "    </DataArray>" << endl;
 	
-	// faces (cell's faces number, each face's point number, cell's faces's points)
-	outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faces\" format=\"ascii\">" << endl;
-	
-	// outputFile << mesh.faces.size() << endl;
-	for(auto& cell : mesh.cells){
-		outputFile << cell.ifaces.size() << endl;
-		for(auto& i : cell.ifaces){
-			outputFile << mesh.faces[i].ipoints.size() << " ";
-			for(auto& j : mesh.faces[i].ipoints){
-				outputFile << j << " ";
+	{
+		// faces (cell's faces number, each face's point number, cell's faces's points)
+		outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faces\" format=\"ascii\">" << endl;
+		
+		for(auto& cell : mesh.cells){
+			outputFile << cell.ifaces.size() << endl;
+			for(auto& i : cell.ifaces){
+				outputFile << mesh.faces[i].ipoints.size() << " ";
+				int tmp_space = 0;
+				for(auto& j : mesh.faces[i].ipoints){
+					if(tmp_space!=mesh.faces[i].ipoints.size()-1){
+						outputFile << j << " ";
+					}
+					else{
+						outputFile << j;
+					}
+					++tmp_space;
+				}
+				outputFile << endl;
 			}
-			outputFile << endl;
 		}
-	}
+		// for(auto& cell : mesh.cells){
+			// outputFile << cell.ifaces.size();
+			// for(auto& i : cell.ifaces){
+				// outputFile << " " << mesh.faces[i].ipoints.size();
+				// for(auto& j : mesh.faces[i].ipoints){
+					// outputFile << " " << j;
+				// }
+				// // outputFile << endl;
+			// }
+			// outputFile << " ";
+		// }
+		// outputFile << endl;
+		
+		outputFile << "    </DataArray>" << endl;
 	
-	outputFile << "    </DataArray>" << endl;
+		// outputFile << "    <DataArray type=\"Int32\" IdType=\"1\" Name=\"faces\" format=\"" << "ascii" << "\">" << endl;
+		// vector<int> values;
+		// for(auto& cell : mesh.cells){
+			// values.push_back(cell.ifaces.size());
+			// for(auto& i : cell.ifaces){
+				// values.push_back(mesh.faces[i].ipoints.size());
+				// for(auto& j : mesh.faces[i].ipoints){
+					// values.push_back(j);
+				// }
+			// }
+		// }
+		// for(auto& item : values){
+			// outputFile << item << endl;
+		// }
+		// outputFile << "     </DataArray>" << endl;
+	
+	}
 	
 	// faceoffsets (cell's face offset)
 	int cellFacePointOffset = 0;
@@ -1155,217 +1214,6 @@ void MASCH_Mesh_Save::vtu(string folder, int myRank, MASCH_Mesh &mesh){
 
 
 
-// void MASCH_Mesh_Save::particles(
-	// string folder, 
-	// SEMO_Mesh_Builder &mesh, 
-	// SEMO_Controls_Builder &controls,
-	// vector<SEMO_Species>& species){
-	
-	// int rank = MPI::COMM_WORLD.Get_rank();
-	// int size = MPI::COMM_WORLD.Get_size();
-	
-	// char folder_name[1000];
-	// strcpy(folder_name, folder.c_str());
-	// mkdirs(folder_name);
-
-	// ofstream outputFile;
-	// string filenamePlot = folder + "particles_cell." + to_string(rank) + ".vtu";
-	
-	// if(rank==0){
-		// cout << "┌────────────────────────────────────────────────────" << endl;
-		// cout << "| execute save particles file (" << folder_name << "plot...) ... ";
-	// }
-	
-	// outputFile.open(filenamePlot);
-	
-	// outputFile.precision( controls.writePrecision );
-	
-	// if(outputFile.fail()){
-		// cerr << "Unable to write file for writing." << endl;
-		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-	// }
-	
-	// // string out_line;
-	// outputFile << "<?xml version=\"1.0\"?>" << endl;
-	// outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
-	// outputFile << "  <UnstructuredGrid>" << endl;
-	
-	// outputFile << "    <FieldData>" << endl;
-	// outputFile << "    </FieldData>" << endl;
-	
-	// outputFile << "   <Piece NumberOfPoints=\"" << mesh.cells.size() << "\" NumberOfCells=\"" << 0 << "\">" << endl;
-	
-	
-	// outputFile << "    <PointData>" << endl;
-	// outputFile << "     <DataArray type=\"Float64\" Name=\"Diameter\" format=\"ascii\">" << endl;
-	
-	// double diameter = 1.0;
-	// for(auto& cell : mesh.cells) {
-		// outputFile << scientific << diameter << " ";
-	// }
-	// outputFile << endl;
-	
-	// outputFile << "     </DataArray>" << endl;
-	// outputFile << "    </PointData>" << endl;
-	
-	
-	// // Cells data
-	// outputFile << "    <CellData>" << endl;
-	// outputFile << "    </CellData>" << endl;
-	
-	
-	// // Points
-	// outputFile << "    <Points>" << endl;
-	// outputFile << "     <DataArray type=\"Float64\" Name=\"Position\" NumberOfComponents=\"3\" format=\"ascii\">" << endl;
-
-	// for(auto& cell : mesh.cells){
-		// outputFile << scientific << cell.x << " " << cell.y << " " << cell.z << endl;
-
-	// }
-	
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "   </Points>" << endl;
-	
-	// outputFile << "   <Cells>" << endl; 
-	// outputFile << "    <DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faces\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faceoffsets\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "   </Cells>" << endl;
-	
-	
-	// outputFile << "  </Piece>" << endl;
-	// outputFile << " </UnstructuredGrid>" << endl;
-	
-	
-	// outputFile << "</VTKFile>" << endl;
-	
-	// outputFile.close();
-	
-	
-	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	
-	// if(rank==0){
-		// cout << "-> completed" << endl;
-		// cout << "└────────────────────────────────────────────────────" << endl;
-	// }
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	// // faces
-	// string filenamePlot2 = folder + "particles_face." + to_string(rank) + ".vtu";
-	
-	// if(rank==0){
-		// cout << "┌────────────────────────────────────────────────────" << endl;
-		// cout << "| execute save particles file (" << folder_name << "plot...) ... ";
-	// }
-	
-	// outputFile.open(filenamePlot2);
-	
-	// outputFile.precision( controls.writePrecision );
-	
-	// if(outputFile.fail()){
-		// cerr << "Unable to write file for writing." << endl;
-		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-	// }
-	
-	// // string out_line;
-	// outputFile << "<?xml version=\"1.0\"?>" << endl;
-	// outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
-	// outputFile << "  <UnstructuredGrid>" << endl;
-	
-	// outputFile << "    <FieldData>" << endl;
-	// outputFile << "    </FieldData>" << endl;
-	
-	// outputFile << "   <Piece NumberOfPoints=\"" << mesh.faces.size() << "\" NumberOfCells=\"" << 0 << "\">" << endl;
-	
-	
-	// outputFile << "    <PointData>" << endl;
-	// outputFile << "     <DataArray type=\"Float64\" Name=\"Diameter\" format=\"ascii\">" << endl;
-	
-	// // double diameter2 = 1.0;
-	// for(auto& face : mesh.faces) {
-		// outputFile << scientific << diameter << " ";
-	// }
-	// outputFile << endl;
-	
-	// outputFile << "     </DataArray>" << endl;
-	// outputFile << "    </PointData>" << endl;
-	
-	
-	// // Cells data
-	// outputFile << "    <CellData>" << endl;
-	// outputFile << "    </CellData>" << endl;
-	
-	
-	// // Points
-	// outputFile << "    <Points>" << endl;
-	// outputFile << "     <DataArray type=\"Float64\" Name=\"Position\" NumberOfComponents=\"3\" format=\"ascii\">" << endl;
-
-	// for(auto& face : mesh.faces){
-		// outputFile << scientific << face.x << " " << face.y << " " << face.z << endl;
-
-	// }
-	
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "   </Points>" << endl;
-	
-	// outputFile << "   <Cells>" << endl; 
-	// outputFile << "    <DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faces\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faceoffsets\" format=\"ascii\">" << endl;
-	// outputFile << "    </DataArray>" << endl;
-	// outputFile << "   </Cells>" << endl;
-	
-	
-	// outputFile << "  </Piece>" << endl;
-	// outputFile << " </UnstructuredGrid>" << endl;
-	
-	
-	// outputFile << "</VTKFile>" << endl;
-	
-	// outputFile.close();
-	
-	
-	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	
-	// if(rank==0){
-		// cout << "-> completed" << endl;
-		// cout << "└────────────────────────────────────────────────────" << endl;
-	// }
-	
-	
-	// // }
-	
-	
-	
-	
-	
-// }
-
-
 
 void MASCH_Mesh_Save::fvmFiles(
 string folder, int rank, MASCH_Mesh& mesh, 
@@ -1374,7 +1222,10 @@ MASCH_Control& controls, MASCH_Variables& var){
 	// int rank = MPI::COMM_WORLD.Get_rank();
 	
 	// 폴더 만들기
-    auto ret = filesystem::create_directories(folder);
+    // auto ret = filesystem::create_directories(folder);
+	char folder_name[1000];
+	strcpy(folder_name, folder.c_str());
+	mkdirs(folder_name);
 	
 	ofstream outputFile;
 	string filenamePlot = folder + "plot." + to_string(rank) + ".vtu";
@@ -1474,19 +1325,58 @@ MASCH_Control& controls, MASCH_Variables& var){
 	}
 	
 	
-	vector<string> cell_save_name = controls.primVarNames;
-	cell_save_name.push_back("speed of sound");
-	cell_save_name.push_back("density");
-	cell_save_name.push_back("x-gradient pressure");
-	cell_save_name.push_back("y-gradient pressure");
-	cell_save_name.push_back("z-gradient pressure");
-	for(auto& name : cell_save_name)
+	
+	
+	
+	
+	
+	
+	
+	// 원시변수들 네이밍
+	vector<string> scal_cell_save_name;
+	for(auto& item : controls.primScalarNames) scal_cell_save_name.push_back(item);
+	vector<string> vec_cell_save_sup_name;
+	vector<vector<string>> vec_cell_save_name;
+	for(auto& item : controls.primVector3Names) {
+		vec_cell_save_sup_name.push_back(item);
+		vec_cell_save_name.push_back(vector<string>());
+		vector<string> sub_names = controls.cellVar[item].sub_name;
+		for(int i=0; i<sub_names.size(); ++i){
+			vec_cell_save_name.back().push_back(sub_names[i]);
+		}
+	}
+	for(auto& item : controls.primVectorNames) {
+		// vec_cell_save_name.push_back(vector<string>());
+		vector<string> sub_roles = controls.cellVar[item].sub_role;
+		vector<string> sub_names = controls.cellVar[item].sub_name;
+		for(int i=0; i<sub_names.size(); ++i){
+			if(sub_roles[i]!="primitive") continue;
+			string name = item;
+			name += "-"+sub_names[i];
+			scal_cell_save_name.push_back(name);
+		}
+	}
+	// 추가적 데이터 네이밍
+	// for(auto& item : controls.saveFaceValues) scal_cell_save_name.push_back(item);
+	for(auto& item : controls.saveCellValues) scal_cell_save_name.push_back(item);
+	for(auto& item : controls.saveGradientValues) {
+		string xGrad = "x-gradient "; string yGrad = "y-gradient "; string zGrad = "z-gradient ";
+		xGrad += item; yGrad += item; zGrad += item;
+		vec_cell_save_sup_name.push_back("gradient "+item);
+		vec_cell_save_name.push_back(vector<string>());
+		vec_cell_save_name.back().push_back(xGrad);
+		vec_cell_save_name.back().push_back(yGrad);
+		vec_cell_save_name.back().push_back(zGrad);
+	}
+	
+	// 스칼라 형식 데이터 저장
+	for(auto& name : scal_cell_save_name)
 	{
 		outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
 		name << "\" format=\"" << saveFormat << "\">" << endl;
 		vector<double> values;
 		values.reserve(mesh.cells.size());
-		int id_phi = controls.cellVar[name].id;
+		int id_phi = controls.getId_cellVar(name);
 		auto cellVar = var.cells.data();
 		for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i) {
 			auto cellVar_i = cellVar[i];
@@ -1495,7 +1385,33 @@ MASCH_Control& controls, MASCH_Variables& var){
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
-	
+	// 벡터형식 데이터 저장
+	{
+		int tmp_iter = 0;
+		for(auto& sup_name : vec_cell_save_sup_name)
+		{
+			outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
+			sup_name << "\" NumberOfComponents=\"" << vec_cell_save_name[tmp_iter].size() << 
+			"\" format=\"" << saveFormat << "\">" << endl;
+			vector<double> values;
+			values.reserve(3*mesh.cells.size());
+			vector<int> id_phi;
+			for(auto& item : vec_cell_save_name[tmp_iter]){
+				id_phi.push_back(controls.getId_cellVar(item));
+			}
+			auto cellVar = var.cells.data();
+			for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i) {
+				auto cellVar_i = cellVar[i];
+				for(auto& item : id_phi){
+					values.push_back(cellVar_i[item]);
+				}
+			}
+			writeDatasAtVTU(controls, outputFile, values);
+			outputFile << "     </DataArray>" << endl;
+			
+			++tmp_iter;
+		}
+	}
 	
 	outputFile << "    </CellData>" << endl;
 	
@@ -1505,288 +1421,6 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	
 	
-	
-	// {
-		// string name = "gradient pressure";
-		// string name0 = "x-gradient pressure";
-		// string name1 = "y-gradient pressure";
-		// string name2 = "z-gradient pressure";
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << name << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// values.reserve(mesh.cells.size());
-		// int id_phi0 = controls.cellVar[name0].id;
-		// int id_phi1 = controls.cellVar[name1].id;
-		// int id_phi2 = controls.cellVar[name2].id;
-		// auto cellVar = var.cells.data();
-		// for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i) {
-			// auto cellVar_i = cellVar[i];
-			// values.push_back(cellVar_i[id_phi0]);
-			// values.push_back(cellVar_i[id_phi1]);
-			// values.push_back(cellVar_i[id_phi2]);
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	// {
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"velocity\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells){
-			// values.push_back(cell.var[controls.U]); 
-			// values.push_back(cell.var[controls.V]); 
-			// values.push_back(cell.var[controls.W]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// {
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"temperature\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.T]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// {
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << controls.name[controls.VF[0]] << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.VF[0]]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// {
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << controls.name[controls.MF[0]] << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.MF[0]]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	// // cell levels
-	// {
-		// outputFile << "     <DataArray type=\"Int32\" Name=\"cellLevels\" format=\"" << saveFormat << "\">" << endl;
-		// vector<int> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.level);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	// // cell groups
-	// {
-		// outputFile << "     <DataArray type=\"Int32\" Name=\"cellGroups\" format=\"" << saveFormat << "\">" << endl;
-		// vector<int> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.group);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	// // 추가적인 데이터 저장
-	// // mesh data
-	// if(controls.saveMeshData["nonOrthogonality"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "nonOrthogonality" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> nonOrthogonality;
-		// mesh.calcNonOrthogonality(nonOrthogonality);
-		// writeDatasAtVTU(controls, outputFile, nonOrthogonality);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	// if(controls.saveMeshData["uniformity"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "uniformity" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> uniformity;
-		// mesh.calcUniformity(uniformity);
-		// writeDatasAtVTU(controls, outputFile, uniformity);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveMeshData["skewness"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "skewness" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> skewness;
-		// mesh.calcSkewness(skewness);
-		// writeDatasAtVTU(controls, outputFile, skewness);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// // cout << "B1" << endl;
-	// // gradient
-	// if(controls.saveGradientData["pressure"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-pressure" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.P, controls.fP, gradient);
-		// math.calcGaussGreen(mesh, controls.P, controls.fP, gradient);
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveGradientData["x-velocity"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-x-velocity" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.U, controls.fU, gradient);
-		// math.calcGaussGreen(mesh, controls.U, controls.fU, gradient);
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveGradientData["y-velocity"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-y-velocity" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.V, controls.fV, gradient);
-		// math.calcGaussGreen(mesh, controls.V, controls.fV, gradient);
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveGradientData["z-velocity"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-z-velocity" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.W, controls.fW, gradient);
-		// math.calcGaussGreen(mesh, controls.W, controls.fW, gradient);
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// // // if(controls.saveGradientData["velocityMagnitude"]){
-		// // // outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-pressure" << "\" format=\"" << saveFormat << "\">" << endl;
-		// // // vector<double> gradient(mesh.cells.size(),0.0);
-		// // // math.calcGaussGreen(mesh, controls.P, controls.fP, gradient);
-		// // // math.calcGaussGreen(mesh, controls.P, controls.fP, gradient);
-		// // // writeDatasAtVTU(controls, outputFile, gradient);
-		// // // outputFile << "     </DataArray>" << endl;
-	// // // }
-	// if(controls.saveGradientData["temperature"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-temperature" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.T, controls.fT, gradient);
-		// math.calcGaussGreen(mesh, controls.T, controls.fT, gradient);
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveGradientData[controls.name[controls.VF[0]]]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-" << controls.name[controls.VF[0]] << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.VF[0], controls.fVF[0], gradient);
-		// math.calcGaussGreen(mesh, controls.VF[0], controls.fVF[0], gradient);
-	// // cout << "B2" << endl;
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveGradientData[controls.name[controls.MF[0]]]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gradient-" << controls.name[controls.MF[0]] << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<vector<double>> gradient(mesh.cells.size(),vector<double>(3,0.0));
-		// math.calcGaussGreen(mesh, controls.MF[0], controls.fMF[0], gradient);
-		// math.calcGaussGreen(mesh, controls.MF[0], controls.fMF[0], gradient);
-		// vector<double> values;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// values.push_back(gradient[i][0]); 
-			// values.push_back(gradient[i][1]); 
-			// values.push_back(gradient[i][2]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// // thermodynamic
-	// if(controls.saveThermodynamicData["density"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "density" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.Rho]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveThermodynamicData["speedOfSound"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "speedOfSound" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.C]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveThermodynamicData["enthalpy"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "enthalpy" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(
-			// cell.var[controls.Ht]-0.5*(
-			// cell.var[controls.U]*cell.var[controls.U]+
-			// cell.var[controls.V]*cell.var[controls.V]+
-			// cell.var[controls.W]*cell.var[controls.W]));
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveThermodynamicData["totalEnthalpy"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "totalEnthalpy" << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.Ht]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// // body-force
-	// if(controls.saveBodyForceData["gravity"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "gravity" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells){
-			// values.push_back(cell.var[controls.sourceGravity[0]]); 
-			// values.push_back(cell.var[controls.sourceGravity[1]]);  
-			// values.push_back(cell.var[controls.sourceGravity[2]]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	// if(controls.saveBodyForceData["surfaceTension"]){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << "surface-tension" << "\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells){
-			// values.push_back(cell.var[controls.sourceSurfaceTension[0]]); 
-			// values.push_back(cell.var[controls.sourceSurfaceTension[1]]);  
-			// values.push_back(cell.var[controls.sourceSurfaceTension[2]]); 
-		// }
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	// // UDV
-	// for(int i=0; i<controls.UDV.size(); ++i){
-		// outputFile << "     <DataArray type=\"Float64\" Name=\"" << controls.name[controls.UDV[i]] << "\" format=\"" << saveFormat << "\">" << endl;
-		// vector<double> values;
-		// for(auto& cell : mesh.cells) values.push_back(cell.var[controls.UDV[i]]);
-		// writeDatasAtVTU(controls, outputFile, values);
-		// outputFile << "     </DataArray>" << endl;
-	// }
-	
-	
-	// // // level-set
-	// // {
-		// // outputFile << "     <DataArray type=\"Float64\" Name=\"" << "level-set" << "\" format=\"" << saveFormat << "\">" << endl;
-		// // vector<double> values;
-		// // for(auto& cell : mesh.cells) values.push_back(cell.var[controls.LS]);
-		// // writeDatasAtVTU(controls, outputFile, values);
-		// // outputFile << "     </DataArray>" << endl;
-	// // }
 	
 	
 	
@@ -2013,8 +1647,17 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << "   </PPointData>" << endl;
 		outputFile << "   <PCellData>" << endl;
 		
-		for(auto& name : cell_save_name){
+		for(auto& name : scal_cell_save_name){
 			outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
+		}
+		{
+			int tmp_iter=0;
+			for(auto& sup_name : vec_cell_save_sup_name){
+				outputFile << "    <PDataArray type=\"Float64\" Name=\"" <<
+				sup_name << "\" NumberOfComponents=\"" << 3 << "\"/>" << endl;
+				// outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
+				++tmp_iter;
+			}
 		}
 		outputFile << "   </PCellData>" << endl;
 		outputFile << "  </PUnstructuredGrid>" << endl;
@@ -2096,4 +1739,390 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	
 	
+}
+
+
+
+
+
+
+
+
+
+void MASCH_Mesh_Save::fvmFiles_boundary(
+string folder, int rank, MASCH_Mesh& mesh, 
+MASCH_Control& controls, MASCH_Variables& var){
+	
+	// int rank = MPI::COMM_WORLD.Get_rank();
+	
+	// 폴더 만들기
+    // auto ret = filesystem::create_directories(folder);
+	char folder_name[1000];
+	strcpy(folder_name, folder.c_str());
+	mkdirs(folder_name);
+	
+	if(rank==0){
+		cout << "┌────────────────────────────────────────────────────" << endl;
+		cout << "| execute save vtp boundary face files ... ";
+	}
+	
+	for(auto& boundary : mesh.boundaries){
+		if(boundary.getType() == MASCH_Face_Types::BOUNDARY){
+			
+			ofstream outputFile;
+			string filenamePlot = folder + "plot_bc_" + boundary.name + "." + to_string(rank) + ".vtp";
+			
+			
+			outputFile.open(filenamePlot);
+			if(outputFile.fail()){
+				cerr << "Unable to write file for writing." << endl;
+				MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+			}
+			
+			controls.saveFormat = "ascii";
+			string saveFormat = controls.saveFormat;
+			
+			if(controls.saveFormat == "ascii"){
+				outputFile << " <VTKFile type=\"PolyData\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+			}
+			else if(controls.saveFormat == "binary"){
+				if(controls.saveCompression==0){
+					outputFile << " <VTKFile type=\"PolyData\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+				}
+				else{
+					outputFile << " <VTKFile type=\"PolyData\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\" compressor=\"vtkZLibDataCompressor\">" << endl;
+				}
+			}
+			else{
+				cout << endl;
+				cout << endl;
+				cout << "| warning : not defined saveFormat at controlDic file" << endl;
+				cout << endl;
+				cout << endl;
+			}
+			
+			outputFile << "  <PolyData>" << endl;
+			
+
+			int new_nPoints = 0;
+			int str = boundary.startFace;
+			int end = str + boundary.nFaces;
+			vector<int> point_id(mesh.points.size(),-10);
+			vector<double> point_x, point_y, point_z;
+			vector<vector<int>> face_new_ipoints;
+			for(int i=str; i<end; ++i){
+				auto& face = mesh.faces[i];
+				face_new_ipoints.push_back(vector<int>());
+				for(auto& ipoint : face.ipoints){
+					if(point_id[ipoint]==-10) {
+						point_id[ipoint] = new_nPoints++;
+						point_x.push_back(mesh.points[ipoint].x);
+						point_y.push_back(mesh.points[ipoint].y);
+						point_z.push_back(mesh.points[ipoint].z);
+						face_new_ipoints.back().push_back(point_id[ipoint]);
+					}
+					else{
+						face_new_ipoints.back().push_back(point_id[ipoint]);
+					}
+				}
+			}
+
+
+			outputFile << "   <Piece NumberOfPoints=\"" << point_x.size() << "\" NumberOfPolys=\"" << boundary.nFaces << "\">" << endl;
+			
+			
+			// Points
+			outputFile << "    <Points>" << endl;
+			{
+				outputFile << "     <DataArray type=\"Float64\" Name=\"NodeCoordinates\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
+				vector<double> values;
+				for(int i=0; i<point_x.size(); ++i) {
+					values.push_back(point_x[i]);
+					values.push_back(point_y[i]);
+					values.push_back(point_z[i]);
+				}
+				writeDatasAtVTU(controls, outputFile, values);
+				outputFile << "     </DataArray>" << endl;
+			}
+			outputFile << "   </Points>" << endl;
+			
+			
+			
+			// Polys
+			outputFile << "   <Polys>" << endl; 
+			// connectivity (cell's points)
+			{
+				outputFile << "    <DataArray type=\"Int32\" Name=\"connectivity\" format=\"" << saveFormat << "\">" << endl;
+				vector<int> values;
+				for(auto& faces : face_new_ipoints){
+					for(auto ipoint : faces){
+						values.push_back(ipoint);
+					}
+				}
+				writeDatasAtVTU(controls, outputFile, values);
+				outputFile << "     </DataArray>" << endl;
+			}
+			
+			// offsets (cell's points offset)
+			{
+				outputFile << "    <DataArray type=\"Int32\" Name=\"offsets\" format=\"" << saveFormat << "\">" << endl;
+				vector<int> values;
+				int cellFaceOffset = 0;
+				for(auto& faces : face_new_ipoints){
+					cellFaceOffset += faces.size();
+					values.push_back(cellFaceOffset);
+				}
+				writeDatasAtVTU(controls, outputFile, values);
+				outputFile << "     </DataArray>" << endl;
+			}
+			
+			
+			outputFile << "   </Polys>" << endl;
+			
+			
+			outputFile << "  </Piece>" << endl;
+			outputFile << " </PolyData>" << endl;
+			
+			
+			outputFile << "</VTKFile>" << endl;
+			
+			outputFile.close();
+			
+			
+			
+			// ==========================================
+			// pvtu file
+			if(rank==0){
+				string filenamePvtu = "./save/plot_bc_";
+				filenamePvtu += boundary.name;
+				filenamePvtu += ".";
+				string stime = folder;
+				stime.erase(stime.find("./save/"),7);
+				stime.erase(stime.find("/"),1);
+				filenamePvtu += stime;
+				filenamePvtu += ".pvtp";
+				
+				outputFile.open(filenamePvtu);
+				if(outputFile.fail()){
+					cerr << "Unable to write file for writing." << endl;
+					MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+				}
+				
+				// string out_line;
+				outputFile << "<?xml version=\"1.0\"?>" << endl;
+				outputFile << " <VTKFile type=\"PPolyData\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+				outputFile << "  <PPolyData>" << endl;
+
+				outputFile << "   <PPoints>" << endl;
+				outputFile << "    <PDataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"Points\"/>" << endl;
+				outputFile << "   </PPoints>" << endl;
+				for(int ip=0, SIZE=MPI::COMM_WORLD.Get_size(); ip<SIZE; ++ip){
+					string filenamevtus = "./" + stime;
+					filenamevtus += "/plot_bc_";
+					filenamevtus += boundary.name;
+					filenamevtus += ".";
+					filenamevtus += to_string(ip);
+					filenamevtus += ".vtp";
+					outputFile << "    <Piece Source=\"" << filenamevtus << "\"/>" << endl;
+				}
+				outputFile << "  </PPolyData>" << endl;
+				outputFile << "</VTKFile>" << endl;
+				
+				
+				outputFile.close();
+				
+			}
+			
+			
+		}
+	}
+	
+	
+	if(rank==0){
+		cout << "-> completed" << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
+	}
+	
+	
+	
+	
+	
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void MASCH_Mesh_Save::parcels(
+string folder, int rank, MASCH_Mesh& mesh, 
+MASCH_Control& controls, MASCH_Variables& var){
+	
+	
+	char folder_name[1000];
+	strcpy(folder_name, folder.c_str());
+	mkdirs(folder_name);
+	
+	if(rank==0){
+		cout << "┌────────────────────────────────────────────────────" << endl;
+		cout << "| execute save parcel files ... ";
+	}
+
+	ofstream outputFile;
+	string filenamePlot = folder + "parcels." + to_string(rank) + ".vtu";
+	
+	
+	outputFile.open(filenamePlot);
+	if(outputFile.fail()){
+		cerr << "Unable to write file for writing." << endl;
+		MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	}
+	
+	string saveFormat = controls.saveFormat;
+	
+	outputFile << "<?xml version=\"1.0\"?>" << endl;
+	if(controls.saveFormat == "ascii"){
+		outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+	}
+	else if(controls.saveFormat == "binary"){
+		if(controls.saveCompression==0){
+			outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+		}
+		else{
+			outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\" compressor=\"vtkZLibDataCompressor\">" << endl;
+		}
+	}
+	else{
+		cout << endl;
+		cout << endl;
+		cout << "| warning : not defined saveFormat at controlDic file" << endl;
+		cout << endl;
+		cout << endl;
+	}
+	
+	outputFile << "  <UnstructuredGrid>" << endl;
+
+	outputFile << "    <FieldData>" << endl;
+	outputFile << "    </FieldData>" << endl;
+
+	outputFile << "   <Piece NumberOfPoints=\"" << mesh.parcels.size() << "\" NumberOfCells=\"" << 0 << "\">" << endl;
+	
+	outputFile << "    <PointData>" << endl;
+	
+	
+	
+	vector<string> scal_save_name;
+	scal_save_name.push_back("diameter");
+	scal_save_name.push_back("temperature");
+	vector<string> vec_save_sup_name;
+	vec_save_sup_name.push_back("velocity");
+	
+	// 스칼라 형식 데이터 저장
+	for(auto& name : scal_save_name)
+	{
+		outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
+		name << "\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		values.reserve(mesh.parcels.size());
+		int id_phi = controls.getId_parcelVar(name);
+		auto parcelVar = var.parcels.data();
+		for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
+			auto parcelVar_i = parcelVar[i].data();
+			values.push_back(parcelVar_i[id_phi]);
+		}
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	// 벡터형식 데이터 저장
+	{
+		int tmp_iter = 0;
+		for(auto& sup_name : vec_save_sup_name)
+		{
+			outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
+			sup_name << "\" NumberOfComponents=\"" << 3 << 
+			"\" format=\"" << saveFormat << "\">" << endl;
+			vector<double> values;
+			values.reserve(3*mesh.parcels.size());
+			vector<int> id_phi;
+			id_phi.push_back(controls.getId_parcelVar("x-"+sup_name));
+			id_phi.push_back(controls.getId_parcelVar("y-"+sup_name));
+			id_phi.push_back(controls.getId_parcelVar("z-"+sup_name));
+			auto parcelVar = var.parcels.data();
+			for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
+				auto parcelVar_i = parcelVar[i].data();
+				for(auto& item : id_phi){
+					values.push_back(parcelVar_i[item]);
+				}
+			}
+			writeDatasAtVTU(controls, outputFile, values);
+			outputFile << "     </DataArray>" << endl;
+			
+			++tmp_iter;
+		}
+	}
+	
+	outputFile << "    </PointData>" << endl;
+
+	
+	// Cells data
+	outputFile << "    <CellData>" << endl;
+	outputFile << "    </CellData>" << endl;
+	
+	// Points
+	outputFile << "    <Points>" << endl;
+	{
+		outputFile << "     <DataArray type=\"Float64\" Name=\"Position\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		auto parcelVar = var.parcels.data();
+		int id_x = controls.getId_parcelVar("x-location");
+		int id_y = controls.getId_parcelVar("y-location");
+		int id_z = controls.getId_parcelVar("z-location");
+		for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
+			auto parcelVar_i = parcelVar[i].data();
+			values.push_back(parcelVar_i[id_x]);
+			values.push_back(parcelVar_i[id_y]);
+			values.push_back(parcelVar_i[id_z]);
+		}
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	outputFile << "   </Points>" << endl;
+	
+	
+	outputFile << "   <Cells>" << endl; 
+	outputFile << "    <DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faces\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faceoffsets\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "   </Cells>" << endl;
+	
+	
+	outputFile << "  </Piece>" << endl;
+	outputFile << " </UnstructuredGrid>" << endl;
+	outputFile << "</VTKFile>" << endl;
+	outputFile.close();
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if(rank==0){
+		cout << "-> completed" << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
+	}
 }

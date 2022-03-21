@@ -1,6 +1,15 @@
 
 #include "./load.h" 
 
+void MASCH_Load::meshFiles(string folderName, MASCH_Control& controls, MASCH_Mesh& mesh){
+	
+	// MASCH_Mesh_Load mesh_load;
+	
+	(*this).vtu(folderName, controls, mesh);
+	
+}
+
+
 void MASCH_Mesh_Load::vtu(
 	string folder, 
 	MASCH_Control& controls, 
@@ -41,6 +50,10 @@ void MASCH_Mesh_Load::vtu(
 		}
 	}
 	
+	vector<double> timevalue;
+	loadDatasAtVTU(inputFile, "TimeValue", timevalue);
+	if(timevalue.size()==0) timevalue.push_back(0.0);
+	
 	vector<int> pointLevels;
 	loadDatasAtVTU(inputFile, "pointLevels", pointLevels);
 	
@@ -59,17 +72,17 @@ void MASCH_Mesh_Load::vtu(
 	vector<int> offsets;
 	loadDatasAtVTU(inputFile, "offsets", offsets);
 	
-	vector<int> ifaces;
-	loadDatasAtVTU(inputFile, "faces", ifaces);
+	vector<int> read_ifaces;
+	loadDatasAtVTU(inputFile, "faces", read_ifaces);
 	
 	vector<int> faceoffsets;
 	loadDatasAtVTU(inputFile, "faceoffsets", faceoffsets);
 	
-	vector<int> iL;
-	loadDatasAtVTU(inputFile, "owner", iL);
+	vector<int> read_iL;
+	loadDatasAtVTU(inputFile, "owner", read_iL);
 	
-	vector<int> iR;
-	loadDatasAtVTU(inputFile, "neighbour", iR);
+	vector<int> read_iR;
+	loadDatasAtVTU(inputFile, "neighbour", read_iR);
 	
 	vector<string> bcName;
 	loadDatasAtVTU(inputFile, "bcName", bcName);
@@ -88,7 +101,8 @@ void MASCH_Mesh_Load::vtu(
 
 	inputFile.close();
 	
-	MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "B1" << endl;
 	
 	
 	for(int i=0; i<NodeCoordinates.size()/3; ++i){
@@ -108,12 +122,13 @@ void MASCH_Mesh_Load::vtu(
 	
 	int ncells=-1;
 	mesh.faces.clear();
-	for(int i=0; i<iL.size(); ++i){
-		int tmp_iL = iL[i];
+	for(int i=0; i<read_iL.size(); ++i){
+		int tmp_iL = read_iL[i];
 		mesh.addFace();
 		mesh.faces.back().iL = tmp_iL;
 		ncells = max(ncells, tmp_iL);
 	}
+	
 	
 	// cout << ncells << endl;
 	
@@ -145,10 +160,13 @@ void MASCH_Mesh_Load::vtu(
 	}
 	
 	
-	for(int i=0; i<iR.size(); ++i){
-		int tmp_iR = iR[i];
+	for(int i=0; i<read_iR.size(); ++i){
+		int tmp_iR = read_iR[i];
 		mesh.faces.at(i).iR = tmp_iR;
 		mesh.faces.at(i).setType(MASCH_Face_Types::INTERNAL);
+	}
+	for(int i=read_iR.size(); i<mesh.faces.size(); ++i){
+		mesh.faces.at(i).setType(MASCH_Face_Types::PROCESSOR);
 	}
 	
 	
@@ -175,17 +193,26 @@ void MASCH_Mesh_Load::vtu(
 		}
 	}
 	
+	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	// cout << mesh.cells.size() << " " << faceoffsets.size() << endl;
+	
 	for(int i=0, str=0; i<faceoffsets.size(); ++i){
-		int face_size = ifaces[str++];
+		int face_size = read_ifaces.at(str++);
 		for(auto& iface : mesh.cells[i].ifaces){
-			int point_size = ifaces[str++];
+			int point_size = read_ifaces.at(str++);
 			for(int k=0; k<point_size; ++k){
-				int ipoint = ifaces[str++];
+				int ipoint = read_ifaces.at(str++);
 				if(mesh.faces[ iface ].ipoints.size() == point_size) continue;
 				mesh.faces[ iface ].ipoints.push_back( ipoint );
 			}
 		}
-		str = faceoffsets[i];
+		if(str!=faceoffsets[i]){
+		cout << i << " " << face_size << " " << str << " " << faceoffsets[i] << endl;
+		}
 	}
 	
 	for(int i=0; i<bcStartFace.size(); ++i){
@@ -227,6 +254,8 @@ void MASCH_Mesh_Load::vtu(
 		++i; ++i;
 	}
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "B2" << endl;
 	
 	
 	// // mesh.set(NodeCoordinates, connectivity, offsets, faces, faceoffsets,
@@ -234,6 +263,7 @@ void MASCH_Mesh_Load::vtu(
 		// // pointLevels, cellLevels, cellGroups);
 	
 		
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(rank==0){
 		cout << "-> completed" << endl;
 		cout << "└────────────────────────────────────────────────────" << endl;
@@ -256,65 +286,6 @@ void MASCH_Mesh_Load::vtu(
 }
 
 
-
-
-
-
-
-
-
-
-void MASCH_Mesh_Load::vtuPrimitive(
-	string folderName, int rank,
-	MASCH_Control& controls, 
-	MASCH_Mesh& mesh,
-	MASCH_Variables& var){
-		
-		
-	string saveFolderName = folderName;
-	string saveFileName = "plot";
-	string saveRankName = to_string(rank);
-	
-	ifstream inputFile;
-	string openFileName;
-	
-	openFileName = saveFolderName + "/" + saveFileName + "." + saveRankName + ".vtu";
-	inputFile.open(openFileName);
-	if(inputFile.fail()){
-		cerr << "Unable to open file for reading : " << openFileName << endl;
-		MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-	}
-	
-	
-	
-	string nextToken;
-	// boolBinary = false;
-	boolCompress = false;
-	while(getline(inputFile, nextToken)){
-		if( nextToken.find("VTKFile") != string::npos ){
-			if( nextToken.find("vtkZLibDataCompressor") != string::npos ){
-				boolCompress = true;
-			}
-			break;
-		}
-	}
-	
-	for(auto& name : controls.primVarNames){
-		vector<double> tmp_cellVars;
-		loadDatasAtVTU(inputFile, name, tmp_cellVars);
-		int id = controls.cellVar[name].id;
-		int iter = 0;
-		for(auto& cell : var.cells){
-			cell[id] = tmp_cellVars[iter];
-			++iter;
-		}
-	}
-	
-	
-	inputFile.close();
-	
-	
-}
 
 
 

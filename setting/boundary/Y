@@ -1,17 +1,28 @@
 supinlet {
-	type = fixedValue;
-	value {
-		air = 1.0;
+	water {
+		type = fixedValue;
+		value = 0.0;
 	}
 }
-outlet{
-	type = zeroGradient;
+supoutlet{
+	water {
+		type = zeroGradient;
+	}
 }
 
 invwall {
-	type = zeroGradient;
+	water {
+		type = zeroGradient;
+	}
 }
 
 viswall {
-	type = zeroGradient;
+	water {
+		type = zeroGradient;
+	}
+}
+function{
+	water {
+		type = zeroGradient;
+	}
 }

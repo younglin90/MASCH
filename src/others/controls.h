@@ -69,10 +69,23 @@ public:
 	int nCellVar=0;
 	int nFaceVar=0;
 	int nPointVar=0;
+	int nParcelVar=0;
+	
+	// 실행옵션
+	map<string,string> mapArgv;
+	
+	// 원시변수
+	vector<string> supPrimNames;
+	vector<string> primAllScalarNames;
+	vector<int> primAllScalarIds;
+	vector<string> primVector3Names;
+	vector<string> primVectorNames;
+	vector<string> primScalarNames;
 	
 	// map<string, string> boundaryMap;
 	map<string, string> physicsMap;
 	map<string, string> controlDictMap;
+	map<string, string> controlParcelsMap;
 	map<string, string> dynamicMeshMap;
 	map<string, string> extractDatasOverTimeMap;
 	map<string, string> fvSchemeMap;
@@ -80,8 +93,8 @@ public:
 	map<string, string> speciesMap;
 	map<string, string> thermophysicalProperties;
 	map<string, string> turbulenceProperties;
-	vector<map<string, string>> boundaryMap;
-	vector<map<string, string>> initialMap;
+	map<string,map<string, string>> boundaryMap;
+	map<string,map<string, string>> initialMap;
 	
 	string language, adjustTimeStep, againWhenDiverge, saveControl;
 	string startFrom,saveFormat, turbType, LESModel, RANSModel;
@@ -89,7 +102,8 @@ public:
 	int saveInTimeStep, saveCompression, writePrecision;
 	int nSp;
 	double saveInRunTime;
-	vector<string> saveMeshData, saveGradientData, saveThermodynamicData, saveBodyForceData;
+	// vector<string> saveMeshData, saveGradientData, saveThermodynamicData, saveBodyForceData;
+	vector<string> saveCellValues, saveGradientValues;
 	
 	
 	map<string, int> varDict;
@@ -104,6 +118,7 @@ public:
 	map<string, MASCH_Control_Variable_Set> cellVar;
 	map<string, MASCH_Control_Variable_Set> faceVar;
 	map<string, MASCH_Control_Variable_Set> pointVar;
+	map<string, MASCH_Control_Variable_Set> parcelVar;
 	
 	MASCH_Control_Variable cell;
 	MASCH_Control_Variable face;
@@ -112,7 +127,9 @@ public:
 	MASCH_Control_Variable parcel;
 	MASCH_Control_Variable field;
 	
-	int nEq, nLinSys, nPrim, nSupPrim;
+	vector<int> nEq;
+	vector<vector<string>> sendProcValueNames;
+	int nLinSys, nPrim, nSupPrim;
 	vector<unsigned short> primVarIds;
 	vector<string> primVarNames;
 	vector<string> supPrimVarAbbs;
@@ -173,6 +190,14 @@ public:
 			cout << "#WARNING, pointVar not there, " << inp_name << endl;
 		}
 	}
+	int getId_parcelVar(string inp_name){
+		if(parcelVar.find(inp_name) != parcelVar.end()){
+			return parcelVar[inp_name].id;
+		}
+		else{
+			cout << "#WARNING, parcelVar not there, " << inp_name << endl;
+		}
+	}
 	
 	
 	// void setVarible(vector<string> save_where, string name, string abb, string unit, string role, string shape);
@@ -187,7 +212,7 @@ public:
 	double time=0.0;
 	double endTime=1.e8;
 	double saveInterval;
-	int iterReal;
+	int iterReal, iterPseudo;
 	bool checkContinueRealTimeStep(MASCH_Variables& var);
 	bool updateRealTime();
 	
@@ -211,7 +236,7 @@ public:
 	
 	
 	vector<double> limitMaxPrim, limitMinPrim;
-	void setMinMaxPrim();
+	// void setMinMaxPrim();
 	void limitPrim(int iEq, double& value);
 	
 	// AMR 관련
@@ -223,9 +248,17 @@ public:
 	// species 관련
 	vector<string> spName;
 	
+	// 세이브 관련
+	void save_fvmFiles(MASCH_Mesh& mesh, MASCH_Variables& var);
+	
+	// 체크 관련
+	bool check_isnan(double value);
 	
 	// 초기화
 	void saveAfterInitial(MASCH_Mesh& mesh);
+	
+	// 로그 관련
+	void show_residual(MASCH_Variables& var);
 };
 
 

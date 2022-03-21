@@ -12,23 +12,34 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 		// cout << "| execute geometric (face normal vectors, face area, face center, cell volume) ... ";
 	}
 	
-	int id_volume = controls.cellVar["volume"].id;
-	int id_area = controls.faceVar["area"].id;
-	int id_nx = controls.faceVar["x unit normal"].id;
-	int id_ny = controls.faceVar["y unit normal"].id;
-	int id_nz = controls.faceVar["z unit normal"].id;
-	int id_xLR = controls.faceVar["x distance of between left and right cell"].id;
-	int id_yLR = controls.faceVar["y distance of between left and right cell"].id;
-	int id_zLR = controls.faceVar["z distance of between left and right cell"].id;
-	int id_xSkew = controls.faceVar["x skewness"].id;
-	int id_ySkew = controls.faceVar["y skewness"].id;
-	int id_zSkew = controls.faceVar["z skewness"].id;
-	int id_xCN = controls.faceVar["x distance project to face normal"].id;
-	int id_yCN = controls.faceVar["y distance project to face normal"].id;
-	int id_zCN = controls.faceVar["z distance project to face normal"].id;
-	int id_Wc = controls.faceVar["distance weight"].id;
-	int id_dLR = controls.faceVar["distance of between left and right cell"].id;
-	int id_alpha = controls.faceVar["cosine angle of between face normal and cells"].id;
+	int id_volume = controls.getId_cellVar("volume");
+	int id_area = controls.getId_faceVar("area");
+	int id_nx = controls.getId_faceVar("x unit normal");
+	int id_ny = controls.getId_faceVar("y unit normal");
+	int id_nz = controls.getId_faceVar("z unit normal");
+	int id_xLR = controls.getId_faceVar("x distance of between left and right cell");
+	int id_yLR = controls.getId_faceVar("y distance of between left and right cell");
+	int id_zLR = controls.getId_faceVar("z distance of between left and right cell");
+	int id_xSkew = controls.getId_faceVar("x skewness");
+	int id_ySkew = controls.getId_faceVar("y skewness");
+	int id_zSkew = controls.getId_faceVar("z skewness");
+	// int id_xCN = controls.getId_faceVar("x distance project to face normal");
+	// int id_yCN = controls.getId_faceVar("y distance project to face normal");
+	// int id_zCN = controls.getId_faceVar("z distance project to face normal");
+	int id_Wc = controls.getId_faceVar("distance weight");
+	int id_dLR = controls.getId_faceVar("distance of between left and right cell");
+	int id_alpha = controls.getId_faceVar("cosine angle of between face normal and cells");
+	
+	int id_xLNv = controls.getId_faceVar("left cell to face normal vector shortest x distance");
+	int id_yLNv = controls.getId_faceVar("left cell to face normal vector shortest y distance");
+	int id_zLNv = controls.getId_faceVar("left cell to face normal vector shortest z distance");
+	int id_xRNv = controls.getId_faceVar("right cell to face normal vector shortest x distance");
+	int id_yRNv = controls.getId_faceVar("right cell to face normal vector shortest y distance");
+	int id_zRNv = controls.getId_faceVar("right cell to face normal vector shortest z distance");
+	
+	int id_nLRx = controls.getId_faceVar("x unit normal of between left and right cell");
+	int id_nLRy = controls.getId_faceVar("y unit normal of between left and right cell");
+	int id_nLRz = controls.getId_faceVar("z unit normal of between left and right cell");
 	
 	MASCH_Math math;
 	
@@ -167,7 +178,7 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			// at openfoam
 			var.faces[i][id_Wc] = dFN_of/(dFP_of+dFN_of);
 			// 절단오차 걸러내기 위한 과정
-			var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
+			// var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
 			
 			var.faces[i][id_dLR] = dPN;
 			
@@ -181,6 +192,9 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			alphaF += ny*unitNomalsPN[1];
 			alphaF += nz*unitNomalsPN[2];
 			var.faces[i][id_alpha] = 1.0/abs(alphaF);
+			var.faces[i][id_nLRx] = unitNomalsPN[0];
+			var.faces[i][id_nLRy] = unitNomalsPN[1];
+			var.faces[i][id_nLRz] = unitNomalsPN[2];
 			
 			// skewness
 			double D_plane = -(nx*face.x+ny*face.y+nz*face.z);
@@ -203,6 +217,15 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			var.faces[i][id_xSkew] = vecSkewness[0];
 			var.faces[i][id_ySkew] = vecSkewness[1];
 			var.faces[i][id_zSkew] = vecSkewness[2];
+			
+			// 영린이 추가한 개념, 셀 센터에서 면 수직벡터까지 최소거리
+			var.faces[i][id_xLNv] = dxFP - dFP_of*nx;
+			var.faces[i][id_yLNv] = dyFP - dFP_of*ny;
+			var.faces[i][id_zLNv] = dzFP - dFP_of*nz;
+			
+			var.faces[i][id_xRNv] = dxFN + dFN_of*nx;
+			var.faces[i][id_yRNv] = dyFN + dFN_of*ny;
+			var.faces[i][id_zRNv] = dzFN + dFN_of*nz;
 			
 			
 			
@@ -235,11 +258,23 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			alphaF += ny*unitNomalsPN[1];
 			alphaF += nz*unitNomalsPN[2];
 			var.faces[i][id_alpha] = 1.0/abs(alphaF);
+			var.faces[i][id_nLRx] = unitNomalsPN[0];
+			var.faces[i][id_nLRy] = unitNomalsPN[1];
+			var.faces[i][id_nLRz] = unitNomalsPN[2];
 			
 			// skewness
 			var.faces[i][id_xSkew] = 0.0;
 			var.faces[i][id_ySkew] = 0.0;
 			var.faces[i][id_zSkew] = 0.0;
+			
+			// 영린이 추가한 개념, 셀 센터에서 면 수직벡터까지 최소거리
+			var.faces[i][id_xLNv] = dxFP - dFP_of*nx;
+			var.faces[i][id_yLNv] = dyFP - dFP_of*ny;
+			var.faces[i][id_zLNv] = dzFP - dFP_of*nz;
+			
+			var.faces[i][id_xRNv] = 0.0;
+			var.faces[i][id_yRNv] = 0.0;
+			var.faces[i][id_zRNv] = 0.0;
 			
 		}
 		else if(face.getType() == MASCH_Face_Types::PROCESSOR){
@@ -318,6 +353,9 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 				alphaF += ny*unitNomalsPN[1];
 				alphaF += nz*unitNomalsPN[2];
 				var.faces[i][id_alpha] = 1.0/abs(alphaF);
+				var.faces[i][id_nLRx] = unitNomalsPN[0];
+				var.faces[i][id_nLRy] = unitNomalsPN[1];
+				var.faces[i][id_nLRz] = unitNomalsPN[2];
 				
 				// skewness
 				double D_plane = -(nx*face.x+ny*face.y+nz*face.z);
@@ -335,6 +373,15 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 				var.faces[i][id_xSkew] = vecSkewness[0];
 				var.faces[i][id_ySkew] = vecSkewness[1];
 				var.faces[i][id_zSkew] = vecSkewness[2];
+				
+				// 영린이 추가한 개념, 셀 센터에서 면 수직벡터까지 최소거리
+				var.faces[i][id_xLNv] = dxFP - dFP_of*nx;
+				var.faces[i][id_yLNv] = dyFP - dFP_of*ny;
+				var.faces[i][id_zLNv] = dzFP - dFP_of*nz;
+			
+				var.faces[i][id_xRNv] = dxFN + dFN_of*nx;
+				var.faces[i][id_yRNv] = dyFN + dFN_of*ny;
+				var.faces[i][id_zRNv] = dzFN + dFN_of*nz;
 				
 				++ip;
 			}

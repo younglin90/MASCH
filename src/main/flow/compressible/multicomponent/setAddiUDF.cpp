@@ -101,37 +101,35 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 	
 	
 	{
-		int id_p = controls.cellVar["pressure"].id;
-		int id_u = controls.cellVar["x-velocity"].id;
-		int id_v = controls.cellVar["y-velocity"].id;
-		int id_w = controls.cellVar["z-velocity"].id;
-		int id_T = controls.cellVar["temperature"].id;
+		int id_p = controls.getId_cellVar("pressure");
+		int id_u = controls.getId_cellVar("x-velocity");
+		int id_v = controls.getId_cellVar("y-velocity");
+		int id_w = controls.getId_cellVar("z-velocity");
+		int id_T = controls.getId_cellVar("temperature");
 		
-		int nSp = controls.cellVar["mass fraction"].sub_name.size();
+		int nSp = controls.nSp;
 		vector<int> id_Y(nSp);
 		for(int i=0; i<nSp; ++i){
-			string tmp_name = controls.cellVar["mass fraction"].sub_name[i];
-			id_Y[i] = controls.cellVar[tmp_name].id;
+			string tmp_name = controls.cellVar["mass-fraction"].sub_name[i];
+			id_Y[i] = controls.getId_cellVar("mass-fraction-"+tmp_name);
 		}
-		
-		int id_rho = controls.cellVar["density"].id;
-		int id_c = controls.cellVar["speed of sound"].id;
-		int id_Ht = controls.cellVar["total enthalpy"].id;
-		
-		int id_drhodp = controls.cellVar["density diff with pressure"].id;
-		int id_drhodT = controls.cellVar["density diff with temperature"].id;
-		int id_dHtdp = controls.cellVar["total enthalpy diff with pressure"].id;
-		int id_dHtdT = controls.cellVar["total enthalpy diff with temperature"].id;
+		int id_c = controls.getId_cellVar("speed-of-sound");
+		int id_rho = controls.getId_cellVar("density");
+		int id_Ht = controls.getId_cellVar("total-enthalpy");
+		int id_drhodp = controls.getId_cellVar("density-diff-with-pressure");
+		int id_drhodT = controls.getId_cellVar("density-diff-with-temperature");
+		int id_dHtdp = controls.getId_cellVar("total-enthalpy-diff-with-pressure");
+		int id_dHtdT = controls.getId_cellVar("total-enthalpy-diff-with-temperature");
 		vector<int> id_drhodY(nSp);
 		vector<int> id_dHtdY(nSp);
 		for(int i=0; i<nSp; ++i){
-			string tmp_name1 = controls.cellVar["density diff with mass fraction"].sub_name[i];
-			string tmp_name2 = controls.cellVar["total enthalpy diff with mass fraction"].sub_name[i];
-			id_drhodY[i] = controls.cellVar[tmp_name1].id;
-			id_dHtdY[i] = controls.cellVar[tmp_name2].id;
+			string tmp_name1 = controls.cellVar["density-diff-with-mass-fraction"].sub_name[i];
+			string tmp_name2 = controls.cellVar["total-enthalpy-diff-with-mass-fraction"].sub_name[i];
+			id_drhodY[i] = controls.getId_cellVar("density-diff-with-mass-fraction-"+tmp_name1);
+			id_dHtdY[i] = controls.getId_cellVar("total-enthalpy-diff-with-mass-fraction-"+tmp_name2);
 		}
 		
-		int id_mu = controls.cellVar["viscosity"].id;
+		int id_mu = controls.getId_cellVar("viscosity");
 		
 		
 		
@@ -223,15 +221,15 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			
 			
 			
-			// 점성계수 관련
-			cells[id_mu] = 0.0;
-			for(int i=0; i<nSp; ++i){
-				cells[id_mu] += alpha[0]*spInf[i][5];
-				// cout << spInf[i][5] << endl;
-			}
-			// for(int ns=0; ns<nSp; ++ns){
-				// cells[id_mu] += alpha[ns]*
+			// // 점성계수 관련
+			// cells[id_mu] = 0.0;
+			// for(int i=0; i<nSp; ++i){
+				// cells[id_mu] += alpha[0]*spInf[i][5];
+				// // cout << spInf[i][5] << endl;
 			// }
+			// // for(int ns=0; ns<nSp; ++ns){
+				// // cells[id_mu] += alpha[ns]*
+			// // }
 			
 			
 			return 0;
@@ -247,7 +245,7 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 	// };
 	for(int ii=0; ii<2; ++ii)
 	{
-		int nSp;
+		int nSp = controls.nSp;
 		
 		int id_p;
 		int id_u;
@@ -262,42 +260,37 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 		int id_Ht;
 		
 		if(ii==0){
-				
-			nSp = controls.faceVar["left mass fraction"].sub_name.size();
-			
-			id_p = controls.faceVar["left pressure"].id;
-			id_u = controls.faceVar["left x-velocity"].id;
-			id_v = controls.faceVar["left y-velocity"].id;
-			id_w = controls.faceVar["left z-velocity"].id;
-			id_T = controls.faceVar["left temperature"].id;
+			id_p = controls.getId_faceVar("left pressure");
+			id_u = controls.getId_faceVar("left x-velocity");
+			id_v = controls.getId_faceVar("left y-velocity");
+			id_w = controls.getId_faceVar("left z-velocity");
+			id_T = controls.getId_faceVar("left temperature");
 			
 			for(int i=0; i<nSp; ++i){
-				string tmp_name = controls.faceVar["left mass fraction"].sub_name[i];
-				id_Y[i] = controls.faceVar[tmp_name].id;
+				string tmp_name = controls.faceVar["left mass-fraction"].sub_name[i];
+				id_Y[i] = controls.getId_faceVar("left mass-fraction-"+tmp_name);
 			}
 			
-			id_rho = controls.faceVar["left density"].id;
-			id_c = controls.faceVar["left speed of sound"].id;
-			id_Ht = controls.faceVar["left total enthalpy"].id;
+			id_rho = controls.getId_faceVar("left density");
+			id_c = controls.getId_faceVar("left speed-of-sound");
+			id_Ht = controls.getId_faceVar("left total-enthalpy");
 			
 		}
 		else{
-			nSp = controls.faceVar["right mass fraction"].sub_name.size();
-			
-			id_p = controls.faceVar["right pressure"].id;
-			id_u = controls.faceVar["right x-velocity"].id;
-			id_v = controls.faceVar["right y-velocity"].id;
-			id_w = controls.faceVar["right z-velocity"].id;
-			id_T = controls.faceVar["right temperature"].id;
+			id_p = controls.getId_faceVar("right pressure");
+			id_u = controls.getId_faceVar("right x-velocity");
+			id_v = controls.getId_faceVar("right y-velocity");
+			id_w = controls.getId_faceVar("right z-velocity");
+			id_T = controls.getId_faceVar("right temperature");
 			
 			for(int i=0; i<nSp; ++i){
-				string tmp_name = controls.faceVar["right mass fraction"].sub_name[i];
-				id_Y[i] = controls.faceVar[tmp_name].id;
+				string tmp_name = controls.faceVar["right mass-fraction"].sub_name[i];
+				id_Y[i] = controls.getId_faceVar("right mass-fraction-"+tmp_name);
 			}
 			
-			id_rho = controls.faceVar["right density"].id;
-			id_c = controls.faceVar["right speed of sound"].id;
-			id_Ht = controls.faceVar["right total enthalpy"].id;
+			id_rho = controls.getId_faceVar("right density");
+			id_c = controls.getId_faceVar("right speed-of-sound");
+			id_Ht = controls.getId_faceVar("right total-enthalpy");
 			
 		}
 		
@@ -306,6 +299,7 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 		id_p,id_u,id_v,id_w,id_T,id_Y,id_rho,id_c,id_Ht] (
 		double* faces) ->int {
 			auto spInf_ptr = spInf.data();
+			auto id_Y_ptr = id_Y.data();
 			double p = faces[id_p];
 			double u = faces[id_u];
 			double v = faces[id_v];
@@ -313,14 +307,14 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			double T = faces[id_T];
 			double Y[nSp];
 			for(int i=0; i<nSp; ++i){
-				Y[i] = faces[id_Y[i]];
+				Y[i] = faces[id_Y_ptr[i]];
 			}
 			double Y_sum = 0.0;
 			for(int i=0; i<nSp-1; ++i){
 				Y_sum += Y[i];
 			}
 			Y[nSp-1] = 1.0-Y_sum;
-			faces[id_Y[nSp-1]] = Y[nSp-1];
+			faces[id_Y_ptr[nSp-1]] = Y[nSp-1];
 			
 			double rhoi[nSp], ci[nSp], Hti[nSp], 
 			drhodpi[nSp], drhodTi[nSp], dHtdpi[nSp], 

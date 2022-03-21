@@ -15,17 +15,17 @@ FoamFile
         nFaces 31126;
         startFace 30800;
     }
-    outlet
-    {
-        type Unspecified;
-        nFaces 59;
-        startFace 61926;
-    }
     supinlet
     {
         type Unspecified;
         nFaces 78;
-        startFace 61985;
+        startFace 61926;
+    }
+    supoutlet
+    {
+        type Unspecified;
+        nFaces 59;
+        startFace 62004;
     }
     viswall
     {

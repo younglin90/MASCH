@@ -22,13 +22,13 @@ string MASCH_FileSystem::showPrettySize(int fileSize){
 // 폴더 안에 있는 파일들 크기
 int MASCH_FileSystem::calcFileSize(string folder){
 	int fileSize = 0;
-	for (const filesystem::directory_entry& entry :
-		filesystem::recursive_directory_iterator(filesystem::current_path() / folder)) {
-		// std::cout << entry.path() << std::endl;
-		if(filesystem::is_regular_file(entry.path())){
-			fileSize += std::filesystem::file_size(entry.path());
-		}
-	}
+	// for (const filesystem::directory_entry& entry :
+		// filesystem::recursive_directory_iterator(filesystem::current_path() / folder)) {
+		// // std::cout << entry.path() << std::endl;
+		// if(filesystem::is_regular_file(entry.path())){
+			// fileSize += std::filesystem::file_size(entry.path());
+		// }
+	// }
 	return fileSize;
 }
 
@@ -61,13 +61,15 @@ MASCH_TimeSystem& MASCH_TimeSystem::pop(){
 		(*this).logCalcName.push_back(name.top());
 		(*this).logCalcFront.push_back(ss.str());
 		(*this).logCalcTime.push_back(
-			chrono::duration_cast<chrono::microseconds>(
+			// chrono::duration_cast<chrono::microseconds>(
+			// chrono::system_clock::now() - start.top()));
+			chrono::duration_cast<chrono::milliseconds>(
 			chrono::system_clock::now() - start.top()));
 	}
 	else{
 		int order = where - (*this).logCalcName.begin();
 		(*this).logCalcTime.at(order) += (
-			chrono::duration_cast<chrono::microseconds>(
+			chrono::duration_cast<chrono::milliseconds>(
 			chrono::system_clock::now() - start.top()));
 	}
 	
@@ -78,7 +80,7 @@ MASCH_TimeSystem& MASCH_TimeSystem::pop(){
 	return (*this);
 }
 void MASCH_TimeSystem::show(){
-	vector<int> time_glo;
+	vector<double> time_glo;
 	{
 		int i=0;
 		for(auto& item : (*this).logCalcName){
@@ -91,8 +93,8 @@ void MASCH_TimeSystem::show(){
 	int size = MPI::COMM_WORLD.Get_size();
 	if(size>1){
 		int tmp_size = time_glo.size();
-		vector<int> tmp_var_glo(tmp_size);
-		MPI_Allreduce(time_glo.data(), tmp_var_glo.data(), tmp_size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		vector<double> tmp_var_glo(tmp_size);
+		MPI_Allreduce(time_glo.data(), tmp_var_glo.data(), tmp_size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 		for(int i=0; i<tmp_size; ++i){
 			time_glo[i] = tmp_var_glo[i]/size;
 		}
@@ -122,9 +124,17 @@ void MASCH_TimeSystem::clear(){
 	(*this).logCalcFront.clear();
 	(*this).logCalcTime.clear();
 }
-chrono::microseconds MASCH_TimeSystem::showCalcTime(){
-	chrono::microseconds calcTime = 
-	chrono::duration_cast<chrono::microseconds>(
+// chrono::microseconds MASCH_TimeSystem::showCalcTime(){
+	// chrono::microseconds calcTime = 
+	// chrono::duration_cast<chrono::microseconds>(
+	// chrono::system_clock::now() - start.top()); 
+	// name.pop();
+	// start.pop();
+	// return calcTime;
+// }
+chrono::milliseconds MASCH_TimeSystem::showCalcTime(){
+	chrono::milliseconds calcTime = 
+	chrono::duration_cast<chrono::milliseconds>(
 	chrono::system_clock::now() - start.top()); 
 	name.pop();
 	start.pop();
@@ -135,7 +145,7 @@ string MASCH_TimeSystem::now(){
 	auto now = std::chrono::system_clock::now();
 	auto in_time_t = std::chrono::system_clock::to_time_t(now);
 	std::stringstream ss;
-	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+	// ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
 	return ss.str();
 }
 
