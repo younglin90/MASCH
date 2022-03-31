@@ -14,12 +14,16 @@ using namespace std;
 //extern "C" int p_boundary(double time, double x, double y, double z, int* inp_id, double* cells);
 extern "C" int U_boundary(
 double time, double x, double y, double z,
-int id_u, int id_v, int id_w, int id_uF, int id_vF, int id_wF, 
+int id_u, int id_v, int id_w, 
+int id_p, int id_T,
+int id_uF, int id_vF, int id_wF, 
 int id_nx, int id_ny, int id_nz, double* cells, double* faces);
 
 int U_boundary(
 double time, double x, double y, double z, 
-int id_u, int id_v, int id_w, int id_uF, int id_vF, int id_wF, 
+int id_u, int id_v, int id_w, 
+int id_p, int id_T,
+int id_uF, int id_vF, int id_wF, 
 int id_nx, int id_ny, int id_nz, double* cells, double* faces){
 
 
@@ -79,52 +83,42 @@ int id_nx, int id_ny, int id_nz, double* cells, double* faces){
 	return 0;
 }
 
+// void setFunctionUvelocity(double time, double x, double y, double z, double& fU){
+	// // cout << "BBB" << endl;
+	// fU=0.0;
+// }
+// void setFunctionVvelocity(double time, double x, double y, double z, double& fV){
+	// // cout << "BBB" << endl;
+	// double radius = 0.01/2.0;
+	// if( (x-0.01)*(x-0.01)+z*z <= radius*radius ){
+		// fV = 22.6;
+	// }
+	// else{
+		// fV = 0.0;
+	// }
+// }
+// void setFunctionWvelocity(double time, double x, double y, double z, double& fW){
+	// // cout << "BBB" << endl;
+	// fW=0.0;
+// }
+// void setFunctionTemperature(double time, double x, double y, double z, double& fT)
+// {
+	// // cout << "CCC" << endl;
+// }
+// void setFunctionMassFractions(double time, double x, double y, double z, double& fMF)
+// {
+	// double radius = 0.01/2.0;
+	// if( (x-0.01)*(x-0.01)+z*z <= radius*radius ){
+		// fMF = 1.0;
+	// }
+	// else{
+		// fMF = 0.0;
+	// }
+	// // cout << "EEE" << endl;
+// }
 
+// void setFunctionVolumeFractions(double time, double x, double y, double z, double& fVF)
+// {
+	// // cout << "DDD" << endl;
+// }
 
-
-
-extern "C" int U_liq_boundary(
-double time, double x, double y, double z,
-int id_u, int id_v, int id_w, int id_uF, int id_vF, int id_wF, 
-int id_nx, int id_ny, int id_nz, double* cells, double* faces);
-
-int U_liq_boundary(
-double time, double x, double y, double z, 
-int id_u, int id_v, int id_w, int id_uF, int id_vF, int id_wF, 
-int id_nx, int id_ny, int id_nz, double* cells, double* faces){
-
-	if((x-0.007)*(x-0.007)+z*z<0.001*0.001){
-		faces[id_uF] = 0.0;
-		faces[id_vF] = 22.6;
-		faces[id_wF] = 0.0;
-	}
-	else{
-		faces[id_uF] = 0.0;
-		faces[id_vF] = 0.0;
-		faces[id_wF] = 0.0;
-	}
-
-
-	return 0;
-}
-
-
-
-
-extern "C" int Y_boundary(
-double time, double x, double y, double z,
-int id_Y, int id_YF,double* cells, double* faces);
-
-int Y_boundary(
-double time, double x, double y, double z, 
-int id_Y, int id_YF, double* cells, double* faces){
-
-	if((x-0.007)*(x-0.007)+z*z<0.001*0.001){
-		faces[id_YF] = 1.0;
-	}
-	else{
-		faces[id_YF] = 0.0;
-	}
-
-	return 0;
-}

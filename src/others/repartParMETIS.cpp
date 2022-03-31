@@ -49,7 +49,7 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 	vector<int> vtxdist(nSize+1);
 	vtxdist[0] = 0;
 	for(int i=1; i<nSize+1; ++i){
-		vtxdist[i] = vtxdist[i-1] + static_cast<int>(temp_vtxdist[i-1]);
+		vtxdist.at(i) = vtxdist.at(i-1) + (temp_vtxdist.at(i-1));
 	}
 	
 	
@@ -58,17 +58,23 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 	int numt = 0;
 	for(auto& cell : mesh.cells){
 		int numt2 = 0;
-		for(auto& face : cell.faces()){
+		// for(auto& face : cell.faces()){
+			// if(
+			// (*face).getType() == MASCH_Face_Types::INTERNAL ||
+			// (*face).getType() == MASCH_Face_Types::PROCESSOR) ++numt2;
+		// }
+		for(auto& iface : cell.ifaces){
+			auto& face = mesh.faces[iface];
 			if(
-			(*face).getType() == MASCH_Face_Types::INTERNAL ||
-			(*face).getType() == MASCH_Face_Types::PROCESSOR) ++numt2;
+			face.getType() == MASCH_Face_Types::INTERNAL ||
+			face.getType() == MASCH_Face_Types::PROCESSOR) ++numt2;
 		}
 		++numt;
-		xadj[numt] = xadj[numt-1] + static_cast<int>(numt2);
+		xadj.at(numt) = xadj.at(numt-1) + (numt2);
 	}
 	
 	
-	vector<int> adjncy(xadj[ncells],0);
+	vector<int> adjncy(xadj.at(ncells),0);
 	
 	vector<int> recv_right_rank;
 	vector<int> recv_right_icell;
@@ -83,52 +89,58 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 		}
 		recv_right_rank.resize(send_right_rank.size());
 		recv_right_icell.resize(send_right_icell.size());
-		MPI_Alltoallv( send_right_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   recv_right_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_right_rank.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   recv_right_rank.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
-		MPI_Alltoallv( send_right_icell.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   recv_right_icell.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_right_icell.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   recv_right_icell.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 	}
-	
 	
 	vector<int> num_ncell(ncells,0);
 	int proc_num = 0;
 	for(auto& face : mesh.faces){
 		if(face.getType() == MASCH_Face_Types::INTERNAL) {
 			
-			int tnum = xadj[face.iL] + num_ncell[face.iL];
-			adjncy[tnum] = vtxdist[rank] + static_cast<int>(face.iR);
-			++num_ncell[face.iL];
+			int tnum = xadj.at(face.iL) + num_ncell.at(face.iL);
+			adjncy.at(tnum) = vtxdist.at(rank) + face.iR;
+			++num_ncell.at(face.iL);
 			
-			tnum = xadj[face.iR] + num_ncell[face.iR];
-			adjncy[tnum] = vtxdist[rank] + static_cast<int>(face.iL);
-			++num_ncell[face.iR];
+			tnum = xadj.at(face.iR) + num_ncell.at(face.iR);
+			adjncy.at(tnum) = vtxdist.at(rank) + face.iL;
+			++num_ncell.at(face.iR);
 			
 		}
 		else if(face.getType() == MASCH_Face_Types::PROCESSOR) {
 			
-			int tnum = xadj[face.iL] + num_ncell[face.iL];
-			int right_rank = recv_right_rank[proc_num];
-			adjncy[tnum] = vtxdist[right_rank] + recv_right_icell[proc_num];
-			++num_ncell[face.iL];
+			int tnum = xadj.at(face.iL) + num_ncell.at(face.iL);
+			int right_rank = recv_right_rank.at(proc_num);
+			adjncy.at(tnum) = vtxdist.at(right_rank) + recv_right_icell.at(proc_num);
+			++num_ncell.at(face.iL);
 			
 			++proc_num;
 		}
 	}
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
+	// for(auto& item : adjncy){
+		// cout << item << endl;
+	// }
 
-	ParMETIS_V3_PartKway(
-		vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, &wgtflag, &numflag,
-		&ncon, &nSize, tpwgts, &ubvec,
-		options, &objval, cell_ip.data(), &comm);
-		
-	// idx_t vsize = NULL;
-	// real_t itr = 1000.0;
-	// ParMETIS_V3_AdaptiveRepart(
-		// vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, nullptr, &wgtflag, &numflag,
-		// &ncon, &nSize, tpwgts, &ubvec, &itr, 
+	// ParMETIS_V3_PartKway(
+		// vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, &wgtflag, &numflag,
+		// &ncon, &nSize, tpwgts, &ubvec,
 		// options, &objval, cell_ip.data(), &comm);
+		
+	idx_t vsize = NULL;
+	real_t itr = 1000.0;
+	ParMETIS_V3_AdaptiveRepart(
+		vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, nullptr, &wgtflag, &numflag,
+		&ncon, &nSize, tpwgts, &ubvec, &itr, 
+		options, &objval, cell_ip.data(), &comm);
 		
 	
 	// 그룹 재정립
@@ -176,7 +188,13 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 		// }
 	// }
 	
+	
+	// for(auto& item : cell_ip){
+		// item = rank;
+	// }
+	
 		
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(rank==0){
 		cout << "-> completed" << endl;
 		cout << "└────────────────────────────────────────────────────" << endl;

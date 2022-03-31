@@ -58,10 +58,16 @@ int nSize, vector<int>& procNoCell, MASCH_Mesh &mesh){
 	int numt = 0;
 	for(auto& cell : mesh.cells){
 		int numt2 = 0;
-		for(auto& face : cell.faces()){
+		// for(auto& face : cell.faces()){
+			// if(
+			// (*face).getType() == MASCH_Face_Types::INTERNAL ||
+			// (*face).getType() == MASCH_Face_Types::PROCESSOR) ++numt2;
+		// }
+		for(auto& iface : cell.ifaces){
+			auto& face = mesh.faces[iface];
 			if(
-			(*face).getType() == MASCH_Face_Types::INTERNAL ||
-			(*face).getType() == MASCH_Face_Types::PROCESSOR) ++numt2;
+			face.getType() == MASCH_Face_Types::INTERNAL ||
+			face.getType() == MASCH_Face_Types::PROCESSOR) ++numt2;
 		}
 		++numt;
 		xadj[numt] = xadj[numt-1] + static_cast<int>(numt2);
@@ -121,7 +127,7 @@ int nSize, vector<int>& procNoCell, MASCH_Mesh &mesh){
 		// procNoCell[i] = 0;
 	// }
 
-	
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(rank==0){
 		cout << "-> completed" << endl;
 		cout << "└────────────────────────────────────────────────────" << endl;

@@ -10,47 +10,82 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 	int nEq = 5+nSp-1;
 	
 	int id_p = controls.getId_cellVar("pressure");
-	int id_pF = controls.getId_faceVar("pressure");
-
-	// int id_dp = controls.getId_cellVar("delta-pressure");
-	// int id_dpF = controls.getId_faceVar("delta-pressure");
-
-	int id_u = controls.getId_cellVar("x-velocity");
-	int id_uF = controls.getId_faceVar("x-velocity");
-	
-	int id_v = controls.getId_cellVar("y-velocity");
-	int id_vF = controls.getId_faceVar("y-velocity");
-	
-	int id_w = controls.getId_cellVar("z-velocity");
-	int id_wF = controls.getId_faceVar("z-velocity");
-	
-	vector<int> id_Y, id_YF;
-	for(int i=0; i<controls.spName.size()-1; ++i){
-		id_Y.push_back(controls.getId_cellVar("mass-fraction-"+controls.spName[i]));
-		id_YF.push_back(controls.getId_faceVar("mass-fraction-"+controls.spName[i]));
-	}
-	
-	int id_muF = controls.getId_faceVar("viscosity");
-	
+	int id_pL = controls.getId_faceVar("left pressure");
+	int id_pR = controls.getId_faceVar("right pressure");
 	int id_dpdx = controls.getId_cellVar("x-gradient pressure");
 	int id_dpdy = controls.getId_cellVar("y-gradient pressure");
 	int id_dpdz = controls.getId_cellVar("z-gradient pressure");
-	
+	int id_pMax = controls.getId_cellVar("maximum pressure");
+	int id_pMin = controls.getId_cellVar("minimum pressure");
+
+	int id_u = controls.getId_cellVar("x-velocity");
+	int id_uL = controls.getId_faceVar("left x-velocity");
+	int id_uR = controls.getId_faceVar("right x-velocity");
 	int id_dudx = controls.getId_cellVar("x-gradient x-velocity");
 	int id_dudy = controls.getId_cellVar("y-gradient x-velocity");
 	int id_dudz = controls.getId_cellVar("z-gradient x-velocity");
+	int id_uMax = controls.getId_cellVar("maximum x-velocity");
+	int id_uMin = controls.getId_cellVar("minimum x-velocity");
 	
+	int id_v = controls.getId_cellVar("y-velocity");
+	int id_vL = controls.getId_faceVar("left y-velocity");
+	int id_vR = controls.getId_faceVar("right y-velocity");
 	int id_dvdx = controls.getId_cellVar("x-gradient y-velocity");
 	int id_dvdy = controls.getId_cellVar("y-gradient y-velocity");
 	int id_dvdz = controls.getId_cellVar("z-gradient y-velocity");
+	int id_vMax = controls.getId_cellVar("maximum y-velocity");
+	int id_vMin = controls.getId_cellVar("minimum y-velocity");
 	
+	int id_w = controls.getId_cellVar("z-velocity");
+	int id_wL = controls.getId_faceVar("left z-velocity");
+	int id_wR = controls.getId_faceVar("right z-velocity");
 	int id_dwdx = controls.getId_cellVar("x-gradient z-velocity");
 	int id_dwdy = controls.getId_cellVar("y-gradient z-velocity");
 	int id_dwdz = controls.getId_cellVar("z-gradient z-velocity");
+	int id_wMax = controls.getId_cellVar("maximum z-velocity");
+	int id_wMin = controls.getId_cellVar("minimum z-velocity");
+	
+	int id_T = controls.getId_cellVar("temperature");
+	int id_TL = controls.getId_faceVar("left temperature");
+	int id_TR = controls.getId_faceVar("right temperature");
+	int id_dTdx = controls.getId_cellVar("x-gradient temperature");
+	int id_dTdy = controls.getId_cellVar("y-gradient temperature");
+	int id_dTdz = controls.getId_cellVar("z-gradient temperature");
+	int id_TMax = controls.getId_cellVar("maximum temperature");
+	int id_TMin = controls.getId_cellVar("minimum temperature");
+	
+	vector<int> id_Y, id_YL, id_YR, id_dYdx, id_dYdy, id_dYdz, id_YMax, id_YMin;
+	for(int i=0; i<controls.spName.size()-1; ++i){
+		string tmp_name = ("mass-fraction-"+controls.spName[i]);
+		id_Y.push_back(controls.getId_cellVar(tmp_name));
+		id_dYdx.push_back(controls.getId_cellVar("x-gradient "+tmp_name));
+		id_dYdy.push_back(controls.getId_cellVar("y-gradient "+tmp_name));
+		id_dYdz.push_back(controls.getId_cellVar("z-gradient "+tmp_name));
+		id_YMax.push_back(controls.getId_cellVar("maximum "+tmp_name));
+		id_YMin.push_back(controls.getId_cellVar("minimum "+tmp_name));
+	}
+	for(int i=0; i<controls.spName.size()-1; ++i){
+		string tmp_name = ("left mass-fraction-"+controls.spName[i]);
+		id_YL.push_back(controls.getId_faceVar(tmp_name));
+	}
+	for(int i=0; i<controls.spName.size()-1; ++i){
+		string tmp_name = ("right mass-fraction-"+controls.spName[i]);
+		id_YR.push_back(controls.getId_faceVar(tmp_name));
+	}
+	
+	int id_rhoL = controls.getId_faceVar("left density");
+	int id_rhoR = controls.getId_faceVar("right density");
+	int id_HtL = controls.getId_faceVar("left total-enthalpy");
+	int id_HtR = controls.getId_faceVar("right total-enthalpy");
+	int id_cL = controls.getId_faceVar("left speed-of-sound");
+	int id_cR = controls.getId_faceVar("right speed-of-sound");
+	int id_mu = controls.getId_cellVar("viscosity");
+	int id_muL = controls.getId_faceVar("left viscosity");
+	int id_muR = controls.getId_faceVar("right viscosity");
 	
 	// int id_dtrho = controls.getId_faceVar("time-step-density");
 	
-	int id_UnF = controls.getId_faceVar("contravariant-velocity");
+	// int id_UnF = controls.getId_faceVar("contravariant-velocity");
 	
 	int id_dt = controls.getId_fieldVar("time-step");
 	
@@ -65,8 +100,6 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 	int id_rho = controls.getId_cellVar("density");
 	int id_c = controls.getId_cellVar("speed-of-sound");
 	int id_Ht = controls.getId_cellVar("total-enthalpy");
-	int id_rhoF = controls.getId_faceVar("density");
-	int id_HtF = controls.getId_faceVar("total-enthalpy");
 	// int id_cF = controls.getId_faceVar("speed-of-sound");
 	
 	
@@ -86,6 +119,13 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 	int id_nLRx = controls.getId_faceVar("x unit normal of between left and right cell");
 	int id_nLRy = controls.getId_faceVar("y unit normal of between left and right cell");
 	int id_nLRz = controls.getId_faceVar("z unit normal of between left and right cell");
+	
+	int id_xLNv = controls.getId_faceVar("left cell to face normal vector shortest x distance");
+	int id_yLNv = controls.getId_faceVar("left cell to face normal vector shortest y distance");
+	int id_zLNv = controls.getId_faceVar("left cell to face normal vector shortest z distance");
+	int id_xRNv = controls.getId_faceVar("right cell to face normal vector shortest x distance");
+	int id_yRNv = controls.getId_faceVar("right cell to face normal vector shortest y distance");
+	int id_zRNv = controls.getId_faceVar("right cell to face normal vector shortest z distance");
 	
 	// 곡률관련
 	vector<int> id_curvature, id_alpha_VF;
@@ -113,18 +153,24 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 	double CN_coeff_Y = 1.0;
 	
 	
+	
 
 
 	{
 		calcConvFlux.push_back(
 		[&solver,nSp,
-		id_p,id_pF,id_u,id_uF,id_v,id_vF,id_w,id_wF,
-		id_dpdx,id_dpdy,id_dpdz,id_UnF,id_dt,id_nx,id_ny,id_nz,id_area,id_dLR,id_muF,
-		id_rhoF,id_HtF,id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
-		id_wd,id_rho,id_Ht,id_YF,nEq,id_c,CN_coeff,CN_coeff_Y,id_Y,
+		id_p,id_u,id_v,id_w,
+		id_pMax,id_pMin,id_uMax,id_uMin,id_vMax,id_vMin,id_wMax,id_wMin,
+		id_TMax,id_TMin,id_YMax,id_YMin,
+		id_pL,id_uL,id_vL,id_wL,id_YL,id_rhoL,id_HtL,id_muL,id_cL,
+		id_pR,id_uR,id_vR,id_wR,id_YR,id_rhoR,id_HtR,id_muR,id_cR,
+		id_dpdx,id_dpdy,id_dpdz,id_dt,id_nx,id_ny,id_nz,id_area,id_dLR,
+		id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
+		id_wd,id_rho,id_Ht,nEq,id_c,CN_coeff,CN_coeff_Y,id_Y,
 		id_dudx,id_dudy,id_dudz,id_dvdx,id_dvdy,id_dvdz,id_dwdx,id_dwdy,id_dwdz,
 		id_alpha,id_nLRx,id_nLRy,id_nLRz,
-		id_curvature,id_alpha_VF,nCurv,surf_sigma](
+		id_curvature,id_alpha_VF,nCurv,surf_sigma,id_mu,
+		id_xLNv,id_yLNv,id_zLNv,id_xRNv,id_yRNv,id_zRNv](
 		double* fields, double* cellsL, double* cellsR, double* faces, 
 		double* fluxA_LL, double* fluxA_RR, 
 		double* fluxA_LR, double* fluxA_RL, 
@@ -136,15 +182,35 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			nvec[0] = faces[id_nx]; nvec[1] = faces[id_ny]; nvec[2] = faces[id_nz];
 			double area = faces[id_area];
 			double dLR = faces[id_dLR]; 
+			double LNv[3];
+			LNv[0] = faces[id_xLNv]; LNv[1] = faces[id_yLNv]; LNv[2] = faces[id_zLNv];
+			double RNv[3];
+			RNv[0] = faces[id_xRNv]; RNv[1] = faces[id_yRNv]; RNv[2] = faces[id_zRNv];
 			double dAlpha = faces[id_alpha];
 			double nLR[3];
 			nLR[0] = faces[id_nLRx]; nLR[1] = faces[id_nLRy]; nLR[2] = faces[id_nLRz];
+			double wdL = faces[id_wd]; double wdR = 1.0-wdL;
 			
+			
+				// dAlpha = 1.0;
+				wdL = 0.5; wdR = 0.5; 
+				// double weiwd = 0.7;
+				// wdL = weiwd*0.5 + (1.0-weiwd)*(wdL-0.5);
+				// wdR = 1.0 - wdL;
+			
+			
+			double w_phi = 1.0-2.0*abs(wdL-0.5);
+			double pL = cellsL[id_p]; double pR = cellsR[id_p];
 			double cL = cellsL[id_c]; double cR = cellsR[id_c];
 			double uL = cellsL[id_u]; double uR = cellsR[id_u];
 			double vL = cellsL[id_v]; double vR = cellsR[id_v];
 			double wL = cellsL[id_w]; double wR = cellsR[id_w];
 			double rhoL = cellsL[id_rho]; double rhoR = cellsR[id_rho];
+			double HtL = cellsL[id_Ht]; double HtR = cellsR[id_Ht];
+			double muL = cellsL[id_mu]; double muR = cellsR[id_mu];
+			double dpdxL = cellsL[id_dpdx]; double dpdxR = cellsR[id_dpdx];
+			double dpdyL = cellsL[id_dpdy]; double dpdyR = cellsR[id_dpdy];
+			double dpdzL = cellsL[id_dpdz]; double dpdzR = cellsR[id_dpdz];
 			double dudxL = cellsL[id_dudx]; double dudxR = cellsR[id_dudx];
 			double dudyL = cellsL[id_dudy]; double dudyR = cellsR[id_dudy];
 			double dudzL = cellsL[id_dudz]; double dudzR = cellsR[id_dudz];
@@ -154,6 +220,18 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			double dwdxL = cellsL[id_dwdx]; double dwdxR = cellsR[id_dwdx];
 			double dwdyL = cellsL[id_dwdy]; double dwdyR = cellsR[id_dwdy];
 			double dwdzL = cellsL[id_dwdz]; double dwdzR = cellsR[id_dwdz];
+			
+			double pL_max = cellsL[id_pMax]; double pR_max = cellsR[id_pMax];
+			double pL_min = cellsL[id_pMin]; double pR_min = cellsR[id_pMin];
+			double uL_max = cellsL[id_uMax]; double uR_max = cellsR[id_uMax];
+			double uL_min = cellsL[id_uMin]; double uR_min = cellsR[id_uMin];
+			double vL_max = cellsL[id_vMax]; double vR_max = cellsR[id_vMax];
+			double vL_min = cellsL[id_vMin]; double vR_min = cellsR[id_vMin];
+			double wL_max = cellsL[id_wMax]; double wR_max = cellsR[id_wMax];
+			double wL_min = cellsL[id_wMin]; double wR_min = cellsR[id_wMin];
+			// double TL_max = cellsL[id_TMax]; double TR_max = cellsR[id_TMax];
+			// double TL_min = cellsL[id_TMin]; double TR_min = cellsR[id_TMin];
+			
 			double curvatureL[nCurv+1], curvatureR[nCurv+1];
 			double alpha_VFL[nCurv+1], alpha_VFR[nCurv+1];
 			for(int i=0; i<nCurv; ++i){
@@ -162,50 +240,39 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				alpha_VFL[i] = cellsL[id_alpha_VF[i]];
 				alpha_VFR[i] = cellsR[id_alpha_VF[i]];
 			}
-			
-			double rhoF = faces[id_rhoF];
-			double uF = faces[id_uF];
-			double vF = faces[id_vF];
-			double wF = faces[id_wF];
-			double pF = faces[id_pF];
-			double UnF = faces[id_UnF];
-			double HtF = faces[id_HtF];
-			double YF[nSp];
-			for(int i=0; i<nSp-1; ++i){
-				YF[i] = faces[id_YF[i]];
-			}
-			
-			double weiL = 1.0; double weiR = 0.0;
-			if(UnF<0.0){
-				weiL = 0.0; weiR = 1.0;
-			}
-			double wdL = faces[id_wd]; double wdR = 1.0-wdL;
-			
-			
-			
-			
-			
-				
-				wdL = 0.5; wdR = 0.5;
-			
-			
-			
-			double weidL = wdL; double weidR = wdR;
-			double dtrho = dt*(wdL/rhoL+wdR/rhoR);
-			double dp_coeff_Un = dAlpha * dtrho/dLR;
-			
 			double drhodpL = cellsL[id_drhodp]; double drhodpR = cellsR[id_drhodp];
 			double drhodTL = cellsL[id_drhodT]; double drhodTR = cellsR[id_drhodT];
 			double dHtdpL = cellsL[id_dHtdp]; double dHtdpR = cellsR[id_dHtdp];
 			double dHtdTL = cellsL[id_dHtdT]; double dHtdTR = cellsR[id_dHtdT];
 			double drhodYL[nSp]; double drhodYR[nSp];
 			double dHtdYL[nSp]; double dHtdYR[nSp];
+			// double YL_max[nSp]; double YR_max[nSp];
+			// double YL_min[nSp]; double YR_min[nSp];
+			double YL[nSp]; double YR[nSp];
 			for(int i=0; i<nSp-1; ++i){
 				drhodYL[i] = cellsL[id_drhodY[i]]; drhodYR[i] = cellsR[id_drhodY[i]];
 				dHtdYL[i] = cellsL[id_dHtdY[i]]; dHtdYR[i] = cellsR[id_dHtdY[i]];
+				// YL_max[i] = cellsL[id_YMax[i]]; YR_max[i] = cellsR[id_YMax[i]];
+				// YL_min[i] = cellsL[id_YMin[i]]; YR_min[i] = cellsR[id_YMin[i]];
+				YL[i] = cellsL[id_Y[i]]; YR[i] = cellsR[id_Y[i]];
 			}
 			
-			double muF = faces[id_muF];
+			
+			double rhoFL = faces[id_rhoL]; double rhoFR = faces[id_rhoR];
+			double uFL = faces[id_uL]; double uFR = faces[id_uR];
+			double vFL = faces[id_vL]; double vFR = faces[id_vR];
+			double wFL = faces[id_wL]; double wFR = faces[id_wR];
+			double pFL = faces[id_pL]; double pFR = faces[id_pR];
+			double HtFL = faces[id_HtL]; double HtFR = faces[id_HtR];
+			double YFL[nSp]; double YFR[nSp];
+			for(int i=0; i<nSp-1; ++i){
+				YFL[i] = faces[id_YL[i]]; YFR[i] = faces[id_YR[i]];
+			}
+			double cFL = faces[id_cL]; double cFR = faces[id_cR];
+			double muFL = faces[id_muL]; double muFR = faces[id_muR];
+			
+			
+			double muF = wdL*muL+wdR*muR;
 			double ubar = wdL*uL+wdR*uR;
 			double vbar = wdL*vL+wdR*vR;
 			double wbar = wdL*wL+wdR*wR;
@@ -219,78 +286,82 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			double dwdyF = wdL*dwdyL+wdR*dwdyR;
 			double dwdzF = wdL*dwdzL+wdR*dwdzR;
 			
+			
+			
 			double UnL = uL*nvec[0]+vL*nvec[1]+wL*nvec[2];
 			double UnR = uR*nvec[0]+vR*nvec[1]+wR*nvec[2];
-			
-			
-			double KLR = sqrt(wdL*(uL*uL+vL*vL+wL*wL)+wdR*(uR*uR+vR*vR+wR*wR));
-			double w_phi = 1.0-2.0*abs(wdL-0.5);
-			double chat= wdL*cL+wdR*cR;
-			double Mcy = min(1.0,KLR/chat);
-			double phi_c = (1.0-Mcy)*(1.0-Mcy);
-			double rhohat = wdL*rhoL+wdR*rhoR;
-			double dp_coeff_thm = 0.5*phi_c/rhohat/chat;
 				
 
-			double ML = UnL/chat;
-			double MR = UnR/chat;
-			double WUL = 0.5;
-			double WUR = 0.5;
-			if(abs(ML) > 1.0){ 
-				WUL = 0.5*(1.0 + ((ML > 0.0) ? 1.0 : -1.0) );
-			}
-			else{
-				WUL = 0.5*(ML + 1.0);
-				// WUL += 0.125*2.0*2.0*(ML*ML-1.0);
-			}
-			if(abs(MR) > 1.0){ 
-				WUR = 0.5*(1.0 - ((MR > 0.0) ? 1.0 : -1.0) );
-			}
-			else{
-				WUR = -0.5*(MR - 1.0);
-				// WUR -= 0.125*2.0*2.0*(MR*MR-1.0);
-			}
-			WUL = w_phi*WUL+(1.0-w_phi)*wdL;
-			WUR = w_phi*WUR+(1.0-w_phi)*wdR;
+			double KLR = sqrt(wdL*(uL*uL+vL*vL+wL*wL)+wdR*(uR*uR+vR*vR+wR*wR));
+			double Mcy = min(1.0,KLR/(wdL*cL+wdR*cR));
+			double phi_c = (1.0-Mcy)*(1.0-Mcy);
+			double UnL_YYL = UnL;
+			double UnR_YYL = UnR;
+			double ML_YYL = UnL_YYL/(wdL*cL+wdR*cR);
+			double MR_YYL = UnR_YYL/(wdL*cL+wdR*cR);
+			double g_YYL = 1.0 + max( min(ML_YYL,0.0), -1.0 )*min( max(MR_YYL,0.0), 1.0 );
+			double D_L_YYL = UnL_YYL+(1.0-g_YYL)*abs(UnL_YYL);
+			double D_R_YYL = UnR_YYL-(1.0-g_YYL)*abs(UnR_YYL);
+			double D_rho_YYL = g_YYL*( rhoL*abs(UnL_YYL)+rhoR*abs(UnR_YYL) ) / ( rhoL + rhoR );
+			double UnF = wdL*(D_L_YYL+D_rho_YYL) + wdR*(D_R_YYL-D_rho_YYL);
+			
+			UnF -= 0.5*phi_c/(wdL*cL+wdR*cR)/(wdL*rhoL+wdR*rhoR)*(pR-pL);
+			UnF -= dAlpha * dt*(wdL/rhoL+wdR/rhoR)*(pR-pL)/dLR;
+			UnF += dt*(wdL*dpdxL/rhoL+wdR*dpdxR/rhoR)*dAlpha*nLR[0];
+			UnF += dt*(wdL*dpdyL/rhoL+wdR*dpdyR/rhoR)*dAlpha*nLR[1];
+			UnF += dt*(wdL*dpdzL/rhoL+wdR*dpdzR/rhoR)*dAlpha*nLR[2];
+			
+			double WUL = 0.5*(1.0+(1.0-g_YYL)*(UnL>0.0 ? 1.0 : -1.0) + 
+				g_YYL*( rhoL*(UnL>0.0 ? 1.0 : -1.0) ) / ( rhoL + rhoR ));
+			double WUR = 0.5*(1.0-(1.0-g_YYL)*(UnR>0.0 ? 1.0 : -1.0) - 
+				g_YYL*( rhoR*(UnR>0.0 ? 1.0 : -1.0) ) / ( rhoL + rhoR ));
+			double dp_coeff_thm = 0.5*phi_c/((wdL*cL+wdR*cR))/((wdL*rhoL+wdR*rhoR));
+			double dp_coeff_Un = dAlpha * dt*(wdL/rhoL+wdR/rhoR)/dLR;
+			
+			double PLP = 0.5*(1.0 + ( ML_YYL>0.0 ? 1.0 : -1.0 ) );
+			if( abs(ML_YYL) < 1.0 ) {
+				PLP = 0.25*(ML_YYL+1.0)*(ML_YYL+1.0)*(2.0-ML_YYL);
+				PLP += 0.1875*ML_YYL*(ML_YYL*ML_YYL-1.0)*(ML_YYL*ML_YYL-1.0);
+			} 
+			double PRM = 0.5*(1.0 - ( MR_YYL>0.0 ? 1.0 : -1.0 ) );
+			if( abs(MR_YYL) < 1.0 ) {
+				PRM = 0.25*(MR_YYL-1.0)*(MR_YYL-1.0)*(2.0+MR_YYL);
+				PRM -= 0.1875*MR_YYL*(MR_YYL*MR_YYL-1.0)*(MR_YYL*MR_YYL-1.0);
+			} 
+			// double WpL = 0.5 - 0.5*Mcy*PLP*PRM*0.5/chat*(UnR-UnL) + 0.5*Mcy*(PLP+PRM-1.0) + 0.5*(PLP-PRM);//PLP;
+			// double WpR = 0.5 - 0.5*Mcy*PLP*PRM*0.5/chat*(UnR-UnL) + 0.5*Mcy*(PLP+PRM-1.0) - 0.5*(PLP-PRM);//PRM;
+			double WpL = wdL + 0.5*(PLP-PRM);
+			double WpR = wdR - 0.5*(PLP-PRM);
+			// double pF = WpL*pL + WpR*pR;
+			double pF = (wdL*pL+wdR*pR) + 0.5*(PLP-PRM)*(pL-pR) + 
+						KLR*(wdL*rhoL+wdR*rhoR)*(wdL*cL+wdR*cR)*(PLP+PRM-1.0);
 			
 
-			double PLP = 0.5*(1.0 + ( ML>0.0 ? 1.0 : -1.0 ) );
-			if( abs(ML) < 1.0 ) {
-				PLP = 0.25*(ML+1.0)*(ML+1.0)*(2.0-ML);
-			} 
-			double PRM = 0.5*(1.0 - ( MR>0.0 ? 1.0 : -1.0 ) );
-			if( abs(MR) < 1.0 ) {
-				PRM = 0.25*(MR-1.0)*(MR-1.0)*(2.0+MR);
-			} 
-			double WpL = 0.5 - 0.5*Mcy*PLP*PRM*0.5/chat*(UnR-UnL) + 0.5*Mcy*(PLP+PRM-1.0) + 0.5*(PLP-PRM);//PLP;
-			double WpR = 0.5 - 0.5*Mcy*PLP*PRM*0.5/chat*(UnR-UnL) + 0.5*Mcy*(PLP+PRM-1.0) - 0.5*(PLP-PRM);//PRM;
-			
-			WpL = (w_phi*WpL+(1.0-w_phi)*wdL);
-			WpR = (w_phi*WpR+(1.0-w_phi)*wdR);
-			
-			// double WpUL = 0.0;
-			// double WpUR = 0.0;
-			// if( abs(ML) < 1.0 ) {
-				// WpUL = 0.75*(1.0-ML*ML);
-			// } 
-			// if( abs(MR) < 1.0 ) {
-				// WpUR = -0.75*(1.0-MR*MR);
-			// }
+			// double diffDPU = 0.5*Mcy*PLP*PRM*0.5/chat;
+			double diffDPU = 0.0;
 			
 			
-			
-			
-			
-			
-			
-			WUL = 0.5;
-			WUR = 0.5;
-			WpL = 0.5;
-			WpR = 0.5;
-			dp_coeff_thm = 0.0;
-			
-			
-			
+			double weiL = 1.0; double weiR = 0.0;
+			double rhoF = rhoFL;
+			double uF = uFL;
+			double vF = vFL;
+			double wF = wFL;
+			double HtF = HtFL;
+			double YF[nSp];
+			for(int i=0; i<nSp-1; ++i){
+				YF[i] = YFL[i];
+			}
+			if(UnF<0.0){
+				weiL = 0.0; weiR = 1.0;
+				rhoF = rhoFR;
+				uF = uFR;
+				vF = vFR;
+				wF = wFR;
+				HtF = HtFR;
+				for(int i=0; i<nSp-1; ++i){
+					YF[i] = YFR[i];
+				}
+			}
 			
 			
 			
@@ -306,30 +377,37 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			int iter = 0;
 			
+			double drho_dUn_dpL = weiL*drhodpL*UnF+rhoF*dp_coeff_Un +rhoF*dp_coeff_thm;
+			double drho_dUn_dpR = weiR*drhodpR*UnF-rhoF*dp_coeff_Un -rhoF*dp_coeff_thm;
+			double rhoF_dUn_duL = rhoF*(WUL*nvec[0]) +rhoF*diffDPU*nvec[0];
+			double rhoF_dUn_duR = rhoF*(WUR*nvec[0]) -rhoF*diffDPU*nvec[0];
+			double rhoF_dUn_dvL = rhoF*(WUL*nvec[1]) +rhoF*diffDPU*nvec[1];
+			double rhoF_dUn_dvR = rhoF*(WUR*nvec[1]) -rhoF*diffDPU*nvec[1];
+			double rhoF_dUn_dwL = rhoF*(WUL*nvec[2]) +rhoF*diffDPU*nvec[2];
+			double rhoF_dUn_dwR = rhoF*(WUR*nvec[2]) -rhoF*diffDPU*nvec[2];
 			
-			
-			fluxA_LL[iter] += CN_coeff * (weiL*drhodpL*UnF+rhoF*dp_coeff_Un +rhoF*dp_coeff_thm)*area; 
-			fluxA_LR[iter] += CN_coeff * (weiR*drhodpR*UnF-rhoF*dp_coeff_Un -rhoF*dp_coeff_thm)*area;
-			fluxA_RR[iter] -= CN_coeff * (weiR*drhodpR*UnF-rhoF*dp_coeff_Un -rhoF*dp_coeff_thm)*area; 
-			fluxA_RL[iter] -= CN_coeff * (weiL*drhodpL*UnF+rhoF*dp_coeff_Un +rhoF*dp_coeff_thm)*area; 
+			fluxA_LL[iter] += CN_coeff * drho_dUn_dpL*area; 
+			fluxA_LR[iter] += CN_coeff * drho_dUn_dpR*area;
+			fluxA_RR[iter] -= CN_coeff * drho_dUn_dpR*area; 
+			fluxA_RL[iter] -= CN_coeff * drho_dUn_dpL*area; 
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[0]))*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[0]))*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[0]))*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[0]))*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_duL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_duR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_duR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_duL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[1]))*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[1]))*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[1]))*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[1]))*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dvL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dvR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dvR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dvL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[2]))*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[2]))*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[2]))*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[2]))*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dwL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dwR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dwR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dwL)*area;
 			++iter;
 			
 			fluxA_LL[iter] += CN_coeff * (weiL*drhodTL*UnF)*area; 
@@ -346,31 +424,31 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				++iter;
 			}
 			
+
 			
 			
-			
-			fluxA_LL[iter] += CN_coeff * (weiL*drhodpL*UnF*uF+rhoF*dp_coeff_Un*uF +rhoF*dp_coeff_thm*uF +WpL*nvec[0])*area; 
-			fluxA_LR[iter] += CN_coeff * (weiR*drhodpR*UnF*uF-rhoF*dp_coeff_Un*uF -rhoF*dp_coeff_thm*uF +WpR*nvec[0])*area;
-			fluxA_RR[iter] -= CN_coeff * (weiR*drhodpR*UnF*uF-rhoF*dp_coeff_Un*uF -rhoF*dp_coeff_thm*uF +WpR*nvec[0])*area; 
-			fluxA_RL[iter] -= CN_coeff * (weiL*drhodpL*UnF*uF+rhoF*dp_coeff_Un*uF +rhoF*dp_coeff_thm*uF +WpL*nvec[0])*area;
+			fluxA_LL[iter] += CN_coeff * (drho_dUn_dpL*uF +WpL*nvec[0])*area; 
+			fluxA_LR[iter] += CN_coeff * (drho_dUn_dpR*uF +WpR*nvec[0])*area;
+			fluxA_RR[iter] -= CN_coeff * (drho_dUn_dpR*uF +WpR*nvec[0])*area; 
+			fluxA_RL[iter] -= CN_coeff * (drho_dUn_dpL*uF +WpL*nvec[0])*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[0])*uF+rhoF*UnF*weiL)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[0])*uF+rhoF*UnF*weiR)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[0])*uF+rhoF*UnF*weiR)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[0])*uF+rhoF*UnF*weiL)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_duL*uF+rhoF*UnF*weiL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_duR*uF+rhoF*UnF*weiR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_duR*uF+rhoF*UnF*weiR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_duL*uF+rhoF*UnF*weiL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[1])*uF)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[1])*uF)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[1])*uF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[1])*uF)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dvL*uF)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dvR*uF)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dvR*uF)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dvL*uF)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[2])*uF)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[2])*uF)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[2])*uF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[2])*uF)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dwL*uF)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dwR*uF)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dwR*uF)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dwL*uF)*area;
 			++iter;
 			
 			fluxA_LL[iter] += CN_coeff * (weiL*drhodTL*UnF*uF)*area; 
@@ -390,28 +468,28 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			
 			
-			fluxA_LL[iter] += CN_coeff * (weiL*drhodpL*UnF*vF+rhoF*dp_coeff_Un*vF +rhoF*dp_coeff_thm*vF +WpL*nvec[1])*area; 
-			fluxA_LR[iter] += CN_coeff * (weiR*drhodpR*UnF*vF-rhoF*dp_coeff_Un*vF -rhoF*dp_coeff_thm*vF +WpR*nvec[1])*area;
-			fluxA_RR[iter] -= CN_coeff * (weiR*drhodpR*UnF*vF-rhoF*dp_coeff_Un*vF -rhoF*dp_coeff_thm*vF +WpR*nvec[1])*area; 
-			fluxA_RL[iter] -= CN_coeff * (weiL*drhodpL*UnF*vF+rhoF*dp_coeff_Un*vF +rhoF*dp_coeff_thm*vF +WpL*nvec[1])*area;
+			fluxA_LL[iter] += CN_coeff * (drho_dUn_dpL*vF +WpL*nvec[1])*area; 
+			fluxA_LR[iter] += CN_coeff * (drho_dUn_dpR*vF +WpR*nvec[1])*area;
+			fluxA_RR[iter] -= CN_coeff * (drho_dUn_dpR*vF +WpR*nvec[1])*area; 
+			fluxA_RL[iter] -= CN_coeff * (drho_dUn_dpL*vF +WpL*nvec[1])*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[0])*vF)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[0])*vF)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[0])*vF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[0])*vF)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_duL*vF)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_duR*vF)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_duR*vF)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_duL*vF)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[1])*vF+rhoF*UnF*weiL)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[1])*vF+rhoF*UnF*weiR)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[1])*vF+rhoF*UnF*weiR)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[1])*vF+rhoF*UnF*weiL)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dvL*vF+rhoF*UnF*weiL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dvR*vF+rhoF*UnF*weiR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dvR*vF+rhoF*UnF*weiR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dvL*vF+rhoF*UnF*weiL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[2])*vF)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[2])*vF)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[2])*vF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[2])*vF)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dwL*vF)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dwR*vF)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dwR*vF)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dwL*vF)*area;
 			++iter;
 			
 			fluxA_LL[iter] += CN_coeff * (weiL*drhodTL*UnF*vF)*area; 
@@ -431,28 +509,28 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			
 			
-			fluxA_LL[iter] += CN_coeff * (weiL*drhodpL*UnF*wF+rhoF*dp_coeff_Un*wF +rhoF*dp_coeff_thm*wF +WpL*nvec[2])*area; 
-			fluxA_LR[iter] += CN_coeff * (weiR*drhodpR*UnF*wF-rhoF*dp_coeff_Un*wF -rhoF*dp_coeff_thm*wF +WpR*nvec[2])*area;
-			fluxA_RR[iter] -= CN_coeff * (weiR*drhodpR*UnF*wF-rhoF*dp_coeff_Un*wF -rhoF*dp_coeff_thm*wF +WpR*nvec[2])*area; 
-			fluxA_RL[iter] -= CN_coeff * (weiL*drhodpL*UnF*wF+rhoF*dp_coeff_Un*wF +rhoF*dp_coeff_thm*wF +WpL*nvec[2])*area;
+			fluxA_LL[iter] += CN_coeff * (drho_dUn_dpL*wF +WpL*nvec[2])*area; 
+			fluxA_LR[iter] += CN_coeff * (drho_dUn_dpR*wF +WpR*nvec[2])*area;
+			fluxA_RR[iter] -= CN_coeff * (drho_dUn_dpR*wF +WpR*nvec[2])*area; 
+			fluxA_RL[iter] -= CN_coeff * (drho_dUn_dpL*wF +WpL*nvec[2])*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[0])*wF)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[0])*wF)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[0])*wF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[0])*wF)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_duL*wF)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_duR*wF)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_duR*wF)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_duL*wF)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[1])*wF)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[1])*wF)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[1])*wF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[1])*wF)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dvL*wF)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dvR*wF)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dvR*wF)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dvL*wF)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[2])*wF+rhoF*UnF*weiL)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[2])*wF+rhoF*UnF*weiR)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[2])*wF+rhoF*UnF*weiR)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[2])*wF+rhoF*UnF*weiL)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dwL*vF+rhoF*UnF*weiL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dwR*vF+rhoF*UnF*weiR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dwR*vF+rhoF*UnF*weiR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dwL*vF+rhoF*UnF*weiL)*area;
 			++iter;
 			
 			fluxA_LL[iter] += CN_coeff * (weiL*drhodTL*UnF*wF)*area; 
@@ -472,28 +550,28 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			
 			
-			fluxA_LL[iter] += CN_coeff * (weiL*drhodpL*UnF*HtF+rhoF*dp_coeff_Un*HtF+rhoF*UnF*weiL*dHtdpL +rhoF*dp_coeff_thm*HtF)*area; 
-			fluxA_LR[iter] += CN_coeff * (weiR*drhodpR*UnF*HtF-rhoF*dp_coeff_Un*HtF+rhoF*UnF*weiR*dHtdpR -rhoF*dp_coeff_thm*HtF)*area;
-			fluxA_RR[iter] -= CN_coeff * (weiR*drhodpR*UnF*HtF-rhoF*dp_coeff_Un*HtF+rhoF*UnF*weiR*dHtdpR -rhoF*dp_coeff_thm*HtF)*area; 
-			fluxA_RL[iter] -= CN_coeff * (weiL*drhodpL*UnF*HtF+rhoF*dp_coeff_Un*HtF+rhoF*UnF*weiL*dHtdpL +rhoF*dp_coeff_thm*HtF)*area;
+			fluxA_LL[iter] += CN_coeff * (drho_dUn_dpL*HtF +rhoF*UnF*weiL*dHtdpL)*area; 
+			fluxA_LR[iter] += CN_coeff * (drho_dUn_dpR*HtF +rhoF*UnF*weiR*dHtdpR)*area;
+			fluxA_RR[iter] -= CN_coeff * (drho_dUn_dpR*HtF +rhoF*UnF*weiR*dHtdpR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (drho_dUn_dpL*HtF +rhoF*UnF*weiL*dHtdpL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[0])*HtF+rhoF*UnF*weiL*uL)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[0])*HtF+rhoF*UnF*weiR*uR)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[0])*HtF+rhoF*UnF*weiR*uR)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[0])*HtF+rhoF*UnF*weiL*uL)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_duL*HtF+rhoF*UnF*weiL*uL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_duR*HtF+rhoF*UnF*weiR*uR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_duR*HtF+rhoF*UnF*weiR*uR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_duL*HtF+rhoF*UnF*weiL*uL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[1])*HtF+rhoF*UnF*weiL*vL)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[1])*HtF+rhoF*UnF*weiR*vR)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[1])*HtF+rhoF*UnF*weiR*vR)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[1])*HtF+rhoF*UnF*weiL*vL)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dvL*HtF+rhoF*UnF*weiL*vL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dvR*HtF+rhoF*UnF*weiR*vR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dvR*HtF+rhoF*UnF*weiR*vR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dvL*HtF+rhoF*UnF*weiL*vL)*area;
 			++iter;
 			
-			fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[2])*HtF+rhoF*UnF*weiL*wL)*area; 
-			fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[2])*HtF+rhoF*UnF*weiR*wR)*area;
-			fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[2])*HtF+rhoF*UnF*weiR*wR)*area; 
-			fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[2])*HtF+rhoF*UnF*weiL*wL)*area;
+			fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dwL*HtF+rhoF*UnF*weiL*wL)*area; 
+			fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dwR*HtF+rhoF*UnF*weiR*wR)*area;
+			fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dwR*HtF+rhoF*UnF*weiR*wR)*area; 
+			fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dwL*HtF+rhoF*UnF*weiL*wL)*area;
 			++iter;
 			
 			fluxA_LL[iter] += CN_coeff * (weiL*drhodTL*UnF*HtF+rhoF*UnF*weiL*dHtdTL)*area; 
@@ -503,38 +581,38 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			++iter;
 			
 			for(int i=0; i<nSp-1; ++i){
-				fluxA_LL[iter] += CN_coeff_Y * (weiL*drhodYL[i]*UnF*HtF)*area; 
-				fluxA_LR[iter] += CN_coeff_Y * (weiR*drhodYR[i]*UnF*HtF)*area;
-				fluxA_RR[iter] -= CN_coeff_Y * (weiR*drhodYR[i]*UnF*HtF)*area; 
-				fluxA_RL[iter] -= CN_coeff_Y * (weiL*drhodYL[i]*UnF*HtF)*area;
+				fluxA_LL[iter] += CN_coeff_Y * (weiL*drhodYL[i]*UnF*HtF+rhoF*UnF*weiL*dHtdYL[i])*area; 
+				fluxA_LR[iter] += CN_coeff_Y * (weiR*drhodYR[i]*UnF*HtF+rhoF*UnF*weiR*dHtdYR[i])*area;
+				fluxA_RR[iter] -= CN_coeff_Y * (weiR*drhodYR[i]*UnF*HtF+rhoF*UnF*weiR*dHtdYR[i])*area; 
+				fluxA_RL[iter] -= CN_coeff_Y * (weiL*drhodYL[i]*UnF*HtF+rhoF*UnF*weiL*dHtdYL[i])*area;
 				++iter;
 			}
 			
 			
 			
 			for(int i=0; i<nSp-1; ++i){
-				fluxA_LL[iter] += CN_coeff * (weiL*drhodpL*UnF*YF[i]+rhoF*dp_coeff_Un*YF[i] +rhoF*dp_coeff_thm*YF[i])*area; 
-				fluxA_LR[iter] += CN_coeff * (weiR*drhodpR*UnF*YF[i]-rhoF*dp_coeff_Un*YF[i] -rhoF*dp_coeff_thm*YF[i])*area;
-				fluxA_RR[iter] -= CN_coeff * (weiR*drhodpR*UnF*YF[i]-rhoF*dp_coeff_Un*YF[i] -rhoF*dp_coeff_thm*YF[i])*area; 
-				fluxA_RL[iter] -= CN_coeff * (weiL*drhodpL*UnF*YF[i]+rhoF*dp_coeff_Un*YF[i] +rhoF*dp_coeff_thm*YF[i])*area;
+				fluxA_LL[iter] += CN_coeff * (drho_dUn_dpL*YF[i])*area; 
+				fluxA_LR[iter] += CN_coeff * (drho_dUn_dpR*YF[i])*area;
+				fluxA_RR[iter] -= CN_coeff * (drho_dUn_dpR*YF[i])*area; 
+				fluxA_RL[iter] -= CN_coeff * (drho_dUn_dpL*YF[i])*area;
 				++iter;
 				
-				fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[0])*YF[i])*area; 
-				fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[0])*YF[i])*area;
-				fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[0])*YF[i])*area; 
-				fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[0])*YF[i])*area;
+				fluxA_LL[iter] += CN_coeff * (rhoF_dUn_duL*YF[i])*area; 
+				fluxA_LR[iter] += CN_coeff * (rhoF_dUn_duR*YF[i])*area;
+				fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_duR*YF[i])*area; 
+				fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_duL*YF[i])*area;
 				++iter;
 				
-				fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[1])*YF[i])*area; 
-				fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[1])*YF[i])*area;
-				fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[1])*YF[i])*area; 
-				fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[1])*YF[i])*area;
+				fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dvL*YF[i])*area; 
+				fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dvR*YF[i])*area;
+				fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dvR*YF[i])*area; 
+				fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dvL*YF[i])*area;
 				++iter;
 				
-				fluxA_LL[iter] += CN_coeff * (rhoF*(WUL*nvec[2])*YF[i])*area; 
-				fluxA_LR[iter] += CN_coeff * (rhoF*(WUR*nvec[2])*YF[i])*area;
-				fluxA_RR[iter] -= CN_coeff * (rhoF*(WUR*nvec[2])*YF[i])*area; 
-				fluxA_RL[iter] -= CN_coeff * (rhoF*(WUL*nvec[2])*YF[i])*area;
+				fluxA_LL[iter] += CN_coeff * (rhoF_dUn_dwL*YF[i])*area; 
+				fluxA_LR[iter] += CN_coeff * (rhoF_dUn_dwR*YF[i])*area;
+				fluxA_RR[iter] -= CN_coeff * (rhoF_dUn_dwR*YF[i])*area; 
+				fluxA_RL[iter] -= CN_coeff * (rhoF_dUn_dwL*YF[i])*area;
 				++iter;
 				
 				fluxA_LL[iter] += CN_coeff * (weiL*drhodTL*UnF*YF[i])*area; 
@@ -574,51 +652,55 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			
 			
+			double visc_coeff = dAlpha*muF/dLR*area;
+			
 			iter = nEq*1+1;
-			fluxA_LL[iter] += CN_coeff * dAlpha*muF/dLR*area; fluxA_LR[iter] -= CN_coeff * dAlpha*muF/dLR*area;
-			fluxA_RR[iter] += CN_coeff * dAlpha*muF/dLR*area; fluxA_RL[iter] -= CN_coeff * dAlpha*muF/dLR*area;
+			fluxA_LL[iter] += visc_coeff; fluxA_LR[iter] -= visc_coeff;
+			fluxA_RR[iter] += visc_coeff; fluxA_RL[iter] -= visc_coeff;
 			
 			iter = nEq*2+2;
-			fluxA_LL[iter] += CN_coeff * dAlpha*muF/dLR*area; fluxA_LR[iter] -= CN_coeff * dAlpha*muF/dLR*area;
-			fluxA_RR[iter] += CN_coeff * dAlpha*muF/dLR*area; fluxA_RL[iter] -= CN_coeff * dAlpha*muF/dLR*area;
+			fluxA_LL[iter] += visc_coeff; fluxA_LR[iter] -= visc_coeff;
+			fluxA_RR[iter] += visc_coeff; fluxA_RL[iter] -= visc_coeff;
 			
 			iter = nEq*3+3;
-			fluxA_LL[iter] += CN_coeff * dAlpha*muF/dLR*area; fluxA_LR[iter] -= CN_coeff * dAlpha*muF/dLR*area;
-			fluxA_RR[iter] += CN_coeff * dAlpha*muF/dLR*area; fluxA_RL[iter] -= CN_coeff * dAlpha*muF/dLR*area;
+			fluxA_LL[iter] += visc_coeff; fluxA_LR[iter] -= visc_coeff;
+			fluxA_RR[iter] += visc_coeff; fluxA_RL[iter] -= visc_coeff;
 			
 			iter = nEq*4+1;
-			fluxA_LL[iter] += CN_coeff * dAlpha*muF/dLR*ubar*area; fluxA_LR[iter] -= CN_coeff * dAlpha*muF/dLR*ubar*area;
-			fluxA_RR[iter] += CN_coeff * dAlpha*muF/dLR*ubar*area; fluxA_RL[iter] -= CN_coeff * dAlpha*muF/dLR*ubar*area;
+			fluxA_LL[iter] += visc_coeff*ubar; fluxA_LR[iter] -= visc_coeff*ubar;
+			fluxA_RR[iter] += visc_coeff*ubar; fluxA_RL[iter] -= visc_coeff*ubar;
 			
 			iter = nEq*4+2;
-			fluxA_LL[iter] += CN_coeff * dAlpha*muF/dLR*vbar*area; fluxA_LR[iter] -= CN_coeff * dAlpha*muF/dLR*vbar*area;
-			fluxA_RR[iter] += CN_coeff * dAlpha*muF/dLR*vbar*area; fluxA_RL[iter] -= CN_coeff * dAlpha*muF/dLR*vbar*area;
+			fluxA_LL[iter] += visc_coeff*vbar; fluxA_LR[iter] -= visc_coeff*vbar;
+			fluxA_RR[iter] += visc_coeff*vbar; fluxA_RL[iter] -= visc_coeff*vbar;
 			
 			iter = nEq*4+3;
-			fluxA_LL[iter] += CN_coeff * dAlpha*muF/dLR*wbar*area; fluxA_LR[iter] -= CN_coeff * dAlpha*muF/dLR*wbar*area;
-			fluxA_RR[iter] += CN_coeff * dAlpha*muF/dLR*wbar*area; fluxA_RL[iter] -= CN_coeff * dAlpha*muF/dLR*wbar*area;
+			fluxA_LL[iter] += visc_coeff*wbar; fluxA_LR[iter] -= visc_coeff*wbar;
+			fluxA_RR[iter] += visc_coeff*wbar; fluxA_RL[iter] -= visc_coeff*wbar;
+			
+			
 			
 			
 			
 			
 			// 디퓨젼 B
 			fluxB[1] += muF*(
-						(dAlpha*(uF-uL)/dLR + dudxF*nvec[0] + dvdxF*nvec[1] + dwdxF*nvec[2]) - 
+						(dAlpha*(uR-uL)/dLR + dudxF*nvec[0] + dvdxF*nvec[1] + dwdxF*nvec[2]) - 
 						2.0/3.0*(dudxF + dvdyF + dwdzF)*nvec[0] 
 						)*area;
 			// fluxB[1] -= nvec[0] * 2.0/3.0 * rhoF * tkei;
 			fluxB[2] += muF*(
-						(dAlpha*(vF-vL)/dLR + dudyF*nvec[0] + dvdyF*nvec[1] + dwdyF*nvec[2]) - 
+						(dAlpha*(vR-vL)/dLR + dudyF*nvec[0] + dvdyF*nvec[1] + dwdyF*nvec[2]) - 
 						2.0/3.0*(dudxF + dvdyF + dwdzF)*nvec[1]
 						)*area;
 			// fluxB[2] -= nvec[1] * 2.0/3.0 * rhoF * tkei;
 			fluxB[3] += muF*(
-						(dAlpha*(wF-wL)/dLR + dudzF*nvec[0] + dvdzF*nvec[1] + dwdzF*nvec[2]) - 
+						(dAlpha*(wR-wL)/dLR + dudzF*nvec[0] + dvdzF*nvec[1] + dwdzF*nvec[2]) - 
 						2.0/3.0*(dudxF + dvdyF + dwdzF)*nvec[2]
 						)*area;
 			// fluxB[3] -= nvec[2] * 2.0/3.0 * rhoF * tkei;
 			fluxB[4] += muF*(
-						dAlpha*(uF-uL)/dLR*ubar + dAlpha*(vF-vL)/dLR*vbar + dAlpha*(wF-wL)/dLR*wbar + 
+						dAlpha*(uR-uL)/dLR*ubar + dAlpha*(vR-vL)/dLR*vbar + dAlpha*(wR-wL)/dLR*wbar + 
 						(dudxF*ubar + dudyF*vbar + dudzF*wbar)*nvec[0] +
 						(dvdxF*ubar + dvdyF*vbar + dvdzF*wbar)*nvec[1] +
 						(dwdxF*ubar + dwdyF*vbar + dwdzF*wbar)*nvec[2] -
@@ -648,15 +730,6 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 						dudzF*ubar+dvdzF*vbar+dwdzF*wbar)*area;
 			
 			
-
-			fluxB_LL[0] += fluxB[0]; fluxB_RR[0] -= fluxB[0];
-			fluxB_LL[1] += fluxB[1]; fluxB_RR[1] -= fluxB[1];
-			fluxB_LL[2] += fluxB[2]; fluxB_RR[2] -= fluxB[2];
-			fluxB_LL[3] += fluxB[3]; fluxB_RR[3] -= fluxB[3];
-			fluxB_LL[4] += fluxB[4]; fluxB_RR[4] -= fluxB[4];
-			for(int i=0; i<nSp-1; ++i){
-				fluxB_LL[5+i] += fluxB[5+i]; fluxB_RR[5+i] -= fluxB[5+i];
-			}
 		
 			
 			// 표면장력
@@ -665,10 +738,25 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				fluxB_LL[1] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[0] )*area;
 				fluxB_LL[2] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[1] )*area;
 				fluxB_LL[3] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[2] )*area;
+				fluxB_LL[4] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*UnF )*area;
 				
 				fluxB_RR[1] -= surf_sigma[i]*curvatureR[i]*( alpha_VFF*nvec[0] )*area;
 				fluxB_RR[2] -= surf_sigma[i]*curvatureR[i]*( alpha_VFF*nvec[1] )*area;
 				fluxB_RR[3] -= surf_sigma[i]*curvatureR[i]*( alpha_VFF*nvec[2] )*area;
+				fluxB_RR[4] -= surf_sigma[i]*curvatureR[i]*( alpha_VFF*UnF )*area;
+			}
+			
+			
+
+
+
+			fluxB_LL[0] += fluxB[0]; fluxB_RR[0] -= fluxB[0];
+			fluxB_LL[1] += fluxB[1]; fluxB_RR[1] -= fluxB[1];
+			fluxB_LL[2] += fluxB[2]; fluxB_RR[2] -= fluxB[2];
+			fluxB_LL[3] += fluxB[3]; fluxB_RR[3] -= fluxB[3];
+			fluxB_LL[4] += fluxB[4]; fluxB_RR[4] -= fluxB[4];
+			for(int i=0; i<nSp-1; ++i){
+				fluxB_LL[5+i] += fluxB[5+i]; fluxB_RR[5+i] -= fluxB[5+i];
 			}
 			
 			
@@ -725,14 +813,16 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			calcConvFlux_BC[bc_id].back().push_back(
 			[&solver,nSp,
-			id_p,id_pF,id_u,id_uF,id_v,id_vF,id_w,id_wF,
-			id_dpdx,id_dpdy,id_dpdz,id_UnF,id_dt,id_nx,id_ny,id_nz,id_area,id_dLR,id_muF,
-			id_rhoF,id_HtF,id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
-			id_wd,id_rho,id_YF,nEq,id_c,CN_coeff,CN_coeff_Y,
+			id_p,id_u,id_v,id_w,
+			id_pL,id_uL,id_vL,id_wL,id_YL,id_rhoL,id_HtL,id_muL,id_cL,
+			id_pR,id_uR,id_vR,id_wR,id_YR,id_rhoR,id_HtR,id_muR,id_cR,
+			id_dpdx,id_dpdy,id_dpdz,id_dt,id_nx,id_ny,id_nz,id_area,id_dLR,
+			id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
+			id_wd,id_rho,id_Ht,nEq,id_c,CN_coeff,CN_coeff_Y,id_Y,
 			id_dudx,id_dudy,id_dudz,id_dvdx,id_dvdy,id_dvdz,id_dwdx,id_dwdy,id_dwdz,
-			bool_zeroGradient,bool_inletOutlet,
 			id_alpha,id_nLRx,id_nLRy,id_nLRz,
-			id_curvature,id_alpha_VF,nCurv,surf_sigma](
+			id_curvature,id_alpha_VF,nCurv,surf_sigma,
+			bool_zeroGradient,bool_inletOutlet](
 			double* fields, double* cellsL, double* faces, 
 			double* fluxA_LL, double* fluxB_LL) ->int {
 				double dt = fields[id_dt];
@@ -742,6 +832,10 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				double area = faces[id_area];
 				double dLR = faces[id_dLR]; 
 				double dAlpha = faces[id_alpha];
+				
+				dAlpha = 1.0;
+				
+				
 				double nLR[3];
 				nLR[0] = faces[id_nLRx]; nLR[1] = faces[id_nLRy]; nLR[2] = faces[id_nLRz];
 				
@@ -767,16 +861,19 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				}
 				
 				// double cF = faces[id_cF];
-				double rhoF = faces[id_rhoF];
-				double uF = faces[id_uF];
-				double vF = faces[id_vF];
-				double wF = faces[id_wF];
-				double pF = faces[id_pF];
-				double HtF = faces[id_HtF];
+				double rhoF = faces[id_rhoL];
+				double uF = faces[id_uL];
+				double vF = faces[id_vL];
+				double wF = faces[id_wL];
+				double pF = faces[id_pL];
+				double HtF = faces[id_HtL];
 				double YF[nSp];
 				for(int i=0; i<nSp-1; ++i){
-					YF[i] = faces[id_YF[i]];
+					YF[i] = faces[id_YL[i]];
 				}
+				double uR = uF;
+				double vR = vF;
+				double wR = wF;
 				
 				double UnF = uF*nvec[0]+vF*nvec[1]+wF*nvec[2];
 				// double weiL = 1.0; double weiR = 0.0;
@@ -798,7 +895,7 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 					dHtdYL[i] = cellsL[id_dHtdY[i]];
 				}
 				
-				double muF = faces[id_muF];
+				double muF = faces[id_muL];
 				double ubar = uF;
 				double vbar = vF;
 				double wbar = wF;
@@ -812,13 +909,19 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				double dwdyF = dwdyL;
 				double dwdzF = dwdzL;
 				
+				
 				double KLR = sqrt(0.5*(uL*uL+vL*vL+wL*wL+uF*uF+vF*vF+wF*wF));
-				double cbar = cL;//0.5*(cL+cF);
-				double Mdash = min(1.0,KLR/cbar);
+				double chat = cL;//0.5*(cL+cF);
+				double Mdash = min(1.0,KLR/chat);
 				double chi = (1.0-Mdash)*(1.0-Mdash);
 				double rhohat = 0.5*rhoL+0.5*rhoF;
-				double dp_coeff_thm = 0.5*chi/rhohat/cbar;
+				double Mcy = min(1.0,KLR/chat);
+				double phi_c = (1.0-Mcy)*(1.0-Mcy);
+				double dp_coeff_thm = 0.5*chi/rhohat/chat;
 				
+				
+				
+			
 				
 				
 				if(
@@ -863,7 +966,7 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 					fluxA_LL[nEq*1+2] += CN_coeff * (rhoF*(nvec[1])*uF)*area; 
 					fluxA_LL[nEq*2+2] += CN_coeff * (rhoF*(nvec[1])*vF+rhoF*UnF)*area; 
 					fluxA_LL[nEq*3+2] += CN_coeff * (rhoF*(nvec[1])*wF)*area; 
-					fluxA_LL[nEq*4+2] += CN_coeff * (rhoF*(nvec[1])*HtF+rhoF*UnF*uL)*area; 
+					fluxA_LL[nEq*4+2] += CN_coeff * (rhoF*(nvec[1])*HtF+rhoF*UnF*vL)*area; 
 					for(int i=0; i<nSp-1; ++i){
 						fluxA_LL[nEq*(5+i)+2] += CN_coeff_Y * (rhoF*(nvec[1])*YF[i])*area; 
 					}
@@ -872,19 +975,20 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 					fluxA_LL[nEq*1+3] += CN_coeff * (rhoF*(nvec[2])*uF)*area; 
 					fluxA_LL[nEq*2+3] += CN_coeff * (rhoF*(nvec[2])*vF)*area; 
 					fluxA_LL[nEq*3+3] += CN_coeff * (rhoF*(nvec[2])*wF+rhoF*UnF)*area; 
-					fluxA_LL[nEq*4+3] += CN_coeff * (rhoF*(nvec[2])*HtF+rhoF*UnF*uL)*area; 
+					fluxA_LL[nEq*4+3] += CN_coeff * (rhoF*(nvec[2])*HtF+rhoF*UnF*wL)*area; 
 					for(int i=0; i<nSp-1; ++i){
 						fluxA_LL[nEq*(5+i)+3] += CN_coeff_Y * (rhoF*(nvec[2])*YF[i])*area; 
 					}
 				}
 				else{
 					
-					fluxA_LL[nEq*1+1] += CN_coeff * dAlpha*muF/dLR*area;
-					fluxA_LL[nEq*2+2] += CN_coeff * dAlpha*muF/dLR*area;
-					fluxA_LL[nEq*3+3] += CN_coeff * dAlpha*muF/dLR*area;
-					fluxA_LL[nEq*4+1] += CN_coeff * dAlpha*muF/dLR*ubar*area;
-					fluxA_LL[nEq*4+2] += CN_coeff * dAlpha*muF/dLR*vbar*area;
-					fluxA_LL[nEq*4+3] += CN_coeff * dAlpha*muF/dLR*wbar*area;
+					double visc_coeff = dAlpha*muF/dLR*area;
+					fluxA_LL[nEq*1+1] += visc_coeff;
+					fluxA_LL[nEq*2+2] += visc_coeff;
+					fluxA_LL[nEq*3+3] += visc_coeff;
+					fluxA_LL[nEq*4+1] += visc_coeff*ubar;
+					fluxA_LL[nEq*4+2] += visc_coeff*vbar;
+					fluxA_LL[nEq*4+3] += visc_coeff*wbar;
 					
 				}
 				
@@ -901,24 +1005,24 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 						fluxA_LL[nEq*(5+i)+4] += CN_coeff_Y * (drhodTL*UnF*YF[i])*area; 
 					}
 				}
-				else{
-					
-				}
 				
 				for(int i=0; i<nSp-1; ++i){
 					if(
 					bool_zeroGradient[3+i]==true ||
 					(bool_inletOutlet[3+i]==true && (uF*nvec[0]+vF*nvec[1]+wF*nvec[2]<0.0))
 					){
+						fluxA_LL[nEq*0+5+i] += CN_coeff * (drhodYL[i]*UnF)*area; 
+						fluxA_LL[nEq*1+5+i] += CN_coeff * (drhodYL[i]*UnF*uF)*area; 
+						fluxA_LL[nEq*2+5+i] += CN_coeff * (drhodYL[i]*UnF*vF)*area; 
+						fluxA_LL[nEq*3+5+i] += CN_coeff * (drhodYL[i]*UnF*wF)*area; 
+						fluxA_LL[nEq*4+5+i] += CN_coeff * (drhodYL[i]*UnF*HtF+rhoF*UnF*dHtdYL[i])*area; 
 						for(int j=0; j<nSp-1; ++j){
-							fluxA_LL[nEq*(5+i)+5+j] += CN_coeff_Y * (drhodYL[j]*UnF*YF[i])*area; 
+							fluxA_LL[nEq*(5+j)+5+i] += CN_coeff_Y * (drhodYL[i]*UnF*YF[j])*area; 
 							if(i==j){
-								fluxA_LL[nEq*(5+i)+5+j] += CN_coeff_Y * (rhoF*UnF)*area; 
+								fluxA_LL[nEq*(5+j)+5+i] += CN_coeff_Y * (rhoF*UnF)*area; 
 							}
 						}
 					
-					}
-					else{
 					}
 				}
 				
@@ -933,28 +1037,24 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				}
 				
 				
-				
-				
 				fluxB_LL[1] += muF*(
-							(dAlpha*(uF-uL)/dLR + dudxF*nvec[0] + dvdxF*nvec[1] + dwdxF*nvec[2]) - 
+							(dAlpha*(uR-uL)/dLR + dudxF*nvec[0] + dvdxF*nvec[1] + dwdxF*nvec[2]) - 
 							2.0/3.0*(dudxF + dvdyF + dwdzF)*nvec[0] 
 							)*area;
 				fluxB_LL[2] += muF*(
-							(dAlpha*(vF-vL)/dLR + dudyF*nvec[0] + dvdyF*nvec[1] + dwdyF*nvec[2]) - 
+							(dAlpha*(vR-vL)/dLR + dudyF*nvec[0] + dvdyF*nvec[1] + dwdyF*nvec[2]) - 
 							2.0/3.0*(dudxF + dvdyF + dwdzF)*nvec[1]
 							)*area;
 				fluxB_LL[3] += muF*(
-							(dAlpha*(wF-wL)/dLR + dudzF*nvec[0] + dvdzF*nvec[1] + dwdzF*nvec[2]) - 
+							(dAlpha*(wR-wL)/dLR + dudzF*nvec[0] + dvdzF*nvec[1] + dwdzF*nvec[2]) - 
 							2.0/3.0*(dudxF + dvdyF + dwdzF)*nvec[2]
 							)*area;
 				fluxB_LL[4] += muF*(
-							dAlpha*(uF-uL)/dLR*ubar + dAlpha*(vF-vL)/dLR*vbar + dAlpha*(wF-wL)/dLR*wbar + 
+							dAlpha*(uR-uL)/dLR*ubar + dAlpha*(vR-vL)/dLR*vbar + dAlpha*(wR-wL)/dLR*wbar + 
 							(dudxF*ubar + dudyF*vbar + dudzF*wbar)*nvec[0] +
 							(dvdxF*ubar + dvdyF*vbar + dvdzF*wbar)*nvec[1] +
 							(dwdxF*ubar + dwdyF*vbar + dwdzF*wbar)*nvec[2] -
-							2.0/3.0*(dudxF + dvdyF + dwdzF)*ubar*nvec[0] -
-							2.0/3.0*(dudxF + dvdyF + dwdzF)*vbar*nvec[1] -
-							2.0/3.0*(dudxF + dvdyF + dwdzF)*wbar*nvec[2]
+							2.0/3.0*(dudxF + dvdyF + dwdzF)*(ubar*nvec[0]+vbar*nvec[1]+wbar*nvec[2])
 							)*area;
 			
 				// non-orthogonal
@@ -978,15 +1078,13 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 								dudzF*ubar+dvdzF*vbar+dwdzF*wbar)*area;
 				
 				
-				
-
-				
 				// 표면장력
 				for(int i=0; i<nCurv; ++i){
 					double alpha_VFF = alpha_VFL[i];
-					fluxB_LL[1] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[0] )*area;
-					fluxB_LL[2] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[1] )*area;
-					fluxB_LL[3] += surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[2] )*area;
+					fluxB_LL[1] -= surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[0] )*area;
+					fluxB_LL[2] -= surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[1] )*area;
+					fluxB_LL[3] -= surf_sigma[i]*curvatureL[i]*( alpha_VFF*nvec[2] )*area;
+					fluxB_LL[4] -= surf_sigma[i]*curvatureL[i]*( alpha_VFF*UnF )*area;
 				}
 				
 				

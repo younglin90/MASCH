@@ -159,19 +159,20 @@ void MASCH_Solver::solveAMGCL(
 		// iterative solver
 		typedef amgcl::mpi::make_solver<
 			amgcl::mpi::relaxation::as_preconditioner<
-			amgcl::mpi::relaxation::iluk<SBackend>   //gauss_seidel, ilu0, iluk, ilup, spai1
+			// amgcl::mpi::relaxation::spai0<SBackend>   //gauss_seidel, ilu0, iluk, ilup, spai1
+			// amgcl::mpi::relaxation::iluk<SBackend>   //gauss_seidel, ilu0, iluk, ilup, spai1
+			amgcl::mpi::relaxation::ilu0<SBackend>   //gauss_seidel, ilu0, iluk, ilup, spai1
 			>,
 			// amgcl::mpi::amg<
 			// SBackend,
 			// amgcl::mpi::coarsening::smoothed_aggregation<SBackend>,
-			// amgcl::mpi::relaxation::gauss_seidel<SBackend>   //gauss_seidel, ilu0, iluk, ilup, spai1
+			// amgcl::mpi::relaxation::ilu0<SBackend>   //gauss_seidel, ilu0, iluk, ilup, spai1
 			// >,
 			// amgcl::mpi::solver::bicgstab<SBackend>
 			amgcl::mpi::solver::fgmres<SBackend>
 			// amgcl::mpi::solver::idrs<SBackend>
 			// amgcl::mpi::solver::preonly<SBackend>
 			// amgcl::mpi::solver::lgmres<SBackend>
-			// amgcl::mpi::solver::fgmres<SBackend>
 		> Solver; 
 		
 		
@@ -184,18 +185,18 @@ void MASCH_Solver::solveAMGCL(
 		
 		// prm.precond.coarsening.over_interp = 1.0;
 		
-		prm.precond.k = 0;
-		prm.precond.damping = 3.0;
-		// // prm.precond.relax.k = 2;
-		// // prm.solver.K = 5;
-		// // prm.solver.M = 50;
-		// // prm.solver.s = 8;
-		// // prm.solver.omega = 0.7;
-		prm.solver.maxiter = 250;//1000;
-		prm.solver.tol = 1.e-9;
-		// // prm.solver.ns_search = true;
-		// // prm.solver.replacement = true;
-		// // prm.solver.smoothing = true;
+		// prm.precond.k = 0;
+		// prm.precond.damping = 3.0;
+		// // // prm.precond.relax.k = 2;
+		// // // prm.solver.K = 5;
+		// // // prm.solver.M = 50;
+		// // // prm.solver.s = 8;
+		// // // prm.solver.omega = 0.7;
+		prm.solver.maxiter = 50;//1000;
+		prm.solver.tol = 1.e-7;
+		// // // prm.solver.ns_search = true;
+		// // // prm.solver.replacement = true;
+		// // // prm.solver.smoothing = true;
 		
 		
 		
@@ -241,13 +242,13 @@ void MASCH_Solver::solveAMGCL(
 		std::tie(iters, error) = solve(*A, Bval, Xval);
 		// prof.toc("solve");
 		
-		// if (world.rank == 0) {
-			// cout << scientific; cout.precision(2);
+		if (world.rank == 0) {
+			cout << scientific; cout.precision(2);
 			// cout << solve << endl;
 			// cout << prof << endl;
-			// cout << "|--- coupled. : " << iters << " " << error << endl;
-			// cout << fixed; cout.precision(0);
-		// }
+			cout << "| iLinSol = " << iters << ", resiLinSol = " << error << endl;
+			cout << fixed; cout.precision(0);
+		}
 		
 
 	

@@ -1,22 +1,23 @@
+invwall {
+	type = slip;
+}
+viswall {
+	type = noSlip;
+}
 supinlet {
-	type = fixedValue;
-	value = (3.6 0.0 0.0);
+	type = function;
+	file = ./setting/lib_boundary.so;
+	name = U_boundary;
 }
 supoutlet {
 	type = zeroGradient;
 }
-
-invwall {
-	type = slip;
+gasinlet {
+	type = massFlowRatePerAreaIdealGas;
+	value = 0.0;//926.94;
+	R = 287.0;
 }
-
-viswall {
-	type = noSlip;
-}
-moving {
-	type = fixedValue;
-	value = (1.0 0.0 0.0);
-}
-function {
-	type = zeroGradient;
+liqinlet {
+	type = surfaceNormalFixedValue;
+	value = -0.408;
 }

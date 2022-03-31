@@ -42,6 +42,27 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({"cell"},"viscosity","","","","scalar");
 	(*this).setVarible({"cell"},"curvature","","","","scalar");
 	
+	// 최대 최소값
+	(*this).setVarible({"cell"},"maximum pressure","","","","scalar");
+	(*this).setVarible({"cell"},"minimum pressure","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum x-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"minimum x-velocity","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum y-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"minimum y-velocity","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum z-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"minimum z-velocity","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum temperature","","","","scalar");
+	(*this).setVarible({"cell"},"minimum temperature","","","","scalar");
+	
+	for(int i=0; i<species.size()-1; ++i){
+		(*this).setVarible({"cell"},"maximum mass-fraction-"+species[i],"","","","scalar");
+		(*this).setVarible({"cell"},"minimum mass-fraction-"+species[i],"","","","scalar");
+	}
+	
 
 	// 그레디언트 값
 	(*this).setVarible({"cell"},"gradient pressure","","","","vector3",
@@ -55,10 +76,13 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({"cell"},"gradient temperature","","","","vector3",
 						{"x-gradient temperature","y-gradient temperature","z-gradient temperature"},{"","",""},{"","",""});
 	for(int i=0; i<species.size()-1; ++i){
-		string tmp_name = ("mass-fraction-"+species[i]);
-		(*this).setVarible({"cell"},"gradient "+tmp_name,"","","","vector3",
-							{"x-gradient "+tmp_name,"y-gradient "+tmp_name,"z-gradient "+tmp_name},{"","",""},{"","",""});
+		(*this).setVarible({"cell"},"gradient mass-fraction-"+species[i],"","","","vector3",
+							{"x-gradient mass-fraction-"+species[i],"y-gradient mass-fraction-"+species[i],"z-gradient mass-fraction-"+species[i]},{"","",""},{"","",""});
+		(*this).setVarible({"cell"},"gradient volume-fraction-"+species[i],"","","","vector3",
+							{"x-gradient volume-fraction-"+species[i],"y-gradient volume-fraction-"+species[i],"z-gradient volume-fraction-"+species[i]},{"","",""},{"","",""});
 	}
+	(*this).setVarible({"cell"},"gradient density","","","","vector3",
+						{"x-gradient density","y-gradient density","z-gradient density"},{"","",""},{"","",""});
 	
 	
 	// 올드 값
@@ -73,18 +97,31 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	}
 	
 	// 페이스 값 정의
-	(*this).setVarible({"face"},"pressure","","","","scalar");
-	(*this).setVarible({"face"},"contravariant-velocity","","","","scalar");
-	(*this).setVarible({"face"},"velocity","","","","vector3",
-						{"x-velocity","y-velocity","z-velocity"},{"u","v","w"},{"","",""});
-	(*this).setVarible({"face"},"temperature","","","","scalar");
+	(*this).setVarible({"face"},"left pressure","","","","scalar");
+	(*this).setVarible({"face"},"right pressure","","","","scalar");
+	// (*this).setVarible({"face"},"pressure-org","","","","scalar");
+	// (*this).setVarible({"face"},"contravariant-velocity","","","","scalar");
+	(*this).setVarible({"face"},"left velocity","","","","vector3",
+						{"left x-velocity","left y-velocity","left z-velocity"},{"u","v","w"},{"","",""});
+	(*this).setVarible({"face"},"right velocity","","","","vector3",
+						{"right x-velocity","right y-velocity","right z-velocity"},{"u","v","w"},{"","",""});
+	(*this).setVarible({"face"},"left temperature","","","","scalar");
+	(*this).setVarible({"face"},"right temperature","","","","scalar");
 	for(int i=0; i<species.size()-1; ++i){
-		string tmp_name = ("mass-fraction-"+species[i]);
-		(*this).setVarible({"face"},tmp_name,"","","","scalar");
+		(*this).setVarible({"face"},"left mass-fraction-"+species[i],"","","","scalar");
+		(*this).setVarible({"face"},"right mass-fraction-"+species[i],"","","","scalar");
+		
+		(*this).setVarible({"face"},"left volume-fraction-"+species[i],"","","","scalar");
+		(*this).setVarible({"face"},"right volume-fraction-"+species[i],"","","","scalar");
 	}
-	(*this).setVarible({"face"},"density","","","","scalar");
-	(*this).setVarible({"face"},"total-enthalpy","","","","scalar");
-	(*this).setVarible({"face"},"viscosity","","","","scalar");
+	(*this).setVarible({"face"},"left density","","","","scalar");
+	(*this).setVarible({"face"},"right density","","","","scalar");
+	(*this).setVarible({"face"},"left speed-of-sound","","","","scalar");
+	(*this).setVarible({"face"},"right speed-of-sound","","","","scalar");
+	(*this).setVarible({"face"},"left total-enthalpy","","","","scalar");
+	(*this).setVarible({"face"},"right total-enthalpy","","","","scalar");
+	(*this).setVarible({"face"},"left viscosity","","","","scalar");
+	(*this).setVarible({"face"},"right viscosity","","","","scalar");
 	
 	
 	// 곡률 관련

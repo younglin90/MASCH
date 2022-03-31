@@ -10,18 +10,18 @@ void MASCH_Solver::fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variable
 	auto& solver = (*this);
 	
 	bool debug_bool = false;
-	bool debug_AMGCL_bool = false;
+	bool debug_AMGCL_bool = true;
 	
     amgcl::profiler<> prof("fvm solver");
 	
 	
 	
-	// 타임스텝 구하기
-	if(debug_bool) controls.log.push("calcTempSteps");
-	if(debug_AMGCL_bool) prof.tic("calcTempSteps");
-	solver.calcTempSteps(mesh, controls, var, iSegEq);
-	if(debug_bool) controls.log.pop();
-	if(debug_AMGCL_bool) prof.toc("calcTempSteps");
+	// // 타임스텝 구하기
+	// if(debug_bool) controls.log.push("calcTempSteps");
+	// if(debug_AMGCL_bool) prof.tic("calcTempSteps");
+	// solver.calcTempSteps(mesh, controls, var, iSegEq);
+	// if(debug_bool) controls.log.pop();
+	// if(debug_AMGCL_bool) prof.toc("calcTempSteps");
 	
 	// 고차 reconstruction
 	if(debug_bool) controls.log.push("highOrderTerms");
@@ -29,14 +29,6 @@ void MASCH_Solver::fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variable
 	solver.highOrderTerms(mesh, controls, var, iSegEq);
 	if(debug_bool) controls.log.pop();
 	if(debug_AMGCL_bool) prof.toc("highOrderTerms");
-	
-	
-	// 선형 시스템 0.0으로 초기화
-	if(debug_bool) controls.log.push("clearLinearSystems");
-	if(debug_AMGCL_bool) prof.tic("clearLinearSystems");
-	var.clearLinearSystems(iSegEq);
-	if(debug_bool) controls.log.pop();
-	if(debug_AMGCL_bool) prof.toc("clearLinearSystems");
 	
 	// 페이스 루프 텀, 컨벡티브 텀 + 디퓨젼 텀
 	if(debug_bool) controls.log.push("convective & diffusion Terms");
@@ -69,6 +61,13 @@ void MASCH_Solver::fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variable
 	solver.updateCellPrimValues(mesh, controls, var, iSegEq);
 	if(debug_bool) controls.log.pop();
 	if(debug_AMGCL_bool) prof.toc("updateCellPrimValues");
+	
+	// 선형 시스템 0.0으로 초기화
+	if(debug_bool) controls.log.push("clearLinearSystems");
+	if(debug_AMGCL_bool) prof.tic("clearLinearSystems");
+	var.clearLinearSystems(iSegEq);
+	if(debug_bool) controls.log.pop();
+	if(debug_AMGCL_bool) prof.toc("clearLinearSystems");
 		
 		
 	
@@ -221,8 +220,11 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	
 	if(solver.gradLSIds_cell_name.size()==0) return;
 	
+	// solver.calcGradient.leastSquare(mesh, controls, var, 
+		// solver.gradLSIds_cell_name[iSegEq], solver.gradLSIds_bcFace_name[iSegEq]);
 	solver.calcGradient.leastSquare(mesh, controls, var, 
-		solver.gradLSIds_cell_name[iSegEq], solver.gradLSIds_bcFace_name[iSegEq]);
+		solver.gradLSIds_cell_name[iSegEq], solver.gradLSIds_bcFace_name[iSegEq], 
+		solver.minmaxInp_cell_name[iSegEq], solver.maxOut_cell_name[iSegEq], solver.minOut_cell_name[iSegEq]);
 	
 }
 
@@ -241,6 +243,7 @@ void MASCH_Solver::highOrderTerms(
 MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	
 	auto& solver = (*this);
+	
 	
 
 	// 하이오더 리컨스트럭션 + 추가적 변수들
@@ -907,13 +910,13 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	
 	auto& solver = (*this);
 	
+	auto sol = solver.calcCellAddiVal[iSegEq];
+	
 	// cell 추가적 변수
 	auto cellVar = var.cells.data();
 	for(int i=0; i<mesh.cells.size(); ++i){
 		auto cellVar_i = cellVar[i].data();
-		for(auto& sol : solver.calcCellAddiVal){
-			sol(cellVar_i);
-		}
+		sol(cellVar_i);
 	}
 	
 		// // cout << var.faces[0].size() << endl;
@@ -975,20 +978,24 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 			}
 		}
 		
-		vector<int> tmp_counts(size,0);
-		vector<int> tmp_displs(size+1,0);
+		vector<int> tmp_sendCounts(size,0);
+		vector<int> tmp_recvCounts(size,0);
+		vector<int> tmp_sendDispls(size+1,0);
+		vector<int> tmp_recvDispls(size+1,0);
 		for(int ip=0; ip<size; ++ip){
-			tmp_counts[ip] = mesh.countsProcFaces[ip]*prim_size;
+			tmp_sendCounts[ip] = mesh.countsSendProcFaces[ip]*prim_size;
+			tmp_recvCounts[ip] = mesh.countsRecvProcFaces[ip]*prim_size;
 		}
 		for(int ip=0; ip<size; ++ip){
-			tmp_displs[ip+1] = tmp_displs[ip] + tmp_counts[ip];
+			tmp_sendDispls[ip+1] = tmp_sendDispls[ip] + tmp_sendCounts[ip];
+			tmp_recvDispls[ip+1] = tmp_recvDispls[ip] + tmp_recvCounts[ip];
 		}
 		
 		vector<double> recv_value(proc_size*prim_size);
-		MPI_Alltoallv( send_value.data(), tmp_counts.data(), 
-						tmp_displs.data(), MPI_DOUBLE, 
-						recv_value.data(), tmp_counts.data(), 
-						tmp_displs.data(), MPI_DOUBLE, 
+		MPI_Alltoallv( send_value.data(), tmp_sendCounts.data(), 
+						tmp_sendDispls.data(), MPI_DOUBLE, 
+						recv_value.data(), tmp_recvCounts.data(), 
+						tmp_recvDispls.data(), MPI_DOUBLE, 
 					   MPI_COMM_WORLD);
 		auto recv_value_ptr = recv_value.data();
 		int iter=0;
@@ -1082,20 +1089,24 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 			}
 		}
 		
-		vector<int> tmp_counts(size,0);
-		vector<int> tmp_displs(size+1,0);
+		vector<int> tmp_sendCounts(size,0);
+		vector<int> tmp_recvCounts(size,0);
+		vector<int> tmp_sendDispls(size+1,0);
+		vector<int> tmp_recvDispls(size+1,0);
 		for(int ip=0; ip<size; ++ip){
-			tmp_counts[ip] = mesh.countsProcFaces[ip]*inp_size;
+			tmp_sendCounts[ip] = mesh.countsSendProcFaces[ip]*inp_size;
+			tmp_recvCounts[ip] = mesh.countsRecvProcFaces[ip]*inp_size;
 		}
 		for(int ip=0; ip<size; ++ip){
-			tmp_displs[ip+1] = tmp_displs[ip] + tmp_counts[ip];
+			tmp_sendDispls[ip+1] = tmp_sendDispls[ip] + tmp_sendCounts[ip];
+			tmp_recvDispls[ip+1] = tmp_recvDispls[ip] + tmp_recvCounts[ip];
 		}
 		
 		vector<double> recv_value(proc_size*inp_size);
-		MPI_Alltoallv( send_value.data(), tmp_counts.data(), 
-						tmp_displs.data(), MPI_DOUBLE, 
-						recv_value.data(), tmp_counts.data(), 
-						tmp_displs.data(), MPI_DOUBLE, 
+		MPI_Alltoallv( send_value.data(), tmp_sendCounts.data(), 
+						tmp_sendDispls.data(), MPI_DOUBLE, 
+						recv_value.data(), tmp_recvCounts.data(), 
+						tmp_recvDispls.data(), MPI_DOUBLE, 
 					   MPI_COMM_WORLD);
 		auto recv_value_ptr = recv_value.data();
 		int iter=0;
@@ -1106,7 +1117,6 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 			}
 		}
 	}
-	
 	
 	
 }
@@ -1153,13 +1163,16 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	auto faceVar = var.faces.data();
 	auto fieldVar = var.fields.data();
 	auto procRightCellVar = var.procRightCells.data();
+	
+	auto sol = solver.calcFaceAddiVal[iSegEq];
+	
 	for(int ibc=0, iter=0, SIZE=mesh.boundaries.size(); ibc<SIZE; ++ibc){
 		auto& boundary = mesh.boundaries[ibc];
 		if(boundary.getType()!=MASCH_Face_Types::BOUNDARY) continue;
 		auto calcSolPtr = solver.calcBoundFacePrimVal[iter].data();
 		int calcSolSize = solver.calcBoundFacePrimVal[iter].size();
-		auto calcAddSolPtr = solver.calcFaceAddiVal.data();
-		int calcAddSolSize = solver.calcFaceAddiVal.size();
+		// auto calcAddSolPtr = solver.calcFaceAddiVal.data();
+		// int calcAddSolSize = solver.calcFaceAddiVal.size();
 		int str = boundary.startFace;
 		int end = str + boundary.nFaces;
 		for(int i=str; i<end; ++i){
@@ -1171,9 +1184,9 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 					cellVar[iL].data(),faceVar[i].data());
 			}
 			// for(auto& sol : solver.calcFaceAddiVal){
-			for(int iSol=0; iSol<calcAddSolSize; ++iSol){
-				calcAddSolPtr[iSol](faceVar[i].data());
-			}
+			// for(int iSol=0; iSol<calcAddSolSize; ++iSol){
+				sol(faceVar[i].data());
+			// }
 		}
 		++iter;
 	}
@@ -1333,6 +1346,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	
 	auto sol = solver.calcTempStepCell[iSegEq];
 	
+	
 	int id_dt = controls.getId_fieldVar("time-step");
 	fieldVar[id_dt] = 1.e12;
 	
@@ -1341,6 +1355,13 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 		// for(auto& sol : solver.calcTempStepCell){
 			sol(cellVar_i, fieldVar);
 		// }
+		
+
+		// for(auto& lim_phi_id : controls.limiterNamesForUnst){
+			// cellVar_i[lim_phi_id] = 1.0;
+		// }
+		
+		
 	}
 	if(size>1){
 		double tmp_fieldVar = var.fields[id_dt];

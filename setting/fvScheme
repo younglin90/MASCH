@@ -1,3 +1,11 @@
+highOrderScheme {
+        p = none;
+        U = (none none none);
+        T = none;
+        Y = (MSTACS);
+}
+
+
 // 실제 시간항 (real-time term)
 dt(scalar) {
 	all = Euler;

@@ -1,9 +1,19 @@
+name = ();
+
 dpmCFL = 0.1;
 dpmMaxTimeStep = 1.e-1;
 
 water {
+	eulerianToLagrangian {
+		type = yes;
+		criterionVolumeFraction = 0.1;//0.3;
+		criterionRadius = 1000.0;//0.1;
+		criterionRatioRadius = 10000.0;//4.0;
+		minRadius = 1.e-200;
+	}
+
 	injection {
-		type = blobModel;
+		type = none;//blobModel;
 		mdot = 1.0;
 		d = 0.01;
 		theta = 60.0;
@@ -28,10 +38,13 @@ boundary {
 	invwall {
 		type = reflect;
 	}
-	subinlet {
+	function {
+		type = reflect;
+	}
+	supinlet {
 		type = escape;
 	}
-	suboutlet {
+	supoutlet {
 		type = escape;
 	}
 }

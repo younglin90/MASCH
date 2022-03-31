@@ -42,6 +42,26 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({"cell"},"viscosity","","","","scalar");
 	(*this).setVarible({"cell"},"curvature","","","","scalar");
 	
+	// 최대 최소값
+	(*this).setVarible({"cell"},"maximum pressure","","","","scalar");
+	(*this).setVarible({"cell"},"minimum pressure","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum x-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"minimum x-velocity","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum y-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"minimum y-velocity","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum z-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"minimum z-velocity","","","","scalar");
+	
+	(*this).setVarible({"cell"},"maximum temperature","","","","scalar");
+	(*this).setVarible({"cell"},"minimum temperature","","","","scalar");
+	
+	for(int i=0; i<species.size()-1; ++i){
+		(*this).setVarible({"cell"},"maximum mass-fraction-"+species[i],"","","","scalar");
+		(*this).setVarible({"cell"},"minimum mass-fraction-"+species[i],"","","","scalar");
+	}
 
 	// 그레디언트 값
 	(*this).setVarible({"cell"},"gradient pressure","","","","vector3",

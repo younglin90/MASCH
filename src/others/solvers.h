@@ -16,8 +16,27 @@ class MASCH_Math;
 class MASCH_NVD {
 private:
 public:
-	double Minmod(double phiUU, double phiU, double phiD);
-	double getHO_MSTACS(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double none(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	
+	double minmod(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double vanLeer(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double QUICK(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double boundedCD(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double OSHER(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double SMART(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double modifiedSMART(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double STOIC(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double modifiedSTOIC(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double MUSCL(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double SUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double modifiedSUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	
+	double HRIC(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double CICSAM(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double STACS(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double FBICS(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double SAISH(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double MSTACS(double phiUU, double phiU, double phiD, double coDD, double gamF);
 };
 
 class MASCH_Gradient {
@@ -32,9 +51,14 @@ public:
 
 	void leastSquare(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
 		vector<string>& inp_cell, vector<string>& inp_bcFace);
+	void leastSquare(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
+		vector<string>& inp_cell, vector<string>& inp_bcFace, 
+		vector<string>& minmaxInp_cell_name, 
+		vector<string>& maxOut_cell_name, vector<string>& minOut_cell_name);
 	void leastSquare_zeroGradient(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
 		vector<string>& inp_cell);
 };
+
 
 // class MASCH_DPM {
 // private:
@@ -52,13 +76,16 @@ public:
 	MASCH_Gradient calcGradient;
 	// MASCH_DPM dpm;
 	
-	void dpm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
+	double limiter_MLP(double phi, double phi_max, double phi_min, double Delta_minus, double eta);
+	
+	void dpm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	int calcTimeStepParcel(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
-	void addParcelModel(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
-	void parcelLoop(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
-	void searchLocationParcelsToOutside(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
-	void updateProcRightParcels(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
-	void refreshParcels(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
+	void addParcelModel(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void parcelLoop(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void searchLocationParcelsToOutside(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void updateProcRightParcels(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void refreshParcels(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+	void eulerianToLagrangian(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	// int get_icell(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
 		// double parcel_x, double parcel_y, double parcel_z);
 	
@@ -95,6 +122,8 @@ public:
 	
 	// gradient 관련
 	vector<vector<string>> gradLSIds_cell_name, gradLSIds_bcFace_name;
+	// min max 관련
+	vector<vector<string>> minmaxInp_cell_name, maxOut_cell_name, minOut_cell_name;
 	
 	// 곡률 관련
 	vector<vector<string>> curvatureIds_cell_name, curvatureIds_bcFace_name;
@@ -168,6 +197,7 @@ public:
 	void setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setOldVFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setGradFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
+	void setMinMaxCellValuesFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setCurvatureFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	// void setFValFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);

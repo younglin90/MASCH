@@ -20,6 +20,14 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 	int id_xLR = controls.getId_faceVar("x distance of between left and right cell");
 	int id_yLR = controls.getId_faceVar("y distance of between left and right cell");
 	int id_zLR = controls.getId_faceVar("z distance of between left and right cell");
+	
+	int id_xLF = controls.getId_faceVar("x distance of between left cell and face");
+	int id_yLF = controls.getId_faceVar("y distance of between left cell and face");
+	int id_zLF = controls.getId_faceVar("z distance of between left cell and face");
+	int id_xRF = controls.getId_faceVar("x distance of between right cell and face");
+	int id_yRF = controls.getId_faceVar("y distance of between right cell and face");
+	int id_zRF = controls.getId_faceVar("z distance of between right cell and face");
+	
 	int id_xSkew = controls.getId_faceVar("x skewness");
 	int id_ySkew = controls.getId_faceVar("y skewness");
 	int id_zSkew = controls.getId_faceVar("z skewness");
@@ -41,11 +49,17 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 	int id_nLRy = controls.getId_faceVar("y unit normal of between left and right cell");
 	int id_nLRz = controls.getId_faceVar("z unit normal of between left and right cell");
 	
+	int id_maxA = controls.getId_cellVar("maximum area");
+	int id_minA = controls.getId_cellVar("minimum area");
+	
 	MASCH_Math math;
 	
 	// polyhedron cell volume (Green-Gauss Theorem.)
 	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
 		auto& cell = mesh.cells[i];
+		
+		var.cells[i][id_maxA] = -1.e8;
+		var.cells[i][id_minA] = 1.e8;
 		
 		var.cells[i][id_volume] = 0.0;
 		cell.x = 0.0;
@@ -151,10 +165,25 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 		double ny = var.faces[i][id_ny];
 		double nz = var.faces[i][id_nz];
 		
+		double area = var.faces[i][id_area];
+		
 		if(face.getType() == MASCH_Face_Types::INTERNAL){
+			
+			var.cells[iL][id_maxA] = max(area,var.cells[iL][id_maxA]);
+			var.cells[iR][id_maxA] = max(area,var.cells[iR][id_maxA]);
+			var.cells[iR][id_minA] = min(area,var.cells[iR][id_minA]);
+			var.cells[iL][id_minA] = min(area,var.cells[iL][id_minA]);
+			
 			var.faces[i][id_xLR] = mesh.cells[iR].x - mesh.cells[iL].x;
 			var.faces[i][id_yLR] = mesh.cells[iR].y - mesh.cells[iL].y;
 			var.faces[i][id_zLR] = mesh.cells[iR].z - mesh.cells[iL].z;
+			
+			var.faces[i][id_xLF] = face.x - mesh.cells[iL].x;
+			var.faces[i][id_yLF] = face.y - mesh.cells[iL].y;
+			var.faces[i][id_zLF] = face.z - mesh.cells[iL].z;
+			var.faces[i][id_xRF] = face.x - mesh.cells[iR].x;
+			var.faces[i][id_yRF] = face.y - mesh.cells[iR].y;
+			var.faces[i][id_zRF] = face.z - mesh.cells[iR].z;
 			
 			double dxFP = face.x-mesh.cells[iL].x;
 			double dyFP = face.y-mesh.cells[iL].y;
@@ -177,7 +206,7 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 				
 			// at openfoam
 			var.faces[i][id_Wc] = dFN_of/(dFP_of+dFN_of);
-			// 절단오차 걸러내기 위한 과정
+			// // 절단오차 걸러내기 위한 과정
 			// var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
 			
 			var.faces[i][id_dLR] = dPN;
@@ -231,9 +260,20 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			
 		}
 		else if(face.getType() == MASCH_Face_Types::BOUNDARY){
+			
+			var.cells[iL][id_maxA] = max(area,var.cells[iL][id_maxA]);
+			var.cells[iL][id_minA] = min(area,var.cells[iL][id_minA]);
+			
 			var.faces[i][id_xLR] = face.x - mesh.cells[iL].x;
 			var.faces[i][id_yLR] = face.y - mesh.cells[iL].y;
 			var.faces[i][id_zLR] = face.z - mesh.cells[iL].z;
+			
+			var.faces[i][id_xLF] = face.x - mesh.cells[iL].x;
+			var.faces[i][id_yLF] = face.y - mesh.cells[iL].y;
+			var.faces[i][id_zLF] = face.z - mesh.cells[iL].z;
+			// var.faces[i][id_xRF] = face.x - mesh.cells[iR].x;
+			// var.faces[i][id_yRF] = face.y - mesh.cells[iR].y;
+			// var.faces[i][id_zRF] = face.z - mesh.cells[iR].z;
 			
 			double dxFP = face.x-mesh.cells[iL].x;
 			double dyFP = face.y-mesh.cells[iL].y;
@@ -278,9 +318,17 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			
 		}
 		else if(face.getType() == MASCH_Face_Types::PROCESSOR){
+			
+			var.cells[iL][id_maxA] = max(area,var.cells[iL][id_maxA]);
+			var.cells[iL][id_minA] = min(area,var.cells[iL][id_minA]);
+			
 			var.faces[i][id_xLR] = face.x - mesh.cells[iL].x;
 			var.faces[i][id_yLR] = face.y - mesh.cells[iL].y;
 			var.faces[i][id_zLR] = face.z - mesh.cells[iL].z;
+			
+			var.faces[i][id_xLF] = face.x - mesh.cells[iL].x;
+			var.faces[i][id_yLF] = face.y - mesh.cells[iL].y;
+			var.faces[i][id_zLF] = face.z - mesh.cells[iL].z;
 		}
 	}
 	
@@ -301,8 +349,8 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 		}
 		for(int i=0; i<3; ++i){
 			mpi.procFace_Alltoallv(sendValues[i], recvValues[i],
-				mesh.countsProcFaces, mesh.countsProcFaces,
-				mesh.displsProcFaces, mesh.displsProcFaces);
+				mesh.countsSendProcFaces, mesh.countsRecvProcFaces,
+				mesh.displsSendProcFaces, mesh.displsRecvProcFaces);
 		}	
 		for(int i=0, ip=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
 			auto& face = mesh.faces[i];
@@ -338,8 +386,8 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 					
 				// at openfoam
 				var.faces[i][id_Wc] = dFN_of/(dFP_of+dFN_of);
-				// 절단오차 걸러내기 위한 과정
-				var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
+				// // 절단오차 걸러내기 위한 과정
+				// var.faces[i][id_Wc] = (float)(round(var.faces[i][id_Wc] * 10000000) / 10000000);
 				
 				var.faces[i][id_dLR] = dPN;
 				

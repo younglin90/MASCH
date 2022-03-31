@@ -145,6 +145,10 @@ template void MASCH_Mesh_Save::writeCompress<double>(ofstream& out, vector<doubl
 template<typename T>
 void MASCH_Mesh_Save::writeCompress(ofstream& out, vector<T>& vecInp, int compressSize)
 {
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
 	int value_data_size = vecInp.size();
 	
 	int headerByteSize = 8;
@@ -172,7 +176,7 @@ void MASCH_Mesh_Save::writeCompress(ofstream& out, vector<T>& vecInp, int compre
 		++numm;
 	}
 	if(compress2(deflate_data, &deflate_size, raw_data, raw_size, compressSize) != Z_OK){
-		cout << "zlib error !!!!!!!!!!!!" << endl;
+		if(rank==0) cout << "zlib error !!!!!!!!!!!!" << endl;
 	}
 	// cout << endl;
 	// cout << deflate_size <<  endl;
@@ -1219,7 +1223,8 @@ void MASCH_Mesh_Save::fvmFiles(
 string folder, int rank, MASCH_Mesh& mesh, 
 MASCH_Control& controls, MASCH_Variables& var){
 	
-	// int rank = MPI::COMM_WORLD.Get_rank();
+	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
 	
 	// 폴더 만들기
     // auto ret = filesystem::create_directories(folder);
@@ -1272,64 +1277,6 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	outputFile << "  <UnstructuredGrid>" << endl;
 	
-
-
-
-
-
-	// Field data
-	outputFile << "    <FieldData>" << endl;
-	{
-		outputFile << "     <DataArray type=\"Float64\" Name=\"TimeValue\" NumberOfTuples=\"1\" format=\"" << saveFormat << "\">" << endl;
-		vector<double> values;
-		values.push_back(var.fields[controls.fieldVar["time"].id]);
-		writeDatasAtVTU(controls, outputFile, values);
-		outputFile << "     </DataArray>" << endl;
-	}
-	outputFile << "    </FieldData>" << endl;
-	
-	outputFile << "   <Piece NumberOfPoints=\"" << mesh.points.size() << "\" NumberOfCells=\"" << mesh.cells.size() << "\">" << endl;
-	
-	// Points data
-	outputFile << "    <PointData>" << endl;
-	{
-		outputFile << "     <DataArray type=\"Int32\" Name=\"pointLevels\" format=\"" << saveFormat << "\">" << endl;
-		vector<int> values;
-		values.reserve(mesh.points.size());
-		for(auto& point : mesh.points) values.push_back(point.level);
-		writeDatasAtVTU(controls, outputFile, values);
-		outputFile << "     </DataArray>" << endl;
-	}
-	outputFile << "    </PointData>" << endl;
-	
-	
-	
-	// Cells data
-	outputFile << "    <CellData>" << endl;
-	
-	{
-		outputFile << "     <DataArray type=\"Int32\" Name=\"cellLevels\" format=\"" << saveFormat << "\">" << endl;
-		vector<int> values;
-		values.reserve(mesh.cells.size());
-		for(auto& cell : mesh.cells) values.push_back(cell.level);
-		writeDatasAtVTU(controls, outputFile, values);
-		outputFile << "     </DataArray>" << endl;
-	}
-	{
-		outputFile << "     <DataArray type=\"Int32\" Name=\"cellGroups\" format=\"" << saveFormat << "\">" << endl;
-		vector<int> values;
-		values.reserve(mesh.cells.size());
-		for(auto& cell : mesh.cells) values.push_back(cell.group);
-		writeDatasAtVTU(controls, outputFile, values);
-		outputFile << "     </DataArray>" << endl;
-	}
-	
-	
-	
-	
-	
-	
-	
 	
 	
 	// 원시변수들 네이밍
@@ -1369,7 +1316,383 @@ MASCH_Control& controls, MASCH_Variables& var){
 		vec_cell_save_name.back().push_back(zGrad);
 	}
 	
+	
+	
+	// 고스트 셀 만들기
+	vector<vector<double>> proc_points_x(size), proc_points_y(size), proc_points_z(size);
+	vector<vector<int>> proc_cell_ipoints(size);
+	vector<vector<int>> proc_cell_ipoints_order(size);
+	vector<vector<int>> proc_cell_face_ipoints(size);
+	vector<vector<int>> proc_face_ipoints_order(size);
+	vector<int> send_ipoint_size(size,0);
+	
+	vector<vector<double>> recv_scal_values;
+	vector<vector<double>> recv_vec3_values;
+
+	vector<int> id_scal;
+	vector<int> id_vec3;
+	for(auto& name : scal_cell_save_name){
+		id_scal.push_back(controls.getId_cellVar(name));
+	}
+	for(auto& names : vec_cell_save_name){
+		for(auto& name : names){
+			id_vec3.push_back(controls.getId_cellVar(name));
+		}
+	}
+		
+	if(size>1){
+		auto cellVar = var.cells.data();
+		
+		int proc_size = var.procRightCells.size();
+		int prim_size = id_scal.size() + id_vec3.size();
+		
+		vector<double> send_value;
+		send_value.reserve(proc_size*prim_size);
+		for(auto& boundary : mesh.boundaries){
+			if(boundary.getType()==MASCH_Face_Types::PROCESSOR){
+				int str = boundary.startFace;
+				int end = str + boundary.nFaces;
+				for(int i=str; i<end; ++i){
+					auto cellVar_i = cellVar[mesh.faces[i].iL].data();
+					// auto faceVar_i = faceVar[i].data();
+					for(auto& id : id_scal){
+						send_value.push_back(cellVar_i[id]);
+					}
+					for(auto& id : id_vec3){
+						send_value.push_back(cellVar_i[id]);
+					}
+				}
+			}
+		}
+		
+		vector<int> tmp_counts(size,0);
+		vector<int> tmp_displs(size+1,0);
+		for(int ip=0; ip<size; ++ip){
+			tmp_counts[ip] = mesh.countsSendProcFaces[ip]*prim_size;
+		}
+		for(int ip=0; ip<size; ++ip){
+			tmp_displs[ip+1] = tmp_displs[ip] + tmp_counts[ip];
+		}
+		
+		vector<double> recv_value(proc_size*prim_size);
+		MPI_Alltoallv( send_value.data(), tmp_counts.data(), 
+						tmp_displs.data(), MPI_DOUBLE, 
+						recv_value.data(), tmp_counts.data(), 
+						tmp_displs.data(), MPI_DOUBLE, 
+					   MPI_COMM_WORLD);
+		auto recv_value_ptr = recv_value.data();
+		int iter=0;
+		recv_scal_values.resize(id_scal.size());
+		recv_vec3_values.resize(id_vec3.size());
+		for(auto& cells : var.procRightCells){
+			auto cellVar_i = cells.data();
+			int j = 0;
+			for(auto& id : id_scal){
+				recv_scal_values[j++].push_back(recv_value_ptr[iter++]);
+			}
+			j = 0;
+			for(auto& id : id_vec3){
+				recv_vec3_values[j++].push_back(recv_value_ptr[iter++]);
+			}
+		}
+	}
+	
+		
+		
+	if(size>1){
+		int ip=0;
+		for(auto& boundary : mesh.boundaries){
+			if(boundary.getType() != MASCH_Face_Types::PROCESSOR) continue;
+			int str = boundary.startFace;
+			int end = str + boundary.nFaces;
+			int iproc = boundary.rightProcNo;
+			for(int i=str; i<end; ++i){
+				
+				auto& face = mesh.faces[i];
+				auto& cellL = mesh.cells[face.iL];
+				
+				vector<int> tmp_cell_ipoints = cellL.ipoints;
+				// for(auto& ipoint : face.ipoints){
+					// tmp_cell_ipoints.erase(remove(
+					// tmp_cell_ipoints.begin(), 
+					// tmp_cell_ipoints.end(), ipoint), 
+					// tmp_cell_ipoints.end());
+				// }
+				proc_cell_ipoints[iproc].emplace_back(tmp_cell_ipoints.size());
+				proc_cell_ipoints[iproc].insert(proc_cell_ipoints[iproc].end(),
+				tmp_cell_ipoints.begin(),tmp_cell_ipoints.end());
+				
+				for(auto& ipoint : tmp_cell_ipoints){
+					proc_points_x[iproc].emplace_back(mesh.points[ipoint].x);
+					proc_points_y[iproc].emplace_back(mesh.points[ipoint].y);
+					proc_points_z[iproc].emplace_back(mesh.points[ipoint].z);
+				}
+		
+				
+				vector<int> tmp_cell_ipoint_order(tmp_cell_ipoints.size(),-1);
+				int tmp_iter = 0;
+				for(auto& ipoint : face.ipoints){
+					if(std::find(
+					tmp_cell_ipoints.begin(),tmp_cell_ipoints.end(),ipoint) !=
+					tmp_cell_ipoints.end()){
+						int order = std::find(
+						tmp_cell_ipoints.begin(),tmp_cell_ipoints.end(),ipoint) - 
+						tmp_cell_ipoints.begin();
+						tmp_cell_ipoint_order[order] = tmp_iter;
+						if(tmp_iter!=0){
+							tmp_cell_ipoint_order[order] = face.ipoints.size()-tmp_iter;
+						}
+					}
+					++tmp_iter;
+				}
+				proc_cell_ipoints_order[iproc].insert(proc_cell_ipoints_order[iproc].end(),
+				tmp_cell_ipoint_order.begin(),tmp_cell_ipoint_order.end());
+				
+			// auto iter0 = std::find(face.ipoints.begin(), face.ipoints.end(), groupChildFace.vertexPoints[1]);
+			// std::copy(iter0, iter1+1, std::back_inserter(groupChildFace.subIntEdgePoints[0]));
+				
+				
+				// proc_cell_face_ipoints.emplace_back(cellL.ifaces.size()-1);
+				proc_cell_face_ipoints[iproc].emplace_back(cellL.ifaces.size());
+				for(auto& iface : cellL.ifaces){
+					{
+						vector<int> tmp_face_ipoints = mesh.faces[iface].ipoints;
+						vector<int> tmp_face_ipoint_order(tmp_face_ipoints.size(),-1);
+						proc_cell_face_ipoints[iproc].emplace_back(mesh.faces[iface].ipoints.size());
+						int tmp_iter2 = 0;
+						for(auto& ipoint : cellL.ipoints){
+							if(std::find(
+							tmp_face_ipoints.begin(),tmp_face_ipoints.end(),ipoint) !=
+							tmp_face_ipoints.end()){
+								int order = std::find(
+								tmp_face_ipoints.begin(),tmp_face_ipoints.end(),ipoint) - 
+								tmp_face_ipoints.begin();
+								tmp_face_ipoint_order[order] = tmp_iter2;
+							}
+							++tmp_iter2;
+						}
+						proc_cell_face_ipoints[iproc].insert(proc_cell_face_ipoints[iproc].end(),
+						tmp_face_ipoint_order.begin(),tmp_face_ipoint_order.end());
+					}
+					
+					{
+						vector<int> tmp_face_ipoints = mesh.faces[iface].ipoints;
+						vector<int> tmp_face_ipoint_order(tmp_face_ipoints.size(),-1);
+						int tmp_iter2 = 0;
+						for(auto& ipoint : face.ipoints){
+							if(std::find(
+							tmp_face_ipoints.begin(),tmp_face_ipoints.end(),ipoint) !=
+							tmp_face_ipoints.end()){
+								int order = std::find(
+								tmp_face_ipoints.begin(),tmp_face_ipoints.end(),ipoint) - 
+								tmp_face_ipoints.begin();
+								tmp_face_ipoint_order[order] = tmp_iter2;
+								if(tmp_iter2!=0){
+									tmp_face_ipoint_order[order] = face.ipoints.size()-tmp_iter2;
+								}
+								if(tmp_face_ipoint_order[order]>=face.ipoints.size()){
+									cout << "#WARNING :!!!! " << endl;
+								}
+							}
+							++tmp_iter2;
+						}
+						proc_face_ipoints_order[iproc].insert(proc_face_ipoints_order[iproc].end(),
+						tmp_face_ipoint_order.begin(),tmp_face_ipoint_order.end());
+					}
+					
+					
+				}
+				++ip;
+			}
+		}
+		
+	}
+
+
+	vector<double> ro_proc_points_x, ro_proc_points_y, ro_proc_points_z;
+	vector<vector<int>> ro_proc_cell_ipoints;
+	vector<vector<vector<int>>> ro_proc_cell_face_ipoints;
+	
+	if(size>1){
+		MASCH_MPI mpi;
+		
+		vector<vector<double>> recv_proc_points_x;
+		mpi.Alltoallv(proc_points_x, recv_proc_points_x);
+		vector<vector<double>> recv_proc_points_y;
+		mpi.Alltoallv(proc_points_y, recv_proc_points_y);
+		vector<vector<double>> recv_proc_points_z;
+		mpi.Alltoallv(proc_points_z, recv_proc_points_z);
+		vector<vector<int>> recv_proc_cell_ipoints;
+		mpi.Alltoallv(proc_cell_ipoints, recv_proc_cell_ipoints);
+		vector<vector<int>> recv_proc_cell_face_ipoints;
+		mpi.Alltoallv(proc_cell_face_ipoints, recv_proc_cell_face_ipoints);
+		vector<vector<int>> recv_proc_face_ipoints_order;
+		mpi.Alltoallv(proc_face_ipoints_order, recv_proc_face_ipoints_order);
+		vector<vector<int>> recv_proc_cell_ipoints_order;
+		mpi.Alltoallv(proc_cell_ipoints_order, recv_proc_cell_ipoints_order);
+		
+	
+		int new_ipoint = mesh.points.size();
+		for(auto& boundary : mesh.boundaries){
+			if(boundary.getType() != MASCH_Face_Types::PROCESSOR) continue;
+			int str = boundary.startFace;
+			int end = str + boundary.nFaces;
+			int iproc = boundary.rightProcNo;
+			for(int i=str, ip=0, ip2=0, ip3=0, ip4=0, ip5=0; i<end; ++i){
+				
+				auto& face = mesh.faces[i];
+				auto& cellL = mesh.cells[face.iL];
+				
+				int save_new_ipoint = new_ipoint;
+				
+				vector<int> tmp_cell_ipoints;
+				int cell_ipoint_size = recv_proc_cell_ipoints[iproc][ip++];
+				for(int j=0; j<cell_ipoint_size; ++j){
+					int ipoint = recv_proc_cell_ipoints[iproc][ip++];
+					double point_x = recv_proc_points_x[iproc][ip5];
+					double point_y = recv_proc_points_y[iproc][ip5];
+					double point_z = recv_proc_points_z[iproc][ip5++];
+					
+					int order = recv_proc_cell_ipoints_order[iproc][ip3++];
+					if(order==-1){
+						tmp_cell_ipoints.push_back(new_ipoint++);
+						ro_proc_points_x.push_back(point_x);
+						ro_proc_points_y.push_back(point_y);
+						ro_proc_points_z.push_back(point_z);
+					}
+					else{
+						tmp_cell_ipoints.push_back(face.ipoints[order]);
+					}
+				}
+				ro_proc_cell_ipoints.push_back(vector<int>());
+				ro_proc_cell_ipoints.back().insert(ro_proc_cell_ipoints.back().end(),
+				tmp_cell_ipoints.begin(),tmp_cell_ipoints.end());
+				
+				
+				ro_proc_cell_face_ipoints.push_back(vector<vector<int>>());
+				int cell_ifaces_size = recv_proc_cell_face_ipoints[iproc].at(ip2++);
+				// tmp_cell_face_ipoints.push_back(cell_ifaces_size);
+				for(int j=0; j<cell_ifaces_size; ++j){
+					int face_ipoints_size = recv_proc_cell_face_ipoints[iproc].at(ip2++);
+					ro_proc_cell_face_ipoints.back().push_back(vector<int>());
+					// tmp_cell_face_ipoints.push_back(face_ipoints_size);
+					// vector<int> tmp_cell_face_ipoints;
+					for(int k=0; k<face_ipoints_size; ++k){
+						int ipoint_order1 = recv_proc_cell_face_ipoints[iproc].at(ip2++);
+						int ipoint_order2 = recv_proc_face_ipoints_order[iproc].at(ip4++);
+						
+						if(ipoint_order2==-1){
+							// // cout << "AAA" << endl;
+							ro_proc_cell_face_ipoints.back().back().push_back(tmp_cell_ipoints.at(ipoint_order1));
+							// // tmp_cell_face_ipoints.push_back(tmp_cell_ipoints.at(ipoint_order1));
+						}
+						else{
+							ro_proc_cell_face_ipoints.back().back().push_back(face.ipoints.at(ipoint_order2));
+							// // tmp_cell_face_ipoints.push_back(face.ipoints.at(ipoint_order2));
+						}
+					}
+				}
+				
+				// // std::reverse(ro_proc_cell_face_ipoints.back().back().begin()+1,
+				// // ro_proc_cell_face_ipoints.back().back().end()-1);
+				
+				// // for(int j=0; j<cell_ifaces_size; ++j){
+				// // }
+				// // ro_proc_cell_face_ipoints.back().
+				// // ro_proc_cell_face_ipoints.insert(ro_proc_cell_face_ipoints.end(),
+				// // tmp_cell_face_ipoints.begin(),tmp_cell_face_ipoints.end());
+				
+			}
+		}
+		
+	}
+
+
+
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+
+
+	// vtk 파일 만들기
+	// Field data
+	outputFile << "    <FieldData>" << endl;
+	{
+		outputFile << "     <DataArray type=\"Float64\" Name=\"TimeValue\" NumberOfTuples=\"1\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		values.push_back(var.fields[controls.fieldVar["time"].id]);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	outputFile << "    </FieldData>" << endl;
+	
+	outputFile << "   <Piece NumberOfPoints=\"" << 
+	mesh.points.size() + ro_proc_points_x.size() << 
+	"\" NumberOfCells=\"" << 
+	mesh.cells.size() + ro_proc_cell_ipoints.size() << 
+	// mesh.cells.size() + 1 << 
+	"\">" << endl;
+	
+	// Points data
+	outputFile << "    <PointData>" << endl;
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"pointLevels\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.points.size());
+		for(auto& point : mesh.points) values.push_back(point.level);
+		for(auto& point : ro_proc_points_x) values.push_back(-100);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	outputFile << "    </PointData>" << endl;
+	
+	
+	
+	// Cells data
+	outputFile << "    <CellData>" << endl;
+	
+	
+	{
+		outputFile << "     <DataArray type=\"UInt8\" Name=\"vtkGhostType\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.cells.size());
+		for(auto& cell : mesh.cells) values.push_back(0);
+		for(auto& cell : ro_proc_cell_ipoints) values.push_back(1);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+		
+	}
+	
+	
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"cellLevels\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.cells.size());
+		for(auto& cell : mesh.cells) values.push_back(cell.level);
+		for(auto& cell : ro_proc_cell_ipoints) values.push_back(-100);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"cellGroups\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.cells.size());
+		for(auto& cell : mesh.cells) values.push_back(cell.group);
+		for(auto& cell : ro_proc_cell_ipoints) values.push_back(-100);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	// 스칼라 형식 데이터 저장
+	int scal_iter = 0;
 	for(auto& name : scal_cell_save_name)
 	{
 		outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
@@ -1382,10 +1705,21 @@ MASCH_Control& controls, MASCH_Variables& var){
 			auto cellVar_i = cellVar[i];
 			values.push_back(cellVar_i[id_phi]);
 		}
+		if(recv_scal_values.size()>0){
+		for(int i=0, SIZE=recv_scal_values[scal_iter].size(); i<SIZE; ++i) {
+			values.push_back(recv_scal_values[scal_iter][i]);
+		}
+		}
+	
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
+		
+		++scal_iter;
 	}
+	
+	
 	// 벡터형식 데이터 저장
+	int vec3_iter = 0;
 	{
 		int tmp_iter = 0;
 		for(auto& sup_name : vec_cell_save_sup_name)
@@ -1406,20 +1740,24 @@ MASCH_Control& controls, MASCH_Variables& var){
 					values.push_back(cellVar_i[item]);
 				}
 			}
+			if(recv_vec3_values.size()>0){
+			for(int i=0, SIZE=recv_vec3_values[vec3_iter].size(); i<SIZE; ++i) {
+				values.push_back(recv_vec3_values[vec3_iter][i]);
+				values.push_back(recv_vec3_values[vec3_iter+1][i]);
+				values.push_back(recv_vec3_values[vec3_iter+2][i]);
+			}
+			}
 			writeDatasAtVTU(controls, outputFile, values);
 			outputFile << "     </DataArray>" << endl;
 			
 			++tmp_iter;
+			++vec3_iter;
+			++vec3_iter;
+			++vec3_iter;
 		}
 	}
 	
 	outputFile << "    </CellData>" << endl;
-	
-	
-	
-	
-	
-	
 	
 	
 	
@@ -1436,10 +1774,17 @@ MASCH_Control& controls, MASCH_Variables& var){
 			values.push_back(point.y);
 			values.push_back(point.z);
 		}
+		for(int i=0; i<ro_proc_points_x.size(); ++i) {
+			values.push_back(ro_proc_points_x[i]);
+			values.push_back(ro_proc_points_y[i]);
+			values.push_back(ro_proc_points_z[i]);
+		}
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
 	outputFile << "   </Points>" << endl;
+	
+	
 	
 	
 	
@@ -1454,10 +1799,19 @@ MASCH_Control& controls, MASCH_Variables& var){
 				values.push_back(i);
 			}
 		}
+		for(auto& cell : ro_proc_cell_ipoints){
+			for(auto i : cell){
+				values.push_back(i);
+				// if(rank==0) cout << i << endl;
+			}
+			// break;
+		}
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
 	
+	
+			// if(rank==0) cout << endl;
 	// offsets (cell's points offset)
 	{
 		outputFile << "    <DataArray type=\"Int32\" Name=\"offsets\" format=\"" << saveFormat << "\">" << endl;
@@ -1467,14 +1821,22 @@ MASCH_Control& controls, MASCH_Variables& var){
 			cellFaceOffset += cell.ipoints.size();
 			values.push_back(cellFaceOffset);
 		}
+		for(auto& cell : ro_proc_cell_ipoints){
+			cellFaceOffset += cell.size();
+			values.push_back(cellFaceOffset);
+			// if(rank==0) cout << cellFaceOffset << endl;
+			// break;
+		}
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
 	
+			// if(rank==0) cout << endl;
+	
 	// types (cell's type, 42 = polyhedron)
 	{
 		outputFile << "    <DataArray type=\"Int32\" Name=\"types\" format=\"" << saveFormat << "\">" << endl;
-		vector<int> values(mesh.cells.size(),42);
+		vector<int> values(mesh.cells.size() + ro_proc_cell_ipoints.size(),42);
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
@@ -1493,9 +1855,38 @@ MASCH_Control& controls, MASCH_Variables& var){
 				}
 			}
 		}
+		for(auto& cell : ro_proc_cell_face_ipoints){
+			values.push_back(cell.size());
+					// if(rank==0) cout << cell.size() << endl;
+			for(auto& i : cell){
+				values.push_back(i.size());
+					// if(rank==0) cout << i.size() << endl;
+				for(auto& j : i){
+					values.push_back(j);
+					// if(rank==0) {
+						// double x, y, z;
+						// if(j < mesh.points.size()){
+							// x = mesh.points[j].x;
+							// y = mesh.points[j].y;
+							// z = mesh.points[j].z;
+						// }
+						// else{
+							// x = ro_proc_points_x[j-mesh.points.size()];
+							// y = ro_proc_points_y[j-mesh.points.size()];
+							// z = ro_proc_points_z[j-mesh.points.size()];
+						// }
+						// cout << j << " " << x << " " << y << " " << z << endl;
+					// }
+				}
+			}
+			// break;
+		}
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
+	
+	// if(rank==0) cout << endl;
+	
 	
 	// faceoffsets (cell's face offset)
 	{
@@ -1509,6 +1900,16 @@ MASCH_Control& controls, MASCH_Variables& var){
 			}
 			cellFacePointOffset += numbering;
 			values.push_back(cellFacePointOffset);
+		}
+		for(auto& cell : ro_proc_cell_face_ipoints){
+			int numbering = 1 + cell.size();
+			for(auto& i : cell){
+				numbering += i.size();
+			}
+			cellFacePointOffset += numbering;
+			values.push_back(cellFacePointOffset);
+			// if(rank==0) cout << cellFacePointOffset << endl;
+			// break;
 		}
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
@@ -1646,7 +2047,9 @@ MASCH_Control& controls, MASCH_Variables& var){
 		
 		outputFile << "   </PPointData>" << endl;
 		outputFile << "   <PCellData>" << endl;
-		
+		outputFile << "     <PDataArray type=\"UInt8\" Name=\"vtkGhostType\"/>" << endl;
+		outputFile << "     <PDataArray type=\"Int32\" Name=\"cellLevels\"/>" << endl;
+		outputFile << "     <PDataArray type=\"Int32\" Name=\"cellGroups\"/>" << endl;
 		for(auto& name : scal_cell_save_name){
 			outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
 		}
@@ -1672,59 +2075,59 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	
 	
-	// ==========================================
-	// PVD file
-	if(rank==0){
-		string filenamePvtu = "./save/plot.pvd";
-		string stime = folder;
-		stime.erase(stime.find("./save/"),7);
-		stime.erase(stime.find("/"),1);
+	// // ==========================================
+	// // PVD file
+	// if(rank==0){
+		// string filenamePvtu = "./save/plot.pvd";
+		// string stime = folder;
+		// stime.erase(stime.find("./save/"),7);
+		// stime.erase(stime.find("/"),1);
 		
-		ifstream inputFile;
-		inputFile.open(filenamePvtu);
-		// if(inputFile && stod(stime)-controls.timeStep != 0.0){
-		if(inputFile){
+		// ifstream inputFile;
+		// inputFile.open(filenamePvtu);
+		// // if(inputFile && stod(stime)-controls.timeStep != 0.0){
+		// if(inputFile){
 
-			string nextToken;
-			int lineStart = 0;
-			while(getline(inputFile, nextToken)){
-				if( nextToken.find("</Collection>") != string::npos ){
-					break;
-				}
-				++lineStart;
-			}
-			inputFile.close();
+			// string nextToken;
+			// int lineStart = 0;
+			// while(getline(inputFile, nextToken)){
+				// if( nextToken.find("</Collection>") != string::npos ){
+					// break;
+				// }
+				// ++lineStart;
+			// }
+			// inputFile.close();
 			
-			outputFile.open(filenamePvtu, ios::in);
-			outputFile.seekp(-26, ios::end);
+			// outputFile.open(filenamePvtu, ios::in);
+			// outputFile.seekp(-26, ios::end);
 			
-			// outputFile << saveLines;
-			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
-			outputFile << "  </Collection>" << endl;
-			outputFile << "</VTKFile>";
-			outputFile.close();
+			// // outputFile << saveLines;
+			// outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+			// outputFile << "  </Collection>" << endl;
+			// outputFile << "</VTKFile>";
+			// outputFile.close();
 			
-		}
-		else{
-			inputFile.close();
+		// }
+		// else{
+			// inputFile.close();
 			
-			outputFile.open(filenamePvtu);
+			// outputFile.open(filenamePvtu);
 			
-			// string out_line;
-			outputFile << "<?xml version=\"1.0\"?>" << endl;
-			outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
-			outputFile << "  <Collection>" << endl;
-			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
-			outputFile << "  </Collection>" << endl;
-			outputFile << "</VTKFile>";
+			// // string out_line;
+			// outputFile << "<?xml version=\"1.0\"?>" << endl;
+			// outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+			// outputFile << "  <Collection>" << endl;
+			// outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+			// outputFile << "  </Collection>" << endl;
+			// outputFile << "</VTKFile>";
 			
 			
-			outputFile.close();
+			// outputFile.close();
 			
-		}
+		// }
 		
 		
-	}
+	// }
 	
 	
 	if(rank==0){
@@ -1970,6 +2373,7 @@ void MASCH_Mesh_Save::parcels(
 string folder, int rank, MASCH_Mesh& mesh, 
 MASCH_Control& controls, MASCH_Variables& var){
 	
+	if(controls.nameParcels.size()==0) return;
 	
 	char folder_name[1000];
 	strcpy(folder_name, folder.c_str());
@@ -2022,16 +2426,63 @@ MASCH_Control& controls, MASCH_Variables& var){
 	outputFile << "    <PointData>" << endl;
 	
 	
-	
 	vector<string> scal_save_name;
-	scal_save_name.push_back("diameter");
-	scal_save_name.push_back("temperature");
+	vector<string> tmp_dummy;
 	vector<string> vec_save_sup_name;
-	vec_save_sup_name.push_back("velocity");
+	tmp_dummy.push_back("x-position");
+	tmp_dummy.push_back("y-position");
+	tmp_dummy.push_back("z-position");
+	for(auto& [key, value] : controls.parcelVar){
+		if(value.shape == "vector3"){
+			vec_save_sup_name.push_back(key);
+			for(auto& name : value.sub_name){
+				tmp_dummy.push_back(name);
+			}
+		}
+	}
+	// vec_save_sup_name.erase(std::find(vec_save_sup_name.begin(), vec_save_sup_name.end(), "position"));
+	vec_save_sup_name.erase(remove(vec_save_sup_name.begin(), vec_save_sup_name.end(), "position"), vec_save_sup_name.end());
+	for(auto& [key, value] : controls.parcelVar){
+		if(value.shape == "scalar") scal_save_name.push_back(key);
+		// cout << key << " " << value.shape << endl;
+	}
+	// for(auto& name : scal_save_name){
+		// cout << name << endl;
+	// }
+	for(auto& name : tmp_dummy){
+		// cout << name << endl;
+		// scal_save_name.erase(std::find(scal_save_name.begin(), scal_save_name.end(), name));
+		scal_save_name.erase(remove(scal_save_name.begin(), scal_save_name.end(), name), scal_save_name.end());
+	}
+	
+	// 필수 데이터 저장
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"" <<
+		"id" << "\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.parcels.size());
+		for(auto& parcel : mesh.parcels){
+			values.push_back(parcel.id);
+		}
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"" <<
+		"icell" << "\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.parcels.size());
+		for(auto& parcel : mesh.parcels){
+			values.push_back(parcel.icell);
+		}
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
 	
 	// 스칼라 형식 데이터 저장
 	for(auto& name : scal_save_name)
 	{
+		// cout << name << " " << controls.getId_parcelVar("diameter") << endl;
 		outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
 		name << "\" format=\"" << saveFormat << "\">" << endl;
 		vector<double> values;
@@ -2045,6 +2496,9 @@ MASCH_Control& controls, MASCH_Variables& var){
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
+
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	// 벡터형식 데이터 저장
 	{
 		int tmp_iter = 0;
@@ -2086,9 +2540,9 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << "     <DataArray type=\"Float64\" Name=\"Position\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
 		vector<double> values;
 		auto parcelVar = var.parcels.data();
-		int id_x = controls.getId_parcelVar("x-location");
-		int id_y = controls.getId_parcelVar("y-location");
-		int id_z = controls.getId_parcelVar("z-location");
+		int id_x = controls.getId_parcelVar("x-position");
+		int id_y = controls.getId_parcelVar("y-position");
+		int id_z = controls.getId_parcelVar("z-position");
 		for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
 			auto parcelVar_i = parcelVar[i].data();
 			values.push_back(parcelVar_i[id_x]);
@@ -2120,6 +2574,72 @@ MASCH_Control& controls, MASCH_Variables& var){
 	outputFile << "</VTKFile>" << endl;
 	outputFile.close();
 	MPI_Barrier(MPI_COMM_WORLD);
+	
+	
+	
+
+	
+	// ==========================================
+	// pvtu file
+	if(rank==0){
+		string filenamePvtu = "./save/parcels.";
+		string stime = folder;
+		stime.erase(stime.find("./save/"),7);
+		stime.erase(stime.find("/"),1);
+		filenamePvtu += stime;
+		filenamePvtu += ".pvtu";
+		
+		outputFile.open(filenamePvtu);
+		if(outputFile.fail()){
+			cerr << "Unable to write file for writing." << endl;
+			MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		}
+		
+		// string out_line;
+		outputFile << "<?xml version=\"1.0\"?>" << endl;
+		outputFile << " <VTKFile type=\"PUnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+		outputFile << "  <PUnstructuredGrid>" << endl;
+
+		outputFile << "   <PFieldData>" << endl;
+		outputFile << "   </PFieldData>" << endl;
+		
+		outputFile << "   <PPoints>" << endl;
+		outputFile << "    <PDataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"Points\"/>" << endl;
+		outputFile << "   </PPoints>" << endl;
+		for(int ip=0, SIZE=MPI::COMM_WORLD.Get_size(); ip<SIZE; ++ip){
+			string filenamevtus = "./" + stime;
+			filenamevtus += "/parcels.";
+			filenamevtus += to_string(ip);
+			filenamevtus += ".vtu";
+			outputFile << "    <Piece Source=\"" << filenamevtus << "\"/>" << endl;
+		}
+		outputFile << "   <PPointData>" << endl;
+
+		outputFile << "    <PDataArray type=\"Int32\" Name=\"" << "id" << "\"/>" << endl;
+		outputFile << "    <PDataArray type=\"Int32\" Name=\"" << "icell" << "\"/>" << endl;
+		for(auto& name : scal_save_name)
+		{
+			outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
+		}
+		{
+			int tmp_iter=0;
+			for(auto& sup_name : vec_save_sup_name){
+				outputFile << "    <PDataArray type=\"Float64\" Name=\"" <<
+				sup_name << "\" NumberOfComponents=\"" << 3 << "\"/>" << endl;
+				++tmp_iter;
+			}
+		}
+		outputFile << "   </PPointData>" << endl;
+		outputFile << "   <PCellData>" << endl;
+		outputFile << "   </PCellData>" << endl;
+		outputFile << "  </PUnstructuredGrid>" << endl;
+		outputFile << "</VTKFile>" << endl;
+		
+		
+		outputFile.close();
+		
+	}
+	
 
 	if(rank==0){
 		cout << "-> completed" << endl;

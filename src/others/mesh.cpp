@@ -294,22 +294,26 @@ void MASCH_Mesh::connectCelltoPoints(){
 // 프로세스 페이스 갯수 셋팅
 void MASCH_Mesh::setCountsProcFaces(){
 	
-	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
-	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	// int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	int rank = (MPI::COMM_WORLD.Get_rank()); 
+	int size = (MPI::COMM_WORLD.Get_size()); 
+	
+	if(size==1) return;
 	
 	auto& mesh = (*this);
 	
-	mesh.countsProcFaces.clear();
-	mesh.countsProcFaces.resize(size,0);
-	for(int ip=0; ip<size; ++ip){
-		mesh.countsProcFaces[ip] = 0;
-		for(auto& bc : mesh.boundaries){
-			// if(ip == bc.rightProcNo && bc.thereR==true){
-			if(ip == bc.rightProcNo && bc.getType() == MASCH_Face_Types::PROCESSOR){
-				mesh.countsProcFaces[ip] = bc.nFaces;
-				break;
-			}
-		}
+	mesh.countsSendProcFaces.clear();
+	mesh.countsRecvProcFaces.clear();
+	mesh.countsSendProcFaces.resize(size,0);
+	mesh.countsRecvProcFaces.resize(size,0);
+	for(int ip=0; ip<size; ++ip) mesh.countsSendProcFaces[ip] = 0;
+	for(int ip=0; ip<size; ++ip) mesh.countsRecvProcFaces[ip] = 0;
+	for(auto& boundary : mesh.boundaries){
+		if(boundary.getType() != MASCH_Face_Types::PROCESSOR) continue;
+		int rightProcNo = boundary.rightProcNo;
+		mesh.countsSendProcFaces[rightProcNo] = boundary.nFaces;
+		mesh.countsRecvProcFaces[rightProcNo] = boundary.nFaces;
 	}
 }
 
@@ -317,17 +321,24 @@ void MASCH_Mesh::setCountsProcFaces(){
 // 프로세스 페이스 포인터 위치 셋팅
 void MASCH_Mesh::setDisplsProcFaces(){
 	
-	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
-	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	// int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	int rank = (MPI::COMM_WORLD.Get_rank()); 
+	int size = (MPI::COMM_WORLD.Get_size()); 
+	
+	if(size==1) return;
 	
 	auto& mesh = (*this);
 	
-	mesh.displsProcFaces.clear();
-	mesh.displsProcFaces.resize(size,0);
-	mesh.displsProcFaces[0] = 0;
-	for(int ip=1; ip<size; ++ip){
-		mesh.displsProcFaces[ip] = mesh.displsProcFaces[ip-1] + mesh.countsProcFaces[ip-1];
-		
+	mesh.displsSendProcFaces.clear();
+	mesh.displsRecvProcFaces.clear();
+	mesh.displsSendProcFaces.resize(size+1,0);
+	mesh.displsRecvProcFaces.resize(size+1,0);
+	for(int ip=0; ip<size+1; ++ip) mesh.displsSendProcFaces[ip] = 0;
+	for(int ip=0; ip<size+1; ++ip) mesh.displsRecvProcFaces[ip] = 0;
+	for(int ip=0; ip<size; ++ip){
+		mesh.displsSendProcFaces[ip+1] = mesh.displsSendProcFaces[ip] + mesh.countsSendProcFaces[ip];
+		mesh.displsRecvProcFaces[ip+1] = mesh.displsRecvProcFaces[ip] + mesh.countsRecvProcFaces[ip];
 	}
 }
 
@@ -702,10 +713,15 @@ void MASCH_Mesh::informations(){
 
 void MASCH_Mesh::setFaceLevels(){
 
-	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
-	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	// int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	int rank = MPI::COMM_WORLD.Get_rank(); 
+	int size = MPI::COMM_WORLD.Get_size();
 	
 	auto& mesh = (*this);
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "AAA" << endl;
 	
 	// face level
 	vector<int> cLevel_recv;
@@ -721,12 +737,29 @@ void MASCH_Mesh::setFaceLevels(){
 		}
 		
 		cLevel_recv.clear();
-		cLevel_recv.resize(cLevel_send.size(),0);
+		cLevel_recv.resize(cLevel_send.size());
+		
+	// MPI_Barrier(MPI_COMM_WORLD);
+		// if(cLevel_send.size()!=mesh.displsProcFaces[size]){
+			// cout << "BBBBBBBBBBBBBBBBBBBBBBB" << endl;
+		// }
+		
+		// int tmptmp=0;
+		// for(int ip=0; ip<size; ++ip){
+			// if(mesh.displsProcFaces[ip]!=tmptmp){
+				// cout << "BBBBBBBBBBBBBBBBBBBBBBB" << endl;
+			// }
+			// tmptmp += mesh.countsProcFaces[ip];
+		// }
+	// MPI_Barrier(MPI_COMM_WORLD);
 
-		MPI_Alltoallv( cLevel_send.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   cLevel_recv.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( cLevel_send.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   cLevel_recv.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 	}
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0) cout << "BBB" << endl;
 	
 	int proc_num=0;
 	for(auto& face : mesh.faces){
@@ -1719,8 +1752,8 @@ void MASCH_Mesh::debug_group_procFaces(double inp_resi){
 				}
 			}
 			new_recv_rank.resize(send_rank.size());
-			MPI_Alltoallv( send_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-						   new_recv_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+			MPI_Alltoallv( send_rank.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+						   new_recv_rank.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 						   MPI_COMM_WORLD);
 		}
 		

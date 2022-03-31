@@ -5,7 +5,7 @@
 
 
 void MASCH_Solver::dpm(
-MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
+MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 
 	int rank = MPI::COMM_WORLD.Get_rank(); 
 	int size = MPI::COMM_WORLD.Get_size();
@@ -17,18 +17,32 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 		
 	amgcl::profiler<> prof("dpm solver");
 	
-	// parcel 추가
-	if(debug_bool) controls.log.push("addParcelModel");
-	if(debug_AMGCL_bool) prof.tic("addParcelModel");
-	solver.addParcelModel(mesh, controls, var, iSegEq);
-	if(debug_bool) controls.log.pop();
-	if(debug_AMGCL_bool) prof.toc("addParcelModel");
+	if(controls.nameParcels.size()==0) return;
+	
+	// parcel 추가 루틴
+	// for(auto& name : controls.nameParcels)
+	{
+		// eulerian to lagrangian 
+		if(debug_bool) controls.log.push("eulerianToLagrangian");
+		if(debug_AMGCL_bool) prof.tic("eulerianToLagrangian");
+		solver.eulerianToLagrangian(mesh, controls, var);
+		if(debug_bool) controls.log.pop();
+		if(debug_AMGCL_bool) prof.toc("eulerianToLagrangian");
+		
+		// // parcel injection
+		// if(debug_bool) controls.log.push("addParcelModel");
+		// if(debug_AMGCL_bool) prof.tic("addParcelModel");
+		// solver.addParcelModel(mesh, controls, var);
+		// if(debug_bool) controls.log.pop();
+		// if(debug_AMGCL_bool) prof.toc("addParcelModel");
+	}
 	
 	// int nstep = solver.calcTimeStepParcel(mesh, controls, var);
 	solver.calcTimeStepParcel(mesh, controls, var);
 	
 	double resi_dt = var.fields[controls.getId_fieldVar("time-step")];
 	// double dt_p = var.fields[controls.getId_fieldVar("time-step-parcels")];
+	controls.nIterDPM = 0;
 	while(resi_dt>0.0){
 		
 		resi_dt -= var.fields[controls.getId_fieldVar("time-step-parcels")];
@@ -36,28 +50,28 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 		// parcel 루프 계산
 		if(debug_bool) controls.log.push("parcelLoop");
 		if(debug_AMGCL_bool) prof.tic("parcelLoop");
-		solver.parcelLoop(mesh, controls, var, iSegEq);
+		solver.parcelLoop(mesh, controls, var);
 		if(debug_bool) controls.log.pop();
 		if(debug_AMGCL_bool) prof.toc("parcelLoop");
 		
 		// 이동한 parcel 찾기
 		if(debug_bool) controls.log.push("searchLocationParcelsToOutside");
 		if(debug_AMGCL_bool) prof.tic("searchLocationParcelsToOutside");
-		solver.searchLocationParcelsToOutside(mesh, controls, var, iSegEq);
+		solver.searchLocationParcelsToOutside(mesh, controls, var);
 		if(debug_bool) controls.log.pop();
 		if(debug_AMGCL_bool) prof.toc("searchLocationParcelsToOutside");
 		
 		// 다른 processor로 이동
 		if(debug_bool) controls.log.push("updateProcRightParcels");
 		if(debug_AMGCL_bool) prof.tic("updateProcRightParcels");
-		solver.updateProcRightParcels(mesh, controls, var, iSegEq);
+		solver.updateProcRightParcels(mesh, controls, var);
 		if(debug_bool) controls.log.pop();
 		if(debug_AMGCL_bool) prof.toc("updateProcRightParcels");
 		
 		// parcel 재정립
 		if(debug_bool) controls.log.push("refreshParcels");
 		if(debug_AMGCL_bool) prof.tic("refreshParcels");
-		solver.refreshParcels(mesh, controls, var, iSegEq);
+		solver.refreshParcels(mesh, controls, var);
 		if(debug_bool) controls.log.pop();
 		if(debug_AMGCL_bool) prof.toc("refreshParcels");
 		
@@ -66,6 +80,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 		if(resi_dt<var.fields[controls.getId_fieldVar("time-step-parcels")]){
 			var.fields[controls.getId_fieldVar("time-step-parcels")] = resi_dt;
 		}
+		
+		++controls.nIterDPM;
 		
 		// if(rank==0) cout << precision(9) << resi_dt << endl;
 		
@@ -89,12 +105,15 @@ MASCH_Variables& var){
 	
 	double cfl = stod(controls.controlParcelsMap["dpmCFL"]);
 	double dt = var.fields[controls.getId_fieldVar("time-step")];
+	
 	int id_dt_p = controls.getId_fieldVar("time-step-parcels");
-	int id_vol = controls.getId_cellVar("volume");
+	
 	int id_u_p = controls.getId_parcelVar("x-velocity");
 	int id_v_p = controls.getId_parcelVar("y-velocity");
 	int id_w_p = controls.getId_parcelVar("z-velocity");
-	int id_x_p = controls.getId_parcelVar("x-location");
+	// int id_x_p = controls.getId_parcelVar("x-location");
+	
+	int id_vol = controls.getId_cellVar("volume");
 	int id_u = controls.getId_cellVar("x-velocity");
 	int id_v = controls.getId_cellVar("y-velocity");
 	int id_w = controls.getId_cellVar("z-velocity");
@@ -143,7 +162,21 @@ MASCH_Variables& var){
 void MASCH_Solver::addParcelModel(
 MASCH_Mesh& mesh, 
 MASCH_Control& controls,
-MASCH_Variables& var, int iSegEq){
+MASCH_Variables& var){
+	
+	
+	if(controls.controlParcelsMap.find("water.injection.type")==
+	controls.controlParcelsMap.end()) {
+		cout << "#WARNING : not defined, water.injection.type" << endl;
+		return;
+	}
+	if(controls.controlParcelsMap["water.injection.type"] == "none"){
+		return;
+	}
+	
+	
+	
+	
 	
 	double eps = -1.e-16;
 	
@@ -166,7 +199,7 @@ MASCH_Variables& var, int iSegEq){
 	double mdot_inj = stod(controls.controlParcelsMap["water.injection.mdot"]);
 	double d_inj = stod(controls.controlParcelsMap["water.injection.d"]);
 	double theta_inj = stod(controls.controlParcelsMap["water.injection.theta"]);
-	vector<string> xyz_inj = load.extractVector(controls.controlParcelsMap["water.injection.location"]);
+	vector<string> xyz_inj = load.extractVector(controls.controlParcelsMap["water.injection.position"]);
 	double x_inj = stod(xyz_inj[0]);
 	double y_inj = stod(xyz_inj[1]);
 	double z_inj = stod(xyz_inj[2]);
@@ -179,9 +212,9 @@ MASCH_Variables& var, int iSegEq){
 	int id_T = controls.getId_parcelVar("temperature");
 	int id_nparcel = controls.getId_parcelVar("number-of-parcel");
 	int id_d = controls.getId_parcelVar("diameter");
-	int id_x = controls.getId_parcelVar("x-location");
-	int id_y = controls.getId_parcelVar("y-location");
-	int id_z = controls.getId_parcelVar("z-location");
+	int id_x = controls.getId_parcelVar("x-position");
+	int id_y = controls.getId_parcelVar("y-position");
+	int id_z = controls.getId_parcelVar("z-position");
 	int id_nx = controls.getId_faceVar("x unit normal");
 	int id_ny = controls.getId_faceVar("y unit normal");
 	int id_nz = controls.getId_faceVar("z unit normal");
@@ -288,38 +321,47 @@ MASCH_Variables& var, int iSegEq){
 
 
 void MASCH_Solver::parcelLoop(
-MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
+MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	
 	auto& solver = (*this);
 	
-	auto sol = solver.calcDPM_parcelLoop[iSegEq];
+	int nSeg_DPM = controls.calcDPM_iSeg.size();
 	
-	auto parcelVar = var.parcels.data();
-	auto parcels_i = mesh.parcels.data();
-	auto cell_i = mesh.cells.data();
-	auto fieldVar = var.fields.data();
-	auto faceVar = var.faces.data();
-	auto cellVar = var.cells.data();
 	
-	int nEq = controls.nEq[iSegEq];
-	double fluxB[nEq];
-	
-	for(int ipar=0, SIZE=mesh.parcels.size(); ipar<SIZE; ++ipar){
-		auto& parcel = mesh.parcels[ipar];
-		int i = parcel.icell;
-		auto parcelVar_i = parcelVar[ipar].data();
-		auto cellVar_i = cellVar[parcel.icell].data();
+	for(int iSeg=0; iSeg<nSeg_DPM; ++iSeg){
 		
-		for(int iEq=0; iEq<nEq; ++iEq){
-			fluxB[iEq] = 0.0;
+		int iSegEq = controls.calcDPM_iSeg[iSeg];
+		
+		auto sol = solver.calcDPM_parcelLoop[iSegEq];
+		
+		auto parcelVar = var.parcels.data();
+		auto parcels_i = mesh.parcels.data();
+		auto cell_i = mesh.cells.data();
+		auto fieldVar = var.fields.data();
+		auto faceVar = var.faces.data();
+		auto cellVar = var.cells.data();
+		
+		int nEq = controls.nEq[iSegEq];
+		double fluxB[nEq];
+		
+		for(int ipar=0, SIZE=mesh.parcels.size(); ipar<SIZE; ++ipar){
+			auto& parcel = mesh.parcels[ipar];
+			int i = parcel.icell;
+			auto parcelVar_i = parcelVar[ipar].data();
+			auto cellVar_i = cellVar[parcel.icell].data();
+			
+			for(int iEq=0; iEq<nEq; ++iEq){
+				fluxB[iEq] = 0.0;
+			}
+			
+			sol(cellVar_i, fieldVar, parcelVar_i, fluxB);
+			
+			for(int iEq=0; iEq<nEq; ++iEq){
+				var.accumB( iSegEq, i, iEq, fluxB[iEq] );
+			}
+			
 		}
-		
-		sol(cellVar_i, fieldVar, parcelVar_i, fluxB);
-		
-		for(int iEq=0; iEq<nEq; ++iEq){
-			var.accumB( iSegEq, i, iEq, fluxB[iEq] );
-		}
-		
+	
 	}
 
 }
@@ -330,7 +372,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 void MASCH_Solver::searchLocationParcelsToOutside(
 MASCH_Mesh& mesh, 
 MASCH_Control& controls,
-MASCH_Variables& var, int iSegEq){
+MASCH_Variables& var){
 	
 	double eps = -1.e-16;
 	
@@ -338,9 +380,9 @@ MASCH_Variables& var, int iSegEq){
 	int id_ny = controls.getId_faceVar("y unit normal");
 	int id_nz = controls.getId_faceVar("z unit normal");
 	
-	int id_x = controls.getId_parcelVar("x-location");
-	int id_y = controls.getId_parcelVar("y-location");
-	int id_z = controls.getId_parcelVar("z-location");
+	int id_x = controls.getId_parcelVar("x-position");
+	int id_y = controls.getId_parcelVar("y-position");
+	int id_z = controls.getId_parcelVar("z-position");
 	
 	auto parcels_i = mesh.parcels.data();
 	auto cell_i = mesh.cells.data();
@@ -380,7 +422,6 @@ MASCH_Variables& var, int iSegEq){
 			}
 		}
 	}
-	
 	
 	for(auto& boundary : mesh.boundaries){
 		
@@ -431,7 +472,7 @@ MASCH_Variables& var, int iSegEq){
 void MASCH_Solver::updateProcRightParcels(
 MASCH_Mesh& mesh, 
 MASCH_Control& controls,
-MASCH_Variables& var, int iSegEq){
+MASCH_Variables& var){
 	
 	int rank = MPI::COMM_WORLD.Get_rank(); 
 	int size = MPI::COMM_WORLD.Get_size();
@@ -444,9 +485,9 @@ MASCH_Variables& var, int iSegEq){
 	int id_ny = controls.getId_faceVar("y unit normal");
 	int id_nz = controls.getId_faceVar("z unit normal");
 	
-	int id_x = controls.getId_parcelVar("x-location");
-	int id_y = controls.getId_parcelVar("y-location");
-	int id_z = controls.getId_parcelVar("z-location");
+	int id_x = controls.getId_parcelVar("x-position");
+	int id_y = controls.getId_parcelVar("y-position");
+	int id_z = controls.getId_parcelVar("z-position");
 	
 	auto parcels_i = mesh.parcels.data();
 	auto cell_i = mesh.cells.data();
@@ -461,6 +502,7 @@ MASCH_Variables& var, int iSegEq){
 	send_each_count_parcels.reserve(proc_size);
 	vector<double> send_parcel_values;
 	vector<vector<double>> inp_send_value(size);
+	int tmp_nToProcsRishtParcels = 0;
 	for(auto& boundary : mesh.boundaries){
 		int str = boundary.startFace;
 		int end = str + boundary.nFaces;
@@ -486,6 +528,7 @@ MASCH_Variables& var, int iSegEq){
 					double Lcond = x_pF*nx + y_pF*ny + z_pF*nz;
 					if(Lcond < eps){
 						parcel.setType(MASCH_Parcel_Types::TO_PROCS_RIGHT);
+						++tmp_nToProcsRishtParcels;
 						for(int j=0; j<send_total_values; ++j){
 							send_parcel_values.push_back(parcelVar_i[j]);
 							inp_send_value[rightProcNo].push_back(parcelVar_i[j]);
@@ -498,6 +541,12 @@ MASCH_Variables& var, int iSegEq){
 		}
 	}
 	
+	int nToProcsRishtParcels_glo = tmp_nToProcsRishtParcels;
+	if(size>1){
+		MPI_Allreduce(&tmp_nToProcsRishtParcels, &nToProcsRishtParcels_glo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	}
+	controls.nToProcsRishtParcels = nToProcsRishtParcels_glo;
+	
 	MASCH_MPI mpi;
 	
 	vector<int> displs;
@@ -507,8 +556,8 @@ MASCH_Variables& var, int iSegEq){
 	vector<int> recv_each_count_parcels;
 	mpi.procFace_Alltoallv(
 		send_each_count_parcels, recv_each_count_parcels,
-		mesh.countsProcFaces, mesh.countsProcFaces, 
-		mesh.displsProcFaces, mesh.displsProcFaces);
+		mesh.countsSendProcFaces, mesh.countsRecvProcFaces, 
+		mesh.displsSendProcFaces, mesh.displsRecvProcFaces);
 
 	int tmp_parcel_size = mesh.parcels.size();
 	
@@ -550,8 +599,48 @@ MASCH_Variables& var, int iSegEq){
 void MASCH_Solver::refreshParcels(
 MASCH_Mesh& mesh, 
 MASCH_Control& controls,
-MASCH_Variables& var, int iSegEq){
+MASCH_Variables& var){
+		
+	int rank = MPI::COMM_WORLD.Get_rank(); 
+	int size = MPI::COMM_WORLD.Get_size();
 	
+	auto parcelVar = var.parcels.data();
+	auto cell_i = mesh.cells.data();
+	auto parcel_i = mesh.parcels.data();
+	
+	int tmp_nInsideParcels=0;
+	int tmp_nReflectParcels=0;
+	int tmp_nEscapeParcels=0;
+	int tmp_nDeleteParcels=0;
+	for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i){
+		auto& parcel = parcel_i[i];
+		if(parcel.getType() == MASCH_Parcel_Types::INSIDE){
+			++tmp_nInsideParcels;
+		}
+		else if(parcel.getType() == MASCH_Parcel_Types::REFLECT){
+			++tmp_nReflectParcels;
+		}
+		else if(parcel.getType() == MASCH_Parcel_Types::ESCAPE){
+			++tmp_nEscapeParcels;
+		}
+		else if(parcel.getType() == MASCH_Parcel_Types::TO_BE_DELETE){
+			++tmp_nDeleteParcels;
+		}
+	}
+	int nInsideParcels_glo = tmp_nInsideParcels;
+	int nReflectParcels_glo = tmp_nReflectParcels;
+	int nEscapeParcels_glo = tmp_nEscapeParcels;
+	int nDeleteParcels_glo = tmp_nDeleteParcels;
+	if(size>1){
+		MPI_Allreduce(&tmp_nInsideParcels, &nInsideParcels_glo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&tmp_nReflectParcels, &nReflectParcels_glo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&tmp_nEscapeParcels, &nEscapeParcels_glo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&tmp_nDeleteParcels, &nDeleteParcels_glo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	}
+	controls.nInsideParcels = nInsideParcels_glo;
+	controls.nReflectParcels = nReflectParcels_glo;
+	controls.nEscapeParcels = nEscapeParcels_glo;
+	controls.nDeleteParcels = nDeleteParcels_glo;
 	
 	// force eavporation
 	{
@@ -570,11 +659,6 @@ MASCH_Variables& var, int iSegEq){
 			return (mesh.parcels[num++].getType() != MASCH_Parcel_Types::INSIDE);
 			}), mesh.parcels.end());
 	}
-		
-	
-	auto parcelVar = var.parcels.data();
-	auto cell_i = mesh.cells.data();
-	auto parcel_i = mesh.parcels.data();
 	
 	// cell to iparcel 컨넥션
 	for(auto& cell : mesh.cells){

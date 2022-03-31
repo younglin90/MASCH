@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
 	// while( controls.iterReal < 1000 )
 	{
 		for(int ii=0; ii<10; ++ii){
-			solver.dpm(mesh, controls, var, 0);
+			solver.dpm(mesh, controls, var);
 			
 			// 시간 업데이트
 			var.fields[controls.fieldVar["time"].id] +=
@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
 	var.fields[controls.getId_fieldVar("time")] < controls.stopAt &&
 	!bool_resi_isnan
 	){
-		// amr.polyAMR_inline(mesh, controls, solver, var, controls.iterReal);
+		// amr.polyAMR(mesh, controls, solver, var, controls.iterReal);
 		
 		// old 값 업데이트
 		solver.updateOldValues(mesh, controls, var);

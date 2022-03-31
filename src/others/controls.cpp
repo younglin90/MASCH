@@ -26,6 +26,18 @@ void MASCH_Control::setVariablesBasic(){
 						"y distance of between left and right cell",
 						"z distance of between left and right cell"},
 						{"xLR","yLR","zLR"},{"","",""});
+	(*this).setVarible({face},"distance vector of between cell and face",
+						"vLF","m","",vec3,{
+						"x distance of between left cell and face",
+						"y distance of between left cell and face",
+						"z distance of between left cell and face"},
+						{"xLF","yLF","zLF"},{"","",""});
+	(*this).setVarible({face},"distance vector of between cell and face",
+						"vRF","m","",vec3,{
+						"x distance of between right cell and face",
+						"y distance of between right cell and face",
+						"z distance of between right cell and face"},
+						{"xRF","yRF","zRF"},{"","",""});
 	(*this).setVarible({face},"distance weight","Wc","","",scal);
 	(*this).setVarible({face},"distance of between left and right cell","dLR","","",scal);
 	(*this).setVarible({face},"cosine angle of between face normal and cells","alpha","","",scal);
@@ -48,6 +60,8 @@ void MASCH_Control::setVariablesBasic(){
 						"(1,1)","(1,2)","(1,3)","(2,2)","(2,3)","(3,3)"},
 						{"coeffLS1","coeffLS2","coeffLS3","coeffLS4","coeffLS5","coeffLS6"},
 						{"","","","","",""});
+	(*this).setVarible({cell},"maximum area","maxA","m^2","mesh",scal);
+	(*this).setVarible({cell},"minimum area","minA","m^2","mesh",scal);
 	
 	(*this).setVarible({face},"left cell to face normal vector shortest distant","","m","",vec3,
 		{"left cell to face normal vector shortest x distance",
@@ -261,9 +275,12 @@ void MASCH_Control::setVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var){
 void MASCH_Control::resetVariableArray(
 MASCH_Mesh& mesh, MASCH_Variables& var,
 vector<vector<double>>& org_xyz, vector<vector<int>>& cellConn,
+// vector<int>& interpolRefine_id,
 string inp_option){
 	
 	auto& controls = (*this);
+	
+	// MASCH_Solver solver;
 	
 	int tmp_nPrimitive = 0;
 	vector<string> tmp_name_prim;
@@ -286,23 +303,34 @@ string inp_option){
 		}
 	}
 	
+	bool boolInterpolRefineValues = false;
+	if(controls.dynamicMeshMap["AMR.interpolationRefineValues"]=="yes") 
+		boolInterpolRefineValues = true;
+	
+	
 	if(inp_option=="refine"){
 		
 		
 		int org_nCells = cellConn.size();
 		
 		vector<vector<double>> send_val(tmp_nPrimitive);
+		vector<vector<double>> send_max_val(tmp_nPrimitive);
+		vector<vector<double>> send_min_val(tmp_nPrimitive);
 		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
 		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
 		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
 		for(int i=0; i<org_nCells; ++i){
 			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
 				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				int id_max_prim = controls.getId_cellVar("maximum "+tmp_name_prim[iprim]);
+				int id_min_prim = controls.getId_cellVar("minimum "+tmp_name_prim[iprim]);
 				int id_x_grad_prim = controls.getId_cellVar(tmp_name_x_grad_prim[iprim]);
 				int id_y_grad_prim = controls.getId_cellVar(tmp_name_y_grad_prim[iprim]);
 				int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
 				double value = var.cells[i][id_prim];
 				send_val[iprim].push_back(value);
+				send_max_val[iprim].push_back(var.cells[i][id_max_prim]);
+				send_min_val[iprim].push_back(var.cells[i][id_min_prim]);
 				send_x_grad_val[iprim].push_back(var.cells[i][id_x_grad_prim]);
 				send_y_grad_val[iprim].push_back(var.cells[i][id_y_grad_prim]);
 				send_z_grad_val[iprim].push_back(var.cells[i][id_z_grad_prim]);
@@ -356,6 +384,8 @@ string inp_option){
 			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
 				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
 				double org_value = send_val[iprim][i];
+				double org_max_value = send_max_val[iprim][i];
+				double org_min_value = send_min_val[iprim][i];
 				double cell_x = org_xyz[i][0];
 				double cell_y = org_xyz[i][1];
 				double cell_z = org_xyz[i][2];
@@ -365,17 +395,49 @@ string inp_option){
 				double avg_values = 0.0;
 				for(int j=0; j<sub_size; ++j){
 					int id_cell = cellConn.at(i).at(j);
-					double value_interpol = org_value;
-					// value_interpol += x_grad*(mesh.cells.at(id_cell).x - cell_x);
-					// value_interpol += y_grad*(mesh.cells.at(id_cell).y - cell_y);
-					// value_interpol += z_grad*(mesh.cells.at(id_cell).z - cell_z);
+					double Delta_minus = 0.0;
+					Delta_minus += x_grad*(mesh.cells.at(id_cell).x - cell_x);
+					Delta_minus += y_grad*(mesh.cells.at(id_cell).y - cell_y);
+					Delta_minus += z_grad*(mesh.cells.at(id_cell).z - cell_z);
+					double eta = 1.e-16;
+					// double limGrad = solver.limiter_MLP(org_value,org_max_value,org_min_value,gradInter_val, eta);
+					double phi = org_value;
+					double phi_max = org_max_value;
+					double phi_min = org_min_value;
+					double limGrad = 1.0;
+					// if(Delta_minus>0.0){
+						// if(phi+Delta_minus>=phi_max) limGrad = (phi_max-phi)/Delta_minus;
+					// }
+					// else if(Delta_minus<0.0){
+						// if(phi+Delta_minus<=phi_min) limGrad = (phi_min-phi)/Delta_minus;
+					// }
+					// limGrad = max(0.0,min(1.0,limGrad));
+					if(Delta_minus>0.0){
+						double Delta_plus = phi_max - phi;
+						limGrad= 1.0/Delta_minus*
+							((Delta_plus*Delta_plus+eta*eta)*
+							Delta_minus+2.0*Delta_minus*Delta_minus*Delta_plus)/
+							(Delta_plus*Delta_plus+2.0*Delta_minus*Delta_minus+
+							Delta_minus*Delta_plus+eta*eta);
+					}
+					else if(Delta_minus<0.0){
+						double Delta_plus = phi_min - phi;
+						limGrad= 1.0/Delta_minus*
+							((Delta_plus*Delta_plus+eta*eta)*
+							Delta_minus+2.0*Delta_minus*Delta_minus*Delta_plus)/
+							(Delta_plus*Delta_plus+2.0*Delta_minus*Delta_minus+
+							Delta_minus*Delta_plus+eta*eta);
+					}
 					
+					double value_interpol = org_value;
+					if(boolInterpolRefineValues==true) value_interpol += limGrad*Delta_minus;
 					var.cells.at(id_cell).at(id_prim) = value_interpol;
 					
 					avg_values += value_interpol/(double)sub_size;
 				}
 				// if(avg_values!=org_value){
-					// double coeff = sub_size*org_value/(avg_values+1.e-12);
+					// double coeff = 1.0;
+					// if(abs(avg_values) > 1.e-16) coeff = org_value/avg_values;
 					// for(int j=0; j<sub_size; ++j){
 						// int id_cell = cellConn[i][j];
 						// var.cells.at(id_cell).at(id_prim) *= coeff;
@@ -972,6 +1034,37 @@ void MASCH_Control::saveAfterInitial(MASCH_Mesh& mesh){
 	int rank = MPI::COMM_WORLD.Get_rank();
 	int size = MPI::COMM_WORLD.Get_size();
 	
+	{
+		for(auto& point : mesh.points){
+			point.level = 0;
+		}
+		// 중복 포인트, 면 > 3 찾기
+		int noAMR_Cells = 0;
+		for(int i=0; i<mesh.cells.size(); ++i){
+			auto& cell = mesh.cells[i];
+			
+			for(auto& p0 : cell.ipoints){
+				int p0Num = 0;
+				for(auto& iface : cell.ifaces){
+					auto& face = mesh.faces[iface];
+					auto& facePoints = face.ipoints;
+					if( std::find(facePoints.begin(),facePoints.end(),p0)!=facePoints.end() ){
+						++p0Num;
+					}
+				}
+				if(p0Num>3){
+					cell.level = -1;
+				}
+			}
+			if(cell.level==-1) ++noAMR_Cells;
+			
+		}
+		int noAMR_CellsTot;
+		MPI_Allreduce(&noAMR_Cells, &noAMR_CellsTot,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+		if(rank==0) cout << "| #WARNING : " << noAMR_CellsTot << " cells can NOT AMR" << endl;
+	}
+	
+	
 	// 메쉬 파일 로드
 	MASCH_Load load;
 	// variable들 어레이 생성
@@ -1129,6 +1222,162 @@ void MASCH_Control::saveAfterInitial(MASCH_Mesh& mesh){
 
 
 
+void MASCH_Control::saveAfterInitialAMR(MASCH_Mesh& mesh, MASCH_Variables& var){
+	auto& controls = (*this);
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	
+	// 메쉬 파일 로드
+	MASCH_Load load;
+	vector<vector<int>> vec_inpId;
+	
+	// 초기화 함수
+	using funct_type = 
+	function<int(double time, double x, double y, double z, int* inp_id, double* cells)>;
+	vector<funct_type> calcInitial;
+	
+	for(auto& name : controls.primScalarNames){
+		string type = controls.initialMap[name]["type"];
+		int id = controls.getId_cellVar(name);
+		
+		vec_inpId.push_back(vector<int>());
+		vec_inpId.back().push_back(id);
+		
+		if(type=="fixedValue"){
+			double value = stod(controls.initialMap[name]["value"]);
+			calcInitial.push_back(
+			[value, id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+				cells[id] = value;
+				return 0;
+			});
+		}
+		else if(type=="function"){
+			string inp_file = controls.initialMap[name]["file"];
+			string inp_funct_name = controls.initialMap[name]["name"];
+			void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+			char *error = nullptr;
+			if (handle) {
+				using setFunc_t = int(*)(double, double, double, double, int*, double*);
+				setFunc_t setFunction;
+				*(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+				calcInitial.push_back(*setFunction);
+			}
+			else{
+				cout << "#WARNING : file not there, " << inp_file << endl;
+			}
+		}
+	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	for(auto& name : controls.primVector3Names){
+		string type = controls.initialMap[name]["type"];
+		vector<string> sub_names = controls.cellVar[name].sub_name;
+		vector<int> sub_id;
+		for(auto& item : sub_names){
+			sub_id.push_back(controls.getId_cellVar(item));
+		}
+		
+		vec_inpId.push_back(sub_id);
+		
+		if(type=="fixedValue"){
+			vector<string> s_value = load.extractVector(controls.initialMap[name]["value"]);
+			vector<double> value;
+			for(auto& item : s_value){
+				value.push_back(stod(item));
+			}
+			calcInitial.push_back(
+			[value, sub_id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+				cells[sub_id[0]] = value[0];
+				cells[sub_id[1]] = value[1];
+				cells[sub_id[2]] = value[2];
+				return 0;
+			});
+		}
+		else if(type=="function"){
+			string inp_file = controls.initialMap[name]["file"];
+			string inp_funct_name = controls.initialMap[name]["name"];
+			void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+			char *error = nullptr;
+			if (handle) {
+				using setFunc_t = int(*)(double, double, double, double, int*, double*);
+				setFunc_t setFunction;
+				*(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+				calcInitial.push_back(*setFunction);
+			}
+			else{
+				cout << "#WARNING : file not there, " << inp_file << endl;
+			}
+		}
+	}
+	for(auto& sup_name : controls.primVectorNames){
+		vector<string> sub_names = controls.cellVar[sup_name].sub_name;
+		vector<string> sub_roles = controls.cellVar[sup_name].sub_role;
+		int iter=0;
+		for(auto& name : sub_names){
+			if(sub_roles[iter]!="primitive") continue;
+			string type = controls.initialMap[sup_name][name+".type"];
+			int id = controls.getId_cellVar(sup_name+"-"+name);
+			
+			vec_inpId.push_back(vector<int>());
+			vec_inpId.back().push_back(id);
+		
+			if(type=="fixedValue"){
+				double value = stod(controls.initialMap[sup_name][name+".value"]);
+				calcInitial.push_back(
+				[value, id](double time, double x, double y, double z, int* inp_id, double* cells) ->int {
+					cells[id] = value;
+					return 0;
+				});
+			}
+			else if(type=="function"){
+				string inp_file = controls.initialMap[sup_name][name+".file"];
+				string inp_funct_name = controls.initialMap[sup_name][name+".name"];
+				void *handle = dlopen(inp_file.c_str(), RTLD_NOW);
+				char *error = nullptr;
+				if (handle) {
+					using setFunc_t = int(*)(double, double, double, double, int*, double*);
+					setFunc_t setFunction;
+					*(void **) (&setFunction) = dlsym(handle, inp_funct_name.c_str());
+					calcInitial.push_back(*setFunction);
+				}
+				else{
+					cout << "#WARNING : file not there, " << inp_file << endl;
+				}
+			}
+			++iter;
+		}
+	}
+	
+	
+	var.fields[controls.fieldVar["time"].id] = 0.0;
+	{
+		int iter=0;
+		for(auto& cellVar : var.cells){
+			auto& cell = mesh.cells[iter];
+			auto cellVar_ptr = cellVar.data();
+			int iter2 = 0;
+			for(auto& funct : calcInitial){
+				funct(0.0,cell.x,cell.y,cell.z,vec_inpId[iter2].data(),cellVar_ptr);
+				++iter2;
+			}
+			++iter;
+		}
+	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	// // save 하기
+	// MASCH_Mesh_Save save;
+	// save.fvmFiles("./save/0_AMR/", rank, mesh, controls, var);
+	// save.fvmFiles_boundary("./save/0_AMR/", rank, mesh, controls, var);
+
+}
+
+
+
+
 void MASCH_Control::save_fvmFiles(MASCH_Mesh& mesh, MASCH_Variables& var){
 	auto& controls = (*this);
 	
@@ -1167,6 +1416,146 @@ void MASCH_Control::save_fvmFiles(MASCH_Mesh& mesh, MASCH_Variables& var){
 }
 
 
+
+
+void MASCH_Control::save_dpmFiles(MASCH_Mesh& mesh, MASCH_Variables& var){
+	auto& controls = (*this);
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	MASCH_Mesh_Save save;
+		
+	double tmp_time = var.fields[controls.fieldVar["time"].id];
+	double tmp_timestep = var.fields[controls.fieldVar["time-step"].id];
+	if(controls.saveControl == "timeStep"){
+		if((controls.iterReal+1) % controls.saveInTimeStep == 0){
+			string foldername;
+			std::ostringstream streamObj;
+			streamObj << tmp_time;
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			// save.fvmFiles(foldername, rank, mesh, controls, var);
+			save.parcels(foldername, rank, mesh, controls, var);
+			// save.fvmFiles_boundary(foldername, rank, mesh, controls, var);
+		}
+	}
+	else if(controls.saveControl == "runTime"){
+		int jung = tmp_time / controls.saveInRunTime;
+		double namuji = tmp_time - (double)jung * controls.saveInRunTime;
+		if(namuji < tmp_timestep && namuji >= 0.0){
+			string foldername;
+			std::ostringstream streamObj;
+			streamObj << tmp_time;
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			// save.fvmFiles(foldername, rank, mesh, controls, var);
+			save.parcels(foldername, rank, mesh, controls, var);
+			// save.fvmFiles_boundary(foldername, rank, mesh, controls, var);
+		}
+	}
+	
+}
+
+
+void MASCH_Control::save_pvdFile(MASCH_Mesh& mesh, MASCH_Variables& var){
+	auto& controls = (*this);
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	// MASCH_Mesh_Save save;
+		
+	ofstream outputFile;
+	
+	string foldername;
+	bool startSave = false;
+	double tmp_time = var.fields[controls.fieldVar["time"].id];
+	double tmp_timestep = var.fields[controls.fieldVar["time-step"].id];
+	if(controls.saveControl == "timeStep"){
+		if((controls.iterReal+1) % controls.saveInTimeStep == 0){
+			std::ostringstream streamObj;
+			streamObj << tmp_time;
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			startSave = true;
+		}
+	}
+	else if(controls.saveControl == "runTime"){
+		int jung = tmp_time / controls.saveInRunTime;
+		double namuji = tmp_time - (double)jung * controls.saveInRunTime;
+		if(namuji < tmp_timestep && namuji >= 0.0){
+			// string foldername;
+			std::ostringstream streamObj;
+			streamObj << tmp_time;
+			streamObj.precision(12);
+			foldername = "./save/" + streamObj.str() + "/";
+			startSave = true;
+		}
+	}
+	// ==========================================
+	// PVD file
+	if(rank==0 && startSave==true){
+// cout << foldername << endl;
+		string filenamePvtu = "./save/plot.pvd";
+		string stime = foldername;
+		stime.erase(stime.find("./save/"),7);
+		stime.erase(stime.find("/"),1);
+		
+		ifstream inputFile;
+		inputFile.open(filenamePvtu);
+		// if(inputFile && stod(stime)-controls.timeStep != 0.0){
+		if(inputFile){
+
+			string nextToken;
+			int lineStart = 0;
+			while(getline(inputFile, nextToken)){
+				if( nextToken.find("</Collection>") != string::npos ){
+					break;
+				}
+				++lineStart;
+			}
+			inputFile.close();
+			
+			outputFile.open(filenamePvtu, ios::in);
+			outputFile.seekp(-26, ios::end);
+			
+			// outputFile << saveLines;
+			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+			if(controls.nameParcels.size()!=0){
+				outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"parcels." << stime << ".pvtu\"/>" << endl;
+			}
+			outputFile << "  </Collection>" << endl;
+			outputFile << "</VTKFile>";
+			outputFile.close();
+			
+		}
+		else{
+			inputFile.close();
+			
+			outputFile.open(filenamePvtu);
+			
+			// string out_line;
+			outputFile << "<?xml version=\"1.0\"?>" << endl;
+			outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+			outputFile << "  <Collection>" << endl;
+			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+			if(controls.nameParcels.size()!=0){
+				outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"parcels." << stime << ".pvtu\"/>" << endl;
+			}
+			outputFile << "  </Collection>" << endl;
+			outputFile << "</VTKFile>";
+			
+			
+			outputFile.close();
+			
+		}
+		
+		
+	}
+}
+
+
 bool MASCH_Control::check_isnan(double value){
 	if(std::isnan(value) || value < -1.e12 || value > 1.e12){
 		return true;
@@ -1196,4 +1585,42 @@ void MASCH_Control::show_residual(MASCH_Variables& var){
 		cout << fixed; cout.precision(0);
 		controls.log.show();
 	}
+}
+
+
+
+void MASCH_Control::show_dpm_information(){
+	auto& controls = (*this);
+	
+	if(controls.nameParcels.size()==0) return;
+	
+    int rank = MPI::COMM_WORLD.Get_rank(); 
+    int size = MPI::COMM_WORLD.Get_size();
+	
+	int nChangeParcelsE2L, nToProcsRishtParcels, nInsideParcels;
+	int nReflectParcels, nEscapeParcels, nDeleteParcels;
+	if(rank==0){
+		cout << 
+		"| nIterDPM = " << controls.nIterDPM <<
+		" | EtoL = +" << controls.nChangeParcelsE2L <<
+		" | inside = " << controls.nInsideParcels <<
+		" | toProc = " << controls.nToProcsRishtParcels <<
+		" | reflect = " << controls.nReflectParcels <<
+		" | escape = -" << controls.nEscapeParcels <<
+		" | delete = -" << controls.nDeleteParcels << 
+		" |" << endl;
+		// cout << "└────────────────────────────────────────────────────" << endl;
+	}
+	// if( (controls.iterReal+1) % stoi(controls.controlDictMap["printLog"]) == 0 ){
+		// cout << scientific; cout.precision(2);
+		// if(rank==0) cout << 
+		// "| iReal = " << controls.iterReal+1 << 
+		// ", " << "iPseudo = " << controls.iterPseudo+1 << 
+		// ", " << "t = " << var.fields[controls.getId_fieldVar("time")] << 
+		// ", " << "dt = " << var.fields[controls.getId_fieldVar("time-step")] << 
+		// ", " << "resi = " << var.fields[controls.getId_fieldVar("residual")] << 
+		// " |" << endl;
+		// cout << fixed; cout.precision(0);
+		// controls.log.show();
+	// }
 }

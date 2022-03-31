@@ -374,10 +374,10 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 				// // faces[id_pF] = wdL*pL+wdR*pR;
 				
 				
-				faces[id_uF] = solver.NVD.Minmod(phiL2[0],phiL1[0],phiR1[0]);
-				faces[id_vF] = solver.NVD.Minmod(phiL2[1],phiL1[1],phiR1[1]);
-				faces[id_wF] = solver.NVD.Minmod(phiL2[2],phiL1[2],phiR1[2]);
-				faces[id_TF] = solver.NVD.Minmod(phiL2[3],phiL1[3],phiR1[3]);
+				// faces[id_uF] = solver.NVD.Minmod(phiL2[0],phiL1[0],phiR1[0]);
+				// faces[id_vF] = solver.NVD.Minmod(phiL2[1],phiL1[1],phiR1[1]);
+				// faces[id_wF] = solver.NVD.Minmod(phiL2[2],phiL1[2],phiR1[2]);
+				// faces[id_TF] = solver.NVD.Minmod(phiL2[3],phiL1[3],phiR1[3]);
 				
 				{
 					double dx = sqrt(faces[id_area]);
@@ -404,7 +404,7 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						double gamF = min(cosTheta*cosTheta*cosTheta*cosTheta,1.0);
 						
 						// faces[id_YF[i]] = solver.NVD.Minmod(phiL2[4+i],phiL1[4+i],phiR1[4+i]);
-						faces[id_YF[i]] = solver.NVD.getHO_MSTACS(phiL2[4+i],phiL1[4+i],phiR1[4+i],coDD,gamF);
+						faces[id_YF[i]] = solver.NVD.MSTACS(phiL2[4+i],phiL1[4+i],phiR1[4+i],coDD,gamF);
 					}
 				}
 				

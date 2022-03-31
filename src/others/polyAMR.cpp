@@ -6,235 +6,582 @@
 #include "./solvers.h" 
 #include "./save.h"  
 
+// void gradientTerms_AMR(MASCH_Mesh& mesh, MASCH_Control& controls, 
+	// MASCH_Solver& solver, MASCH_Variables& var);
+
+void MASCH_Poly_AMR_Builder::calcIndicators(
+MASCH_Mesh& mesh, 
+MASCH_Control& controls,
+MASCH_Variables& var,
+int maxBuffer,
+int maxLevel,
+int maxCells,
+int maxRefineCellPerBlockAMR,
+double minVolume_AMR,
+vector<vector<double>>& indicatorCriterion,
+vector<vector<int>>& indicatorAMR_id, 
+vector<bool>& boolCellRefine, 
+vector<bool>& boolCellUnrefine,
+vector<bool>& boolCellPreserved
+){
+	
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	int id_vol = controls.getId_cellVar("volume");
+	
+	int maxUnrefineCellPerBlockAMR = stoi(controls.dynamicMeshMap["AMR.maxUnrefineCellPerBlockAMR"]);
+	if(controls.dynamicMeshMap.find("AMR.maxUnrefineCellPerBlockAMR")==controls.dynamicMeshMap.end()){
+		maxUnrefineCellPerBlockAMR = 1000000;
+		if(rank==0) cout << "#WARNING : no seraching, AMR.maxUnrefineCellPerBlockAMR" << endl;
+	}
+	
+	// 인디케이터 값 초기화
+	int nIndi = indicatorAMR_id.size();
+	vector<vector<double>> indicatorScalValues(nIndi);
+	vector<vector<double>> indicatorGradValues(nIndi);
+	for(int j=0, iter=0; j<nIndi; ++j){
+		indicatorScalValues[j].clear();
+		indicatorScalValues[j].resize(mesh.cells.size(),0.0);
+		indicatorGradValues[j].clear();
+		indicatorGradValues[j].resize(mesh.cells.size(),0.0);
+	}
+	for(int i=0; i<mesh.cells.size(); ++i){
+		for(int j=0, iter=0; j<nIndi; ++j){
+			int id_scal = indicatorAMR_id[j][0];
+			int id_gradx = indicatorAMR_id[j][1];
+			int id_grady = indicatorAMR_id[j][2];
+			int id_gradz = indicatorAMR_id[j][3];
+			indicatorScalValues[j][i] = var.cells[i][id_scal];
+			double mag_grad = sqrt(
+				var.cells[i][id_gradx]*var.cells[i][id_gradx]+
+				var.cells[i][id_grady]*var.cells[i][id_grady]+
+				var.cells[i][id_gradz]*var.cells[i][id_gradz]);
+			indicatorGradValues[j][i] = mag_grad;
+		}
+	}
+	
+	
+	// int nRefineCellPerBlockAMR = 0;
+
+	for(int i=0; i<mesh.cells.size(); ++i){
+		auto& cell = mesh.cells[i];
+		for(int j=0; j<nIndi; ++j){
+			double indicatorRefine_scal = indicatorCriterion[j][0];
+			double indicatorRefine_grad = indicatorCriterion[j][1];
+			double indiScalVal = indicatorScalValues[j][i];
+			double indiGradVal = indicatorGradValues[j][i];
+			if( 
+			indiScalVal > indicatorRefine_scal &&
+			indiGradVal > indicatorRefine_grad
+			){
+				boolCellPreserved[i] = true;
+				boolCellRefine[i] = true;
+				boolCellUnrefine[i] = false;
+				
+				// cout << "AAAA" << endl;
+				
+				// if(j==0) ++nRefineCellPerBlockAMR;
+				// if(nRefineCellPerBlockAMR > maxRefineCellPerBlockAMR) {
+					// boolCellRefine[i] = false;
+				// }
+			}
+		}
+		// if(mesh.cells[i].volume < minVolume_AMR) boolCellRefine[i] = false;
+		if(var.cells[i][id_vol] < minVolume_AMR) boolCellRefine[i] = false;
+		if(cell.level >= maxLevel) boolCellRefine[i] = false;
+		if(cell.level < 0) boolCellRefine[i] = false;
+		
+		// if(nRefineCellPerBlockAMR > maxRefineCellPerBlockAMR) {
+			// boolCellRefine[i] = false;
+		// }
+		
+		// if(boolCellPreserved[i] == true) boolCellRefine[i] = false;
+		
+		
+		
+		
+		// if(cell.level < 0) {
+			
+			// cout << "GGGGGGGGGGG" << endl;
+		// }
+		
+	} 
+	
+	
+	
+	{
+		// amr 정보 mpi 교환
+		vector<int> cLevel_recv;
+		vector<int> cRefine_recv;
+		this->mpiLevelRefine(mesh, boolCellRefine, cLevel_recv, cRefine_recv);
+	
+		// // for(int iLevel=maxLevel; iLevel>=0; --iLevel)
+		// {
+			// vector<bool> tmp_boolCellRefine(mesh.cells.size());
+			// for(int i=0; i<mesh.cells.size(); ++i){
+				// tmp_boolCellRefine[i] = boolCellRefine[i];
+			// }
+			// int iLevel=maxLevel;
+			// for(int iBuffer=0; iBuffer<maxBuffer-1; ++iBuffer){
+				// vector<int> cPreserved_recv;
+				// vector<int> send_value2;
+				// if(size>1){
+					// vector<int> send_value;
+					// for(int i=0; i<mesh.faces.size(); ++i){
+						// auto& face = mesh.faces[i];
+						// if(face.getType() == MASCH_Face_Types::PROCESSOR){
+							// send_value.push_back(boolCellPreserved[face.iL]);
+							// send_value2.push_back(boolCellRefine[face.iL]);
+						// }
+					// }
+					// cPreserved_recv.resize(send_value.size());
+					// MPI_Alltoallv( send_value.data(), mesh.countsProcFaces.data(), 
+									// mesh.displsProcFaces.data(), MPI_INT, 
+									// cPreserved_recv.data(), mesh.countsProcFaces.data(), 
+									// mesh.displsProcFaces.data(), MPI_INT, 
+								   // MPI_COMM_WORLD);
+					// MPI_Alltoallv( send_value2.data(), mesh.countsProcFaces.data(), 
+									// mesh.displsProcFaces.data(), MPI_INT, 
+									// cRefine_recv.data(), mesh.countsProcFaces.data(), 
+									// mesh.displsProcFaces.data(), MPI_INT, 
+								   // MPI_COMM_WORLD);
+					
+				// }
+				
+				
+				// // for(int i=0; i<mesh.nInternalFaces; ++i){
+					// // auto& face = mesh.faces[i];
+					// // int iL = face.iL;
+					// // int iR = face.iR;
+					// // auto& cellL = mesh.cells[iL];
+					// // auto& cellR = mesh.cells[iR];
+					// // if(boolCellPreserved[iR]==true){
+						// // tmp_boolCellRefine[iL]=true;
+					// // }
+					// // if(boolCellPreserved[iL]==true){
+						// // tmp_boolCellRefine[iR]=true;
+					// // }
+				// // }
+				// // int ip=0;
+				// // for(auto& boundary : mesh.boundaries){
+					// // int str = boundary.startFace;
+					// // int end = str + boundary.nFaces;
+					// // if(boundary.getType() == MASCH_Face_Types::PROCESSOR){
+						// // for(int i=str; i<end; ++i){
+							// // auto& face = mesh.faces[i];
+							// // int iL = face.iL;
+							// // auto& cellL = mesh.cells[iL];
+							// // if(cPreserved_recv[ip]==1){
+								// // tmp_boolCellRefine[iL]=true;
+							// // }
+							
+							// // ++ip;
+						// // }
+					// // }
+				// // }	
+				
+				// // for(int i=0; i<mesh.cells.size(); ++i){
+					// // boolCellRefine[i]=tmp_boolCellRefine[i];
+					// // if(boolCellRefine[i]==true){
+						// // boolCellPreserved[i] = true;
+						// // boolCellUnrefine[i] = false;
+					// // }
+				// // }
+			// // }
+		// }
+	
+	
+		
+		{
+			vector<bool> tmp_boolCellPreserved(mesh.cells.size(),false);
+			vector<bool> tmp_boolCellRefine(mesh.cells.size());
+			vector<bool> boolCellRefine0(mesh.cells.size());
+			for(int i=0; i<mesh.cells.size(); ++i){
+				tmp_boolCellPreserved[i] = boolCellPreserved[i];
+				tmp_boolCellRefine[i] = boolCellRefine[i];
+				boolCellRefine0[i] = boolCellRefine[i];
+			}
+			for(int iLevel=maxLevel; iLevel>=0; --iLevel)
+			{
+				int nBuffer = maxBuffer*(1+maxLevel-iLevel);
+				for(int iBuffer=0; iBuffer<nBuffer; ++iBuffer){
+					vector<int> cPreserved_recv;
+					vector<int> send_value2;
+					if(size>1){
+						vector<int> send_value;
+						for(int i=0; i<mesh.faces.size(); ++i){
+							auto& face = mesh.faces[i];
+							if(face.getType() == MASCH_Face_Types::PROCESSOR){
+								send_value.push_back(boolCellPreserved[face.iL]);
+								send_value2.push_back(boolCellRefine[face.iL]);
+							}
+						}
+						cPreserved_recv.resize(send_value.size());
+						MPI_Alltoallv( send_value.data(), mesh.countsSendProcFaces.data(), 
+										mesh.displsSendProcFaces.data(), MPI_INT, 
+										cPreserved_recv.data(), mesh.countsRecvProcFaces.data(), 
+										mesh.displsRecvProcFaces.data(), MPI_INT, 
+									   MPI_COMM_WORLD);
+						MPI_Alltoallv( send_value2.data(), mesh.countsSendProcFaces.data(), 
+										mesh.displsSendProcFaces.data(), MPI_INT, 
+										cRefine_recv.data(), mesh.countsRecvProcFaces.data(), 
+										mesh.displsRecvProcFaces.data(), MPI_INT, 
+									   MPI_COMM_WORLD);
+						
+					}
+					for(int i=0; i<mesh.nInternalFaces; ++i){
+						auto& face = mesh.faces[i];
+						int iL = face.iL;
+						int iR = face.iR;
+						auto& cellL = mesh.cells[iL];
+						auto& cellR = mesh.cells[iR];
+						if(
+						boolCellPreserved[iR] == true &&
+						boolCellPreserved[iL] == false
+						){
+							if(
+							cellL.level == iLevel
+							){
+								tmp_boolCellPreserved[iL] = true;
+								tmp_boolCellRefine[iL] = false;
+								boolCellUnrefine[iL] = false;
+							}
+							else if(
+							cellL.level == iLevel-1
+							){
+								tmp_boolCellPreserved[iL] = true;
+								tmp_boolCellRefine[iL] = true;
+								boolCellUnrefine[iL] = false;
+							}
+							else if(
+							cellL.level == iLevel+1
+							){
+								tmp_boolCellPreserved[iL] = true;
+								tmp_boolCellRefine[iL] = false;
+								boolCellUnrefine[iL] = true;
+							}
+						}
+						// ======================
+						if(
+						boolCellPreserved[iL] == true &&
+						boolCellPreserved[iR] == false
+						){
+							if(
+							cellR.level == iLevel
+							){
+								tmp_boolCellPreserved[iR] = true;
+								tmp_boolCellRefine[iR] = false;
+								boolCellUnrefine[iR] = false;
+							}
+							else if(
+							cellR.level == iLevel-1
+							){
+								tmp_boolCellPreserved[iR] = true;
+								tmp_boolCellRefine[iR] = true;
+								boolCellUnrefine[iR] = false;
+							}
+							else if(
+							cellR.level == iLevel+1
+							){
+								tmp_boolCellPreserved[iR] = true;
+								tmp_boolCellRefine[iR] = false;
+								boolCellUnrefine[iR] = true;
+							}
+						}
+						
+					}
+					int ip=0;
+					for(auto& boundary : mesh.boundaries){
+						int str = boundary.startFace;
+						int end = str + boundary.nFaces;
+						if(boundary.getType() == MASCH_Face_Types::PROCESSOR){
+							for(int i=str; i<end; ++i){
+								auto& face = mesh.faces[i];
+								int iL = face.iL;
+								auto& cellL = mesh.cells[iL];
+								if(
+								cPreserved_recv[ip] == true &&
+								boolCellPreserved[iL] == false
+								){
+									if(
+									cellL.level == iLevel
+									){
+										tmp_boolCellPreserved[iL] = true;
+										tmp_boolCellRefine[iL] = false;
+										boolCellUnrefine[iL] = false;
+									}
+									else if(
+									cellL.level == iLevel-1
+									){
+										tmp_boolCellPreserved[iL] = true;
+										tmp_boolCellRefine[iL] = true;
+										boolCellUnrefine[iL] = false;
+									}
+									else if(
+									cellL.level == iLevel+1
+									){
+										tmp_boolCellPreserved[iL] = true;
+										tmp_boolCellRefine[iL] = false;
+										boolCellUnrefine[iL] = true;
+									}
+								}
+								++ip;
+							}
+						}
+					}	
+					
+					for(int i=0; i<mesh.cells.size(); ++i){
+						boolCellPreserved[i]=tmp_boolCellPreserved[i];
+						boolCellRefine[i]=tmp_boolCellRefine[i];
+					}
+				}
+			}
+			// {
+				// int iLevel = maxLevel-1;
+				// for(int i=0; i<mesh.cells.size(); ++i){
+					// if(mesh.cells[i].level==iLevel) boolCellRefine[i] = boolCellRefine0[i];
+				// }
+			// }
+			// {
+				// for(int i=0; i<mesh.cells.size(); ++i){
+					// if(boolCellRefine[i]==true) boolCellPreserved[i] = true;
+					// // if(boolCellRefine[i]==false) boolCellPreserved[i] = false;
+				// }
+			// }
+		}
+		
+		// 대각선 방향에서, 레벨 차이 2 이상이면 리파인
+		{
+			// processor faces
+			vector<int> recv_value;
+			if(size>1){
+
+				vector<int> send_value;
+				send_value.reserve(mesh.send_StencilCellsId.size());
+				for(auto& icell : mesh.send_StencilCellsId){
+					send_value.push_back(mesh.cells[icell].level);
+				}
+				recv_value.resize(mesh.recv_displsStencilCells[size]);
+				MPI_Alltoallv( send_value.data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_INT, 
+							   recv_value.data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_INT, 
+							   MPI_COMM_WORLD);
+				
+			}
+			vector<int> tmp_maxLevel(mesh.cells.size());
+			for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
+				auto& cell = mesh.cells[i];
+				int maxInd = -100;
+				for(auto& icell : cell.iStencils){
+					maxInd = max(mesh.cells[icell].level,maxInd);
+				}
+				for(auto& icell : cell.recv_iStencils){
+					maxInd = max(recv_value[icell],maxInd);
+				}
+				tmp_maxLevel[i] = maxInd;
+			}
+			// int inp_size = indicatorValues.size();
+			for(int i=0; i<mesh.cells.size(); ++i){
+				auto& cell = mesh.cells[i];
+				int my_level = cell.level;
+				if(my_level==maxLevel) continue;
+				if(my_level<0) continue;
+				// if(boolCellPreserved[i] == true) continue;
+				if(
+				my_level<tmp_maxLevel[i]-2 
+				){
+					boolCellRefine[i] = true;
+					boolCellPreserved[i]=true;
+					boolCellUnrefine[i]=false;
+				
+					// ++nRefineCellPerBlockAMR;
+				}
+				// if(nRefineCellPerBlockAMR > maxRefineCellPerBlockAMR) {
+					// boolCellRefine[i] = false;
+				// }
+			}
+		}
+			
+	}
+	
+	
+
+	int nRefineCellPerBlockAMR = 0;
+	int nUnrefineCellPerBlockAMR = 0;
+	for(int i=0; i<mesh.cells.size(); ++i){
+		if(var.cells[i][id_vol] < minVolume_AMR) boolCellRefine[i] = false;
+		// if(var.cells[i][id_vol] < minVolume_AMR) boolCellUnrefine[i] = false;
+		
+		if(boolCellUnrefine[i]==true) ++nUnrefineCellPerBlockAMR;
+		if(nUnrefineCellPerBlockAMR > maxUnrefineCellPerBlockAMR) boolCellUnrefine[i] = false;
+		if(boolCellRefine[i]==true) ++nRefineCellPerBlockAMR;
+		if(nRefineCellPerBlockAMR > maxRefineCellPerBlockAMR) boolCellRefine[i] = false;
+		
+	} 
+	
+	
+	
+}
+
+
 void MASCH_Poly_AMR_Builder::polyAMR(
 	MASCH_Mesh& mesh, 
 	MASCH_Control& controls,
+	MASCH_Solver& solver,
 	MASCH_Variables& var,
 	int iter){
 
 	int rank = MPI::COMM_WORLD.Get_rank();
 	int size = MPI::COMM_WORLD.Get_size();
 	
-	// // SEMO_Mesh_Geometric geometric;
-	// // SEMO_Utility_Math math;
-	// // SEMO_Solvers_Builder solvers;
+	MASCH_Load load;
 	
-	// vector<vector<double>> indicatorValues;
-	// // for(int i=0; i<5; ++i)
-	// // {
-		// // if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
+	if( (iter+1) %
+		stoi(controls.dynamicMeshMap["AMR.interval"]) == 0)
+	{
+		int maxLevel = stoi(controls.dynamicMeshMap["AMR.maxLevel"]);
+		if(controls.dynamicMeshMap.find("AMR.maxLevel")==controls.dynamicMeshMap.end()){
+			maxLevel = 0;
+			if(rank==0) cout << "#WARNING : no seraching, AMR.maxLevel" << endl;
+		}
+		int maxBuffer = stoi(controls.dynamicMeshMap["AMR.maxBufferLayer"]);
+		if(controls.dynamicMeshMap.find("AMR.maxBufferLayer")==controls.dynamicMeshMap.end()){
+			maxBuffer = 0;
+			if(rank==0) cout << "#WARNING : no seraching, AMR.maxBufferLayer" << endl;
+		}
+		double minVolume = stod(controls.dynamicMeshMap["AMR.minVolume"]);
+		if(controls.dynamicMeshMap.find("AMR.minVolume")==controls.dynamicMeshMap.end()){
+			minVolume = 0.0;
+			if(rank==0) cout << "#WARNING : no seraching, AMR.minVolume" << endl;
+		}
+		int maxCells = stoi(controls.dynamicMeshMap["AMR.maxCells"]);
+		if(controls.dynamicMeshMap.find("AMR.maxCells")==controls.dynamicMeshMap.end()){
+			maxCells = 1000000;
+			if(rank==0) cout << "#WARNING : no seraching, AMR.maxCells" << endl;
+		}
+		int maxRefineCellPerBlockAMR = stoi(controls.dynamicMeshMap["AMR.maxRefineCellPerBlockAMR"]);
+		if(controls.dynamicMeshMap.find("AMR.maxRefineCellPerBlockAMR")==controls.dynamicMeshMap.end()){
+			maxRefineCellPerBlockAMR = 1000000;
+			if(rank==0) cout << "#WARNING : no seraching, AMR.maxRefineCellPerBlockAMR" << endl;
+		}
 		
-		// // polyRefine(mesh, controls, indicatorValues, 0);
+		vector<string> sScalIndi = load.extractVector(controls.dynamicMeshMap["AMR.indicatorCellNames"]);
+		vector<string> sGradIndi = load.extractVector(controls.dynamicMeshMap["AMR.indicatorGradientNames"]);
+		vector<string> sScalIndiValues = load.extractVector(controls.dynamicMeshMap["AMR.indicatorCellValues"]);
+		vector<string> sGradIndiValues = load.extractVector(controls.dynamicMeshMap["AMR.indicatorGradientValues"]);
 		
-		// // controls.setVariableArray(mesh, var);
-		// // controls.setGeometric(mesh, var);
-		
-		// // polyUnrefine(mesh, controls, indicatorValues, 0);
-		
-		// // controls.setVariableArray(mesh, var);
-		// // controls.setGeometric(mesh, var);
-		
-		// // // // random
-		// // // std::random_device rd;
-		// // // std::default_random_engine eng(rd());
-		// // // std::uniform_int_distribution<int> distr(0, size-1);
-		// // // vector<int> cell_ip(mesh.cells.size());
-		// // // for(int i=0; i<mesh.cells.size(); ++i){
-			// // // cell_ip[i] = distr(eng);
-		// // // }
-		
-		// // // mesh.informations();
-		
-		// // vector<int> cell_ip(mesh.cells.size(),0);
-		// // mesh.repartParMETIS(size, cell_ip, mesh);
-		// // mesh.repartitioning(cell_ip);
-		
-		// // controls.setVariableArray(mesh, var);
-		// // controls.setGeometric(mesh, var);
-	// // }
-	
-	// for(int ii=0; ii<39; ++ii)
-	// {
-		
-		// if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
-	// // vector<bool> boolCellRefine(mesh.cells.size(),false);
-		// polyRefine(mesh, controls, indicatorValues, boolCellRefine, 0);
-		// controls.setVariableArray(mesh, var);
-		// controls.setGeometric(mesh, var);
-		// mesh.debug_procFace_unitNomals(0.8);
-		
-		// int iterReal = ii+1;
-		// int calcInter = 8;
-		// if(iterReal % calcInter == 0){
-			// if(rank==0) cout << "| exe. Dynamic Load Balancing" << endl;
-			// vector<int> cell_ip(mesh.cells.size(),rank);
-			// mesh.repartParMETIS(size, cell_ip, mesh);
-			// mesh.repartitioning(cell_ip);
-			// controls.setVariableArray(mesh, var);
-			// controls.setGeometric(mesh, var);
-			// mesh.debug_procFace_unitNomals(0.8);
-		// }
-		
-		// string tttt = "calc";
-		// tttt += to_string(ii);
-		// controls.log.push(tttt);
-		
-		// vector<int> aaaa;
-		// for(int i=0; i<mesh.cells.size(); ++i){
-			// aaaa.push_back(i);
-			// // for(int j=0; j<mesh.cells.size(); ++j){
-			// // }
-		// }
-		// // sort(aaaa.begin(),aaaa.end());
-		// controls.log.pop();
-		// controls.log.show();
+		int nCriterion = sScalIndi.size();
+		vector<vector<double>> indicatorCriterion(nCriterion);
+		vector<vector<int>> indicatorAMR_id(nCriterion);
+		vector<vector<double>> indicatorValues(nCriterion);
+		for(int i=0; i<nCriterion; ++i){
+			indicatorAMR_id[i].push_back(controls.getId_cellVar(sScalIndi[i]));
+			indicatorCriterion[i].push_back(stod(sScalIndiValues[i]));
+			indicatorAMR_id[i].push_back(controls.getId_cellVar("x-gradient "+sGradIndi[i]));
+			indicatorAMR_id[i].push_back(controls.getId_cellVar("y-gradient "+sGradIndi[i]));
+			indicatorAMR_id[i].push_back(controls.getId_cellVar("z-gradient "+sGradIndi[i]));
+			indicatorCriterion[i].push_back(stod(sGradIndiValues[i]));
+		}
 		
 		
+		vector<bool> boolCellRefine(mesh.cells.size(),false);
+		vector<bool> boolCellUnrefine(mesh.cells.size(),true);
+		vector<bool> boolCellPreserved(mesh.cells.size(),false);
+		calcIndicators(mesh, controls, var, 
+			maxBuffer, maxLevel, maxCells, maxRefineCellPerBlockAMR, minVolume, 
+			indicatorCriterion, indicatorAMR_id, 
+			boolCellRefine, boolCellUnrefine, boolCellPreserved);
 		
-		// if(rank==0) cout << "| exe. Poly AMR Unrefinement" << endl;
-		// polyUnrefine(mesh, controls, indicatorValues, 0);
-		// controls.setVariableArray(mesh, var);
-		// controls.setGeometric(mesh, var);
-		// mesh.debug_procFace_unitNomals(0.8);
-		
-		// // if(rank==0) cout << "| exe. Poly AMR Unrefinement" << endl;
-		// // polyUnrefine(mesh, controls, indicatorValues, 0);
-		// // controls.setVariableArray(mesh, var);
-		// // controls.setGeometric(mesh, var);
-		// // mesh.debug_procFace_unitNomals(0.8);
-		
-		// {
-			// int ncells = mesh.cells.size();
-			// vector<int> recv_ncells(size);
-			// MPI_Allgather(&ncells, 1, MPI_INT, recv_ncells.data(), 1, MPI_INT, MPI_COMM_WORLD);
+		// 리파인
+		{
+			// 원래 셀의 x,y,z 저장
+			vector<vector<double>> org_xyz(mesh.cells.size());
+			for(int i=0; i<mesh.cells.size(); ++i) {
+				auto& cell = mesh.cells[i];
+				org_xyz[i].push_back(cell.x); org_xyz[i].push_back(cell.y); org_xyz[i].push_back(cell.z);
+			}
+			// cout << maxCells << endl;
+			vector<vector<int>> child_new_cell_id_of_org;
+			polyRefine(mesh, controls, 
+				maxLevel, maxCells, minVolume, 
+				indicatorCriterion, indicatorValues, 
+				child_new_cell_id_of_org, 
+				boolCellPreserved, boolCellRefine, boolCellUnrefine,
+				0);
 			
-			// if(rank==0) {
-				// for(auto& item : recv_ncells){
-					// cout << " | " << item;
-				// }
-				// cout << endl;
-			// }
-		// }
-		
-		
-		// if(iterReal % calcInter == 0){
-			// string savestring = "./save/";
-			// savestring += tttt;
-			// MASCH_Mesh_Save save;
-			// save.fvmFiles(savestring, rank, mesh, controls, var);
-		// }
-		
-		
-	// }
-	
-	
-	// // polyRefine(mesh, controls, indicatorValues, 0);
-		
-	// // for(int i=0; i<2; ++i)
-	// // {
-		// // polyRefine(mesh, controls, indicatorValues, 0);
-		
-		
-		// // // random
-		// // std::random_device rd;
-		// // std::default_random_engine eng(rd());
-		// // std::uniform_int_distribution<int> distr(0, size-1);
-		// // vector<int> idBlockCell(mesh.cells.size());
-		// // for(int i=0; i<mesh.cells.size(); ++i){
-			// // idBlockCell[i] = distr(eng);
-		// // }
-		// // mesh.repartitioning(idBlockCell);
-	// // }
-	
-
-	// // SEMO_MPI_Builder mpi;
-	// // if(size>1){
-		// // mpi.setCellDatasToFaceRight(mesh, 
-					// // controls.VF[0], controls.fVF[0],
-					// // mesh.countsProcFaces, mesh.countsProcFaces, 
-					// // mesh.displsProcFaces, mesh.displsProcFaces);
-	// // }
-	// // vector<vector<double>> gradVF(mesh.cells.size(),vector<double>(3,0.0));
-	// // math.calcGaussGreen(mesh, controls.VF[0], controls.fVF[0], gradVF);
-	// // for(int i=0; i<mesh.cells.size(); ++i){
-		// // mesh.cells[i].var[controls.indicatorAMR[0]] = 
-			// // sqrt(gradVF[i][0]*gradVF[i][0]+
-				 // // gradVF[i][1]*gradVF[i][1]+
-				 // // gradVF[i][2]*gradVF[i][2]);
-	// // }
-	
-	
-	// // // ======================
-	// // // add Buffer layer
-	// // for(int iter=0; iter<controls.bufferLayer; ++iter){
-
-		// // vector<double> newIndicatorAMR(mesh.cells.size(),0.0);
-		// // vector<double> recvValues;
-		// // if(size>1){
-			// // // processor faces
-			// // vector<double> sendValues;
-			// // for(int i=0; i<mesh.faces.size(); ++i){
-				// // auto& face = mesh.faces[i];
-				
-				// // if(face.getType() == MASCH_Face_Types::PROCESSOR){
-					// // sendValues.push_back(mesh.cells[face.iL].var[controls.indicatorAMR[0]]);
-				// // }
-			// // }
-			// // mpi.setProcsFaceDatas(
-						// // sendValues, recvValues,
-						// // mesh.countsProcFaces, mesh.countsProcFaces, 
-						// // mesh.displsProcFaces, mesh.displsProcFaces);
-		// // }
-		
-		// // int num_proc = 0;
-		// // for(int i=0; i<mesh.faces.size(); ++i){
-			// // auto& face = mesh.faces[i];
+			controls.setGeometricOnlyCell_xyz(mesh);
 			
-			// // double maxInd = 0.0;
-			// // if(face.getType() == MASCH_Face_Types::INTERNAL){
-				// // maxInd = max(mesh.cells[face.iL].var[controls.indicatorAMR[0]],
-							 // // mesh.cells[face.iR].var[controls.indicatorAMR[0]]);
-				// // newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
-				// // newIndicatorAMR[face.iR] = max(newIndicatorAMR[face.iR],maxInd);
-			// // }
-			// // else if(face.getType() == MASCH_Face_Types::PROCESSOR){
-				// // maxInd = max(mesh.cells[face.iL].var[controls.indicatorAMR[0]],
-							 // // recvValues[num_proc]);
-				// // newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
-				// // ++num_proc;
-			// // }
-			// // else{
-				// // maxInd = mesh.cells[face.iL].var[controls.indicatorAMR[0]];
-				// // newIndicatorAMR[face.iL] = max(newIndicatorAMR[face.iL],maxInd);
-			// // }
-		// // }
+			controls.resetVariableArray(mesh, var, org_xyz, child_new_cell_id_of_org, "refine");
+		}
 		
-		// // for(int i=0; i<mesh.cells.size(); ++i){
-			// // mesh.cells[i].var[controls.indicatorAMR[0]] = newIndicatorAMR[i];
-		// // }
-	// // }
-	// // // ======================
+		// 언리파인
+		{
+			vector<vector<double>> dummy;
+			// if(rank==0) cout << "| exe. Poly AMR Unrefinement" << endl;
+			vector<vector<int>> child_org_cell_id_of_new;
+			polyUnrefine(mesh, controls, 
+				maxLevel,
+				indicatorCriterion, indicatorValues, 
+				child_org_cell_id_of_new, 
+				boolCellPreserved, boolCellRefine, boolCellUnrefine,
+				0);
+			
+			controls.resetVariableArray(mesh, var, dummy, child_org_cell_id_of_new, "unrefine");
+		}
+		
+		
+	}
 	
 	
-	// // if( (controls.iterReal+1) % controls.intervalRefine == 0){
-		// // if(rank==0) cout << "| exe. Poly AMR Refinement" << endl;
-		// // polyRefine(mesh, controls, 0);
-	// // }
+	// 리파티셔닝
+	if( (iter+1) %
+		stoi(controls.dynamicMeshMap["AMR.intervalRepart"]) == 0)
+	{
+		int maxLevel = stoi(controls.dynamicMeshMap["AMR.maxLevel"]);
+		// vector<vector<double>> dummy;
+		// if(rank==0) cout << "| exe. Dynamic Load Balancing" << endl;
+		vector<int> cell_ip(mesh.cells.size(),rank);
+		mesh.repartParMETIS(size, cell_ip, mesh);
+		vector<int> to_new_cell_id;
+		// if(rank==0) cout << "AA" << endl;
+		mesh.repartitioning(cell_ip, maxLevel, to_new_cell_id);
+		// if(rank==0) cout << "BB" << endl;
+		
+		controls.setGeometricOnlyCell_xyz(mesh);
+		
+		controls.resetVariableArray(mesh, var, cell_ip, to_new_cell_id, "repart");
+	}
 	
-	// // if( (controls.iterReal+1) % controls.intervalUnrefine == 0){
-		// // if(rank==0) cout << "| exe. Poly AMR Un-refinement" << endl;
-		// // polyUnrefine(mesh, controls, 0); 
-	// // }
 	
-	// // // 추가적인 셀 값들
-	// // mesh.cellsProcVar.resize(controls.nTotalCellVar,vector<double>());
-	// // mesh.cellsProcGradientVar.resize(controls.nTotalCellVar,vector<vector<double>>());
-	// // mesh.cellsGradientVar.resize(controls.nTotalCellVar,vector<vector<double>>());
 	
-	// // geometric.init(mesh);
-	// // math.initLeastSquare(mesh); 
+	// 값 다시 구하기
+	if(
+	( (iter+1) %
+		stoi(controls.dynamicMeshMap["AMR.interval"]) == 0) ||
+	( (iter+1) %
+		stoi(controls.dynamicMeshMap["AMR.intervalRepart"]) == 0)
+	){
+		controls.setGeometric(mesh, var);
+		var.setSparCSR(mesh, controls);
+		solver.calcGradient.init(mesh, controls, var);
+		
+		solver.updateProcRightCellPrimValues(mesh, controls, var, 0);
+		solver.updateCellAddiValues(mesh, controls, var, 0);
+		solver.updateProcRightCellAddiValues(mesh, controls, var, 0);
+		solver.updateBoundaryFacePrimValues(mesh, controls, var, 0);
+		solver.gradientTerms(mesh, controls, var, 0);
+		solver.updateProcRightCellGradValues(mesh, controls, var, 0);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
+		// MPI::Finalize();
+		// MPI::Init(); 
+	}
+	
+	
 	
 }
+
 
 
 
@@ -271,12 +618,12 @@ void MASCH_Poly_AMR_Builder::mpiLevelRefine(
 		cLevel_recv.resize(cLevel_send.size(),0);
 		cRefine_recv.resize(cRefine_send.size(),0);
 
-		MPI_Alltoallv( cLevel_send.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   cLevel_recv.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( cLevel_send.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   cLevel_recv.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 					   
-		MPI_Alltoallv( cRefine_send.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   cRefine_recv.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( cRefine_send.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   cRefine_recv.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 					   
 	}
@@ -317,8 +664,8 @@ void MASCH_Poly_AMR_Builder::mpiRefines(
 		
 		cRefine_recv.resize(cRefine_send.size(),0);
 					   
-		MPI_Alltoallv( cRefine_send.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   cRefine_recv.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( cRefine_send.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   cRefine_recv.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 					   
 	}
@@ -350,8 +697,8 @@ void MASCH_Poly_AMR_Builder::mpiLevels(
 		cLevel_recv.clear();
 		cLevel_recv.resize(cLevel_send.size(),0);
 
-		MPI_Alltoallv( cLevel_send.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   cLevel_recv.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( cLevel_send.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   cLevel_recv.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 				   
 	}

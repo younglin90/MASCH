@@ -19,6 +19,14 @@ class MASCH_Math;
 class MASCH_Variables {
 private:
 public:
+	void addParcel(int nParcelVar, vector<double> vars){
+		(*this).parcels.push_back(vector<double>());
+		(*this).parcels.back().resize(nParcelVar);
+		for(int j=0; j<nParcelVar; ++j){
+			(*this).parcels.back()[j] = vars[j];
+		}
+	}
+				
 	vector<vector<double>> cells;
 	vector<vector<double>> procRightCells;
 	vector<vector<double>> faces;

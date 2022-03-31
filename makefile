@@ -1,8 +1,9 @@
 CCOMPLR = mpiicpc
 
-CFLAGS = -std=c++17 -c -fPIC
+CFLAGS = -std=c++17 -c -O3
 # CFLAGS = -std=c++17 -c -O3 -fPIC -xCORE-AVX512 -ipo -no-prec-div
-# CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math -hfp4 -ipo -no-prec-div 
+# CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math -hfp4 -ipo -no-prec-div
+
 
 SHELL = /bin/bash
 sp    = /-\|/
@@ -145,6 +146,23 @@ SOURCES_PARTITION = src/main/partition/partitionMain.cpp\
 
 OBJECTS_PARTITION = $(SOURCES_PARTITION:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
 
+# repartition
+EXE_REPARTITION = Repartition
+
+SOURCES_REPARTITION = src/main/utility/repartition.cpp\
+                    src/others/controls.cpp\
+                    src/others/controls_geometric.cpp\
+                    src/others/mpi.cpp\
+                    src/others/mesh.cpp\
+                    src/others/log.cpp\
+                    src/others/variables.cpp\
+                    src/others/math.cpp\
+                    src/others/setVarUDF.cpp\
+                    src/others/repartitioning.cpp\
+                    src/others/repartParMETIS.cpp\
+
+OBJECTS_REPARTITION = $(SOURCES_REPARTITION:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o)
+
 # initialization
 EXE_INITIAL = Initial
 
@@ -180,6 +198,7 @@ SOURCES_Others = \
   src/others/AMGCL.cpp\
   src/others/fvm.cpp\
   src/others/dpm.cpp\
+  src/others/eulerianToLagrangian.cpp\
   src/others/math.cpp\
   src/others/gradient.cpp\
   src/others/curvature.cpp\
@@ -189,7 +208,6 @@ SOURCES_Others = \
   src/others/mesh.cpp\
   src/others/log.cpp\
   src/others/polyAMR.cpp\
-  src/others/polyAMR_inline.cpp\
   src/others/polyRefine.cpp\
   src/others/polyUnrefine.cpp\
   src/others/repartitioning.cpp\
@@ -214,6 +232,7 @@ SOURCES_MultiComponent = \
   src/main/flow/compressible/multicomponent/setUpdatePrimUDF.cpp\
   src/main/flow/compressible/multicomponent/setSegEq.cpp\
   src/main/flow/compressible/multicomponent/setBoundUDF.cpp\
+  # src/main/flow/compressible/multicomponent/setMinMaxCellValuesUDF.cpp\
 
 OBJECTS_MultiComponent = $(SOURCES_MultiComponent:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
@@ -278,44 +297,47 @@ SOURCES_INCOMP = \
 
 OBJECTS_INCOMP = $(SOURCES_INCOMP:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
+FOLDER_CompCoupled = src/main/flow/compCoupled
 
 EXE_CompCoupledImplicit = CompCoupledImplicit
-FOLDER_CompCoupledImplicit = src/main/flow/compCoupledImplicit
+FOLDER_CompCoupledImplicit = $(FOLDER_CompCoupled)/implicit
 SOURCES_CompCoupledImplicit = \
-  $(FOLDER_CompCoupledImplicit)/main.cpp\
-  $(FOLDER_CompCoupledImplicit)/setVarUDF.cpp\
+  $(FOLDER_CompCoupled)/main.cpp\
+  $(FOLDER_CompCoupled)/setVarUDF.cpp\
+  $(FOLDER_CompCoupled)/setBoundUDF.cpp\
+  $(FOLDER_CompCoupled)/setGradUDF.cpp\
+  $(FOLDER_CompCoupled)/setCurvatureUDF.cpp\
+  $(FOLDER_CompCoupled)/setAddiUDF.cpp\
+  $(FOLDER_CompCoupled)/setOldVarUDF.cpp\
+  $(FOLDER_CompCoupled)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_CompCoupled)/setUpdatePrimUDF.cpp\
+  $(FOLDER_CompCoupled)/setDPMUDF.cpp\
+  $(FOLDER_CompCoupled)/setMinMaxCellValuesUDF.cpp\
   $(FOLDER_CompCoupledImplicit)/setSegEq.cpp\
-  $(FOLDER_CompCoupledImplicit)/setBoundUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setGradUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setCurvatureUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setAddiUDF.cpp\
   $(FOLDER_CompCoupledImplicit)/setHOReconUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setOldVarUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setTimeStepUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setTermsCellLoopUDF.cpp\
   $(FOLDER_CompCoupledImplicit)/setTermsFaceLoopUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setUpdatePrimUDF.cpp\
-  $(FOLDER_CompCoupledImplicit)/setDPMUDF.cpp\
+  $(FOLDER_CompCoupledImplicit)/setTimeStepUDF.cpp\
 
 OBJECTS_CompCoupledImplicit = $(SOURCES_CompCoupledImplicit:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
 EXE_CompCoupledExplicit = CompCoupledExplicit
-FOLDER_CompCoupledExplicit = src/main/flow/compCoupledExplicit
+FOLDER_CompCoupledExplicit = $(FOLDER_CompCoupled)/explicit
 SOURCES_CompCoupledExplicit = \
-  $(FOLDER_CompCoupledExplicit)/main.cpp\
-  $(FOLDER_CompCoupledExplicit)/setVarUDF.cpp\
+  $(FOLDER_CompCoupled)/main.cpp\
+  $(FOLDER_CompCoupled)/setVarUDF.cpp\
+  $(FOLDER_CompCoupled)/setBoundUDF.cpp\
+  $(FOLDER_CompCoupled)/setGradUDF.cpp\
+  $(FOLDER_CompCoupled)/setCurvatureUDF.cpp\
+  $(FOLDER_CompCoupled)/setAddiUDF.cpp\
+  $(FOLDER_CompCoupled)/setOldVarUDF.cpp\
+  $(FOLDER_CompCoupled)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_CompCoupled)/setUpdatePrimUDF.cpp\
+  $(FOLDER_CompCoupled)/setDPMUDF.cpp\
+  $(FOLDER_CompCoupled)/setMinMaxCellValuesUDF.cpp\
   $(FOLDER_CompCoupledExplicit)/setSegEq.cpp\
-  $(FOLDER_CompCoupledExplicit)/setBoundUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setGradUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setCurvatureUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setAddiUDF.cpp\
   $(FOLDER_CompCoupledExplicit)/setHOReconUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setOldVarUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setTimeStepUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setTermsCellLoopUDF.cpp\
   $(FOLDER_CompCoupledExplicit)/setTermsFaceLoopUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setUpdatePrimUDF.cpp\
-  $(FOLDER_CompCoupledExplicit)/setDPMUDF.cpp\
+  $(FOLDER_CompCoupledExplicit)/setTimeStepUDF.cpp\
 
 OBJECTS_CompCoupledExplicit = $(SOURCES_CompCoupledExplicit:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
@@ -336,6 +358,7 @@ SOURCES_CompCoupledExplicitDPM = \
   $(FOLDER_CompCoupledExplicitDPM)/setTermsFaceLoopUDF.cpp\
   $(FOLDER_CompCoupledExplicitDPM)/setUpdatePrimUDF.cpp\
   $(FOLDER_CompCoupledExplicitDPM)/setDPMUDF.cpp\
+  $(FOLDER_CompCoupledExplicitDPM)/setMinMaxCellValuesUDF.cpp\
 
 OBJECTS_CompCoupledExplicitDPM = $(SOURCES_CompCoupledExplicitDPM:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
@@ -506,10 +529,11 @@ COTEXT  = "\033[1;31m Compiling\033[0m\033[1m $< \033[0m"
 
 # all : $(EXE)
 
+# EXE_ALL = $(EXE_REPARTITION)
+# OBJECTS_ALL = $(OBJECTS_REPARTITION)
 
-EXE_ALL = $(EXE_PARTITION) $(EXE_CompCoupledImplicit) $(EXE_CompCoupledExplicit) $(EXE_CompCoupledExplicitDPM) 
-
-OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_CompCoupledImplicit) $(OBJECTS_CompCoupledExplicit) $(OBJECTS_CompCoupledExplicitDPM)
+EXE_ALL = $(EXE_PARTITION) $(EXE_REPARTITION) $(EXE_CompCoupledImplicit) $(EXE_CompCoupledExplicit)
+OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_REPARTITION) $(OBJECTS_CompCoupledImplicit) $(OBJECTS_CompCoupledExplicit)
 
 # EXE_ALL = $(EXE_PARTITION) $(EXE_MultiComponent) $(EXE_Potential) 
 
@@ -533,6 +557,10 @@ $(EXE_CompDensitySingle) : $(OBJECTS_CompDensitySingle)
 $(EXE_PARTITION) : $(OBJECTS_PARTITION)
 	@$(CCOMPLR) -o $@ $(OBJECTS_PARTITION) $(LIBRARIES)
 	@echo -e "\033[1;31m PARTITION CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_REPARTITION) : $(OBJECTS_REPARTITION)
+	@$(CCOMPLR) -o $@ $(OBJECTS_REPARTITION) $(LIBRARIES)
+	@echo -e "\033[1;31m REPARTITION CODE compile/link complete \033[0m" | tee -a make.log
 
 $(EXE_INITIAL) : $(OBJECTS_INITIAL)
 	@$(CCOMPLR) -o $@ $(OBJECTS_INITIAL) $(LIBRARIES)

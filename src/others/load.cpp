@@ -305,6 +305,9 @@ template<typename T>
 void MASCH_Mesh_Load::readCompress(
 	string& word, vector<T>& outData){
 		
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
 	// 데이터 클리어
 	outData.clear();
 	
@@ -361,8 +364,8 @@ void MASCH_Mesh_Load::readCompress(
 	
 	int error = uncompress2(inflate_data, &inflate_size, value_decoded_byte, &value_sizee);
 	if(error != Z_OK){
-		cout << "zlib error !!!!!!!!!!!!" << endl;
-		cout << error << endl;
+		if(rank==0) cout << "zlib error !!!!!!!!!!!!" << endl;
+		if(rank==0) cout << error << endl;
 	}
 	free(value_decoded);
 	free(value_buffer);

@@ -78,6 +78,15 @@ vector<bool>& boolCellPreserved
 		if(cell.level >= maxLevel) boolCellRefine[i] = false;
 		if(cell.level < 0) boolCellRefine[i] = false;
 		// if(boolCellPreserved[i] == true) boolCellRefine[i] = false;
+		
+		
+		
+		
+		// if(cell.level < 0) {
+			
+			// cout << "GGGGGGGGGGG" << endl;
+		// }
+		
 	} 
 	
 	
@@ -427,6 +436,14 @@ void MASCH_Poly_AMR_Builder::polyAMR_inline(
 		// MPI_Barrier(MPI_COMM_WORLD);
 		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
+		// vector<string> interpolRefine_s = load.extractVector(controls.dynamicMeshMap["AMR.interpolationNames"]);
+		// vector<vector<int>> interpolRefine_id(interpolRefine_s.size());
+		// for(int i=0; i<interpolRefine_s.size(); ++i){
+			// interpolRefine_id[i].push_back(controls.getId_cellVar(interpolRefine_s[i]));
+			// interpolRefine_id[i].push_back(controls.getId_cellVar("x-gradient "+interpolRefine_s[i]));
+			// interpolRefine_id[i].push_back(controls.getId_cellVar("y-gradient "+interpolRefine_s[i]));
+			// interpolRefine_id[i].push_back(controls.getId_cellVar("z-gradient "+interpolRefine_s[i]));
+		// }
 		
 		// 리파인
 		{
@@ -452,11 +469,12 @@ void MASCH_Poly_AMR_Builder::polyAMR_inline(
 				boolCellPreserved, boolCellRefine, boolCellUnrefine,
 				0);
 			
-			// controls.setGeometricOnlyCell_xyz(mesh);
+			controls.setGeometricOnlyCell_xyz(mesh);
 			
 			// MPI_Barrier(MPI_COMM_WORLD);
 			// if(rank==0) cout << "START11" << endl;
 			controls.resetVariableArray(mesh, var, org_xyz, child_new_cell_id_of_org, "refine");
+			// controls.resetVariableArray(mesh, var, org_xyz, child_new_cell_id_of_org, interpolRefine_id, "refine");
 			// MPI_Barrier(MPI_COMM_WORLD);
 			// if(rank==0) cout << "START12" << endl;
 			// controls.setGeometric(mesh, var);
@@ -504,6 +522,8 @@ void MASCH_Poly_AMR_Builder::polyAMR_inline(
 		
 		
 		// 리파티셔닝
+		// if( (iter+1) %
+			// stoi(controls.dynamicMeshMap["AMR.intervalRepart"]) == 0)
 		{
 			// vector<vector<double>> dummy;
 			// if(rank==0) cout << "| exe. Dynamic Load Balancing" << endl;

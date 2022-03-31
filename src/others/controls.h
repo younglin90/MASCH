@@ -91,6 +91,7 @@ public:
 	map<string, string> fvSchemeMap;
 	map<string, string> fvSolutionMap;
 	map<string, string> speciesMap;
+	map<string, string> bodyforceMap;
 	map<string, string> thermophysicalProperties;
 	map<string, string> turbulenceProperties;
 	map<string,map<string, string>> boundaryMap;
@@ -250,15 +251,30 @@ public:
 	
 	// 세이브 관련
 	void save_fvmFiles(MASCH_Mesh& mesh, MASCH_Variables& var);
+	void save_dpmFiles(MASCH_Mesh& mesh, MASCH_Variables& var);
+	void save_pvdFile(MASCH_Mesh& mesh, MASCH_Variables& var);
 	
 	// 체크 관련
 	bool check_isnan(double value);
 	
 	// 초기화
 	void saveAfterInitial(MASCH_Mesh& mesh);
+	void saveAfterInitialAMR(MASCH_Mesh& mesh, MASCH_Variables& var);
 	
 	// 로그 관련
 	void show_residual(MASCH_Variables& var);
+	
+	// parcel 관련
+	int nIterDPM;
+	vector<string> nameParcels;
+	vector<int> calcDPM_iSeg;
+	vector<pair<int,int>> idSetLagrangianEulerian;
+	int nChangeParcelsE2L, nToProcsRishtParcels, nInsideParcels;
+	int nReflectParcels, nEscapeParcels, nDeleteParcels;
+	void show_dpm_information();
+	
+	// 리미터 관련
+	vector<int> limiterNamesForUnst;
 };
 
 

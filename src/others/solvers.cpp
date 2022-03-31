@@ -38,6 +38,7 @@ void MASCH_Solver::setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls){
 	
 	solver.setDPMFunctionsUDF(mesh, controls);
 	
+	solver.setMinMaxCellValuesFunctionsUDF(mesh, controls);
 	
 }
 
@@ -45,9 +46,12 @@ void MASCH_Solver::setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls){
 
 
 
+double MASCH_NVD::none(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	return phiU;
+}
 
 
-double MASCH_NVD::Minmod(double phiUU, double phiU, double phiD) {
+double MASCH_NVD::minmod(double phiUU, double phiU, double phiD, double coDD, double gamF) {
 	
 	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
 	
@@ -64,16 +68,434 @@ double MASCH_NVD::Minmod(double phiUU, double phiU, double phiD) {
 
 }
 
-
-
-
-
-double MASCH_NVD::getHO_MSTACS(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+double MASCH_NVD::vanLeer(double phiUU, double phiU, double phiD, double coDD, double gamF) {
 	
 	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
 	
-	double gamma_f;
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<1.0){
+		double tildeCf = tildeCd + (tildeCd*(1.0-tildeCd))
+						/(2.0-4.0*tildeCd+4.0*tildeCd*tildeCd);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::QUICK(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<1.0){
+		double tildeCf = 0.375 + 0.75*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::boundedCD(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<1.0){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::OSHER(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.6666){
+		double tildeCf = 1.5*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.6666 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::SMART(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.83333){
+		double tildeCf = 0.75*tildeCd + 0.375;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.83333 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::modifiedSMART(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.166666){
+		double tildeCf = 3.0*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.166666 && tildeCd<0.7){
+		double tildeCf = 0.75*tildeCd + 0.375;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.7 && tildeCd<1.0){
+		double tildeCf = 0.3333*tildeCd + 0.6666;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::STOIC(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.5){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.83333){
+		double tildeCf = 0.75*tildeCd + 0.375;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.83333 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::modifiedSTOIC(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.2){
+		double tildeCf = 3.0*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.2 && tildeCd<0.5){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.7){
+		double tildeCf = 0.75*tildeCd + 0.375;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.7 && tildeCd<1.0){
+		double tildeCf = 0.3333*tildeCd + 0.6666;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::MUSCL(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.25){
+		double tildeCf = 2.0*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.25 && tildeCd<0.75){
+		double tildeCf = tildeCd + 0.25;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.75 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::SUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.5){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.6666){
+		double tildeCf = 1.5*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.6666 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+double MASCH_NVD::modifiedSUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.3333){
+		double tildeCf = 2.0*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.3333 && tildeCd<0.5){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.6666){
+		double tildeCf = 1.5*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.6666 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+
+	return ( gamma_f * phiD + (1.0-gamma_f) * phiU );
+
+}
+
+// ---------- lowwers ----------------
+//
+// sharp-interface schemes
+//
+//
+double MASCH_NVD::HRIC(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	double tildeCf = tildeCd;
+	if(tildeCd>=0.0 && tildeCd<0.5){
+		tildeCf = 2.0*tildeCd;
+	}
+	else if(tildeCd>=0.5 && tildeCd<1.0){
+		tildeCf = 1.0;
+	}
+	double tildeStarF = gamF*tildeCf + (1.0-gamF)*tildeCd;
+	
+	double gamma_f = (tildeStarF - tildeCd) / (1.0 - tildeCd);
+	if(coDD>=0.3 && coDD<0.7){
+		double tildeCf = tildeCd+(tildeStarF-tildeCd)*(0.7-coDD)/(0.7-0.3);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(coDD>=0.7){
+		double tildeCf = tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	return phiU + gamma_f * (phiD - phiU);
+
+
+}
+
+double MASCH_NVD::CICSAM(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	// compressive differencing scheme (CDS)
+	// Hyper-C
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<1.0){
+		double tildeCf = min(1.0,tildeCd/coDD);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfCompressive = phiU + gamma_f * (phiD - phiU);
+	
+	// high-resolution
+	// ULTIMATE QUICKEST (UQ)
+	if(tildeCd>=0.0 && tildeCd<1.0){
+		double tildeCf = min((8.0*coDD*tildeCd+(1.0-coDD)*(6.0*tildeCd+3.0))/8.0,gamma_f);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else{
+		gamma_f = 0.0;
+	}
+	double vfDiffusive = phiU + gamma_f * (phiD - phiU);
+	
+	return ( gamF*vfCompressive + (1.0-gamF)*vfDiffusive );
+
+
+}
+
+
+double MASCH_NVD::STACS(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	// compressive differencing scheme (CDS)
+	// SUPERBEE
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.3333){
+		double tildeCf = 2.0*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.3333 && tildeCd<0.5){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.6666){
+		double tildeCf = 1.5*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.6666 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfCompressive = phiU + gamma_f * (phiD - phiU);
+	
+	
+	// high-resolution
+	// STOIC
+	gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.2){
+		double tildeCf = 3.0*tildeCd;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.2 && tildeCd<0.5){
+		double tildeCf = 0.5*tildeCd + 0.5;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.83333){
+		double tildeCf = 0.75*tildeCd + 0.375;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.83333 && tildeCd<1.0){
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfDiffusive = phiU + gamma_f * (phiD - phiU);
+	
+	return ( gamF*vfCompressive + (1.0-gamF)*vfDiffusive );
+
+
+}
+
+double MASCH_NVD::FBICS(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	// compressive differencing scheme (CDS)
+	// BD-FBICS
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.3333333333333){
+		double tildeCf = min(1.0,3.0*tildeCd);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.3333333333333 && tildeCd<1.0) {
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfCompressive = phiU + gamma_f * (phiD - phiU);
+	
+	
+	// high-resolution
+	// HR-FBICS
+	gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.125) {
+		double tildeCf = min(1.0,3.0*tildeCd);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.125 && tildeCd<0.75) {
+		double tildeCf = tildeCd + 0.25;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.75 && tildeCd<1.0) {
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfDiffusive = phiU + gamma_f * (phiD - phiU);
+	
+	return ( gamF*vfCompressive + (1.0-gamF)*vfDiffusive );
+
+
+}
+
+
+
+
+
+
+double MASCH_NVD::SAISH(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	// compressive differencing scheme (CDS)
+	// BD-SAISH
+	double gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.25){
+		double tildeCf = min(1.0,4.0*tildeCd);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.25 && tildeCd<1.0) {
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfCompressive = phiU + gamma_f * (phiD - phiU);
+	
+	
+	// high-resolution
+	// HR-SAISH
+	gamma_f = 0.0;
+	if(tildeCd>=0.0 && tildeCd<0.5) {
+		double tildeCf = min(1.0,tildeCd*(2.0-tildeCd));
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.5 && tildeCd<0.75) {
+		double tildeCf = (tildeCd + 0.25);
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	else if(tildeCd>=0.75 && tildeCd<1.0) {
+		double tildeCf = 1.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
+	}
+	double vfDiffusive = phiU + gamma_f * (phiD - phiU);
+	
+	return ( gamF*vfCompressive + (1.0-gamF)*vfDiffusive );
+
+}
+
+
+
+double MASCH_NVD::MSTACS(double phiUU, double phiU, double phiD, double coDD, double gamF) {
+	
+	double tildeCd = (phiU-phiUU)/(abs(phiD-phiUU)+1.e-200)*( phiD>phiUU ? 1.0 : -1.0 );
+	
+	// compressive differencing scheme (CDS)
 	// CDS-MSTACS
+	double gamma_f = 0.0;
 	if(tildeCd>=0.0 && tildeCd<1.0){
 		if(coDD>0.0 && coDD<=0.33){
 			double tildeCf = min(1.0,tildeCd/coDD);
@@ -83,16 +505,13 @@ double MASCH_NVD::getHO_MSTACS(double phiUU, double phiU, double phiD, double co
 			double tildeCf = min(1.0,3.0*tildeCd);
 			gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
 		}
-		else{
-			gamma_f = 0.0;
-		}
-	}
-	else{
-		gamma_f = 0.0;
 	}
 	double vfCompressive = phiU + gamma_f * (phiD - phiU);
 	
+	
+	// high-resolution
 	// HR-STOIC
+	gamma_f = 0.0;
 	if(tildeCd>=0.0 && tildeCd<0.2) {
 		double tildeCf = min(1.0,3.0*tildeCd);
 		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
@@ -107,16 +526,38 @@ double MASCH_NVD::getHO_MSTACS(double phiUU, double phiU, double phiD, double co
 	}
 	else if(tildeCd>=0.8333 && tildeCd<1.0) {
 		double tildeCf = 1.0;
-		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd);
-	}
-	else{
-		gamma_f = 0.0;
+		gamma_f = (tildeCf - tildeCd) / (1.0 - tildeCd); 
 	}
 	double vfDiffusive = phiU + gamma_f * (phiD - phiU);
 	
 	return ( gamF*vfCompressive + (1.0-gamF)*vfDiffusive );
 
 }
+
+
+
+double MASCH_Solver::limiter_MLP(double phi, double phi_max, double phi_min, double Delta_minus, double eta) {
+	
+	if(Delta_minus>0.0){
+		double Delta_plus = phi_max - phi;
+		return 1.0/Delta_minus*
+			((Delta_plus*Delta_plus+eta*eta)*
+			Delta_minus+2.0*Delta_minus*Delta_minus*Delta_plus)/
+			(Delta_plus*Delta_plus+2.0*Delta_minus*Delta_minus+
+			Delta_minus*Delta_plus+eta*eta);
+	}
+	else if(Delta_minus<0.0){
+		double Delta_plus = phi_min - phi;
+		return 1.0/Delta_minus*
+			((Delta_plus*Delta_plus+eta*eta)*
+			Delta_minus+2.0*Delta_minus*Delta_minus*Delta_plus)/
+			(Delta_plus*Delta_plus+2.0*Delta_minus*Delta_minus+
+			Delta_minus*Delta_plus+eta*eta);
+	}
+	return 1.0;
+
+}
+
 
 
 
@@ -401,7 +842,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 		vector<int> tmp_counts(size,0);
 		vector<int> tmp_displs(size+1,0);
 		for(int ip=0; ip<size; ++ip){
-			tmp_counts[ip] = mesh.countsProcFaces[ip]*prim_size;
+			tmp_counts[ip] = mesh.countsSendProcFaces[ip]*prim_size;
 		}
 		for(int ip=0; ip<size; ++ip){
 			tmp_displs[ip+1] = tmp_displs[ip] + tmp_counts[ip];

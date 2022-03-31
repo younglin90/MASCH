@@ -19,7 +19,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 		
 		
 
-	int nBuffers = 3;
+	// int nBuffers = 3;
 		
 		
 		
@@ -136,6 +136,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// if(mesh.cells.size()<maxCells_AMR){
 		bool boolMaxCells = false;
 		if(mesh.cells.size()>maxCells_AMR) boolMaxCells = true;
+		// cout << maxCells_AMR << endl;
 		// cout << mesh.cells.size() << " " << minVolume_AMR << endl;
 		for(int i=0; i<mesh.cells.size(); ++i){
 			// for(int indi=0; indi<indicatorCriterion.size(); ++indi)
@@ -168,7 +169,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 			// }
 			if(mesh.cells[i].level >= maxLevel_AMR) boolCellRefine[i] = false;
 			if(mesh.cells[i].level < 0) boolCellRefine[i] = false;
-			if(boolMaxCells) boolCellRefine[i] = false;
+			if(boolMaxCells==true) boolCellRefine[i] = false;
+			
+			
 			// if(boolCellPreserved[i] == true) boolCellRefine[i] = false;
 		} 
 		

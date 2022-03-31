@@ -1,4 +1,7 @@
-air{
-	type = fixedValue;
-	value = 1.0;
+water{
+	//type = fixedValue;
+	//value = 0.0;
+	type = function;
+	file = ./setting/lib_initial.so;
+	name = Y_initial;
 }

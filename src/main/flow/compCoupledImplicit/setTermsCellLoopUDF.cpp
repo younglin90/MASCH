@@ -6,8 +6,14 @@ void MASCH_Solver::setTermsCellLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 	
 	auto& solver = (*this);
 	
+	MASCH_Load load;
 	{
 		int nSp = controls.spName.size();
+		
+		vector<string> gVecS = load.extractVector(controls.bodyforceMap["g"]);
+		double gVec_x = stod(gVecS[0]);
+		double gVec_y = stod(gVecS[1]);
+		double gVec_z = stod(gVecS[2]);
 	
 		int id_dt = controls.getId_fieldVar("time-step");
 		int id_vol = controls.getId_cellVar("volume");
@@ -44,12 +50,36 @@ void MASCH_Solver::setTermsCellLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			id_dHtdY.push_back(controls.getId_cellVar("partial-total-enthalpy-mass-fraction-"+controls.spName[i]));
 		}
 		
+		
+		// 곡률관련
+		vector<int> id_curvature, id_alpha_VF, id_dalphadx, id_dalphady, id_dalphadz;
+		vector<double> surf_sigma;
+		for(int i=0; i<controls.spName.size(); ++i){
+			string name = controls.spName[i];
+			string type = controls.thermophysicalProperties[name+".transport.sigma.type"];
+			if(type=="constant"){
+				double value = stod(controls.thermophysicalProperties[name+".transport.sigma.value"]);
+				if(value<1.e-200) continue;
+				id_curvature.push_back(controls.getId_cellVar("curvature-"+name));
+				id_alpha_VF.push_back(controls.getId_cellVar("volume-fraction-"+name));
+				surf_sigma.push_back(value);
+				id_dalphadx.push_back(controls.getId_cellVar("x-gradient volume-fraction-"+name));
+				id_dalphady.push_back(controls.getId_cellVar("y-gradient volume-fraction-"+name));
+				id_dalphadz.push_back(controls.getId_cellVar("z-gradient volume-fraction-"+name));
+			}
+		}
+		int nCurv = id_curvature.size();
+	
+	
+		
 		solver.calcTemporal.push_back(
 		[id_dt,id_vol,id_u,id_v,id_w,
 		id_u_old,id_v_old,id_w_old,nSp,
 		id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
 		id_Y,id_Y_old,id_rho,id_Ht,id_p,
-		id_p_old,id_rho_old,id_Ht_old](
+		id_p_old,id_rho_old,id_Ht_old,
+		gVec_x,gVec_y,gVec_z,
+		id_alpha_VF,nCurv,surf_sigma,id_dalphadx,id_dalphady,id_dalphadz,id_curvature](
 		double* cells, double* fields, double* fluxA, double* fluxB) ->int {
 			double dt = fields[id_dt];
 			double vol = cells[id_vol];
@@ -79,52 +109,58 @@ void MASCH_Solver::setTermsCellLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				fluxA[iter++] = cells[id_drhodY[j]] * vol / dt;
 			}
 			
-			fluxA[iter++] = drhodp*u * vol / dt;
+			fluxA[iter++] = drhodp*u * vol / dt - drhodp*gVec_x*vol;
 			fluxA[iter++] = rho * vol / dt;
 			fluxA[iter++] = 0.0;
 			fluxA[iter++] = 0.0;
-			fluxA[iter++] = drhodT*u * vol / dt;
+			fluxA[iter++] = drhodT*u * vol / dt - drhodT*gVec_x*vol;
 			for(int j=0; j<nSp-1; ++j){
-				fluxA[iter++] = cells[id_drhodY[j]]*u * vol / dt;
+				double drhodY = cells[id_drhodY[j]];
+				fluxA[iter++] = drhodY*u * vol / dt - drhodY*gVec_x*vol;
 			}
 			
-			fluxA[iter++] = drhodp*v * vol / dt;
+			fluxA[iter++] = drhodp*v * vol / dt - drhodp*gVec_y*vol;
 			fluxA[iter++] = 0.0;
 			fluxA[iter++] = rho * vol / dt;
 			fluxA[iter++] = 0.0;
-			fluxA[iter++] = drhodT*v * vol / dt;
+			fluxA[iter++] = drhodT*v * vol / dt - drhodT*gVec_y*vol;
 			for(int j=0; j<nSp-1; ++j){
-				fluxA[iter++] = cells[id_drhodY[j]]*v * vol / dt;
+				double drhodY = cells[id_drhodY[j]];
+				fluxA[iter++] = drhodY*v * vol / dt - drhodY*gVec_y*vol;
 			}
 			
-			fluxA[iter++] = drhodp*w * vol / dt;
+			fluxA[iter++] = drhodp*w * vol / dt - drhodp*gVec_z*vol;
 			fluxA[iter++] = 0.0;
 			fluxA[iter++] = 0.0;
 			fluxA[iter++] = rho * vol / dt;
-			fluxA[iter++] = drhodT*w * vol / dt;
+			fluxA[iter++] = drhodT*w * vol / dt - drhodT*gVec_z*vol;
 			for(int j=0; j<nSp-1; ++j){
-				fluxA[iter++] = cells[id_drhodY[j]]*w * vol / dt;
+				double drhodY = cells[id_drhodY[j]];
+				fluxA[iter++] = drhodY*w * vol / dt - drhodY*gVec_z*vol;
 			}
 			
-			fluxA[iter++] = (drhodp*Ht+rho*dHtdp-1.0) * vol / dt;
-			fluxA[iter++] = rho*u * vol / dt;
-			fluxA[iter++] = rho*v * vol / dt;
-			fluxA[iter++] = rho*w * vol / dt;
-			fluxA[iter++] = (drhodT*Ht+rho*dHtdT) * vol / dt;
+			fluxA[iter++] = (drhodp*Ht+rho*dHtdp-1.0) * vol / dt - 
+							drhodp*(gVec_x*u+gVec_y*v+gVec_z*w)*vol;
+			fluxA[iter++] = rho*u * vol / dt - rho*gVec_x*vol;
+			fluxA[iter++] = rho*v * vol / dt - rho*gVec_y*vol;
+			fluxA[iter++] = rho*w * vol / dt - rho*gVec_z*vol;
+			fluxA[iter++] = (drhodT*Ht+rho*dHtdT) * vol / dt - 
+							drhodT*(gVec_x*u+gVec_y*v+gVec_z*w)*vol;
 			for(int j=0; j<nSp-1; ++j){
-				fluxA[iter++] = (cells[id_drhodY[j]]*Ht+
-								rho*cells[id_dHtdY[j]]) * vol / dt;
+				double drhodY = cells[id_drhodY[j]];
+				fluxA[iter++] = (drhodY*Ht+rho*cells[id_dHtdY[j]]) * vol / dt - 
+								drhodY*(gVec_x*u+gVec_y*v+gVec_z*w)*vol;
 			}
 			
 			for(int i=0; i<nSp-1; ++i){
-				int ii = id_drhodY[i];
-				fluxA[iter++] = drhodp*cells[id_Y[i]] * vol / dt;
+				double Yi = cells[id_Y[i]];
+				fluxA[iter++] = drhodp*Yi * vol / dt;
 				fluxA[iter++] = 0.0;
 				fluxA[iter++] = 0.0;
 				fluxA[iter++] = 0.0;
-				fluxA[iter++] = drhodT*cells[id_Y[i]] * vol / dt;
+				fluxA[iter++] = drhodT*Yi * vol / dt;
 				for(int j=0; j<nSp-1; ++j){
-					fluxA[iter] = cells[id_drhodY[j]]*cells[id_Y[i]] * vol / dt;
+					fluxA[iter] = cells[id_drhodY[j]]*Yi * vol / dt;
 					if(i==j) fluxA[iter] += rho * vol / dt;
 					++iter;
 				}
@@ -132,14 +168,29 @@ void MASCH_Solver::setTermsCellLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			iter = 0;
 			fluxB[iter++] = -(rho-rho_old)*vol/dt;
-			fluxB[iter++] = -(rho*u-rho_old*u_old)*vol/dt;
-			fluxB[iter++] = -(rho*v-rho_old*v_old)*vol/dt;
-			fluxB[iter++] = -(rho*w-rho_old*w_old)*vol/dt;
-			fluxB[iter++] = -(rho*Ht-p-rho_old*Ht_old+p_old)*vol/dt;
+			fluxB[iter++] = -(rho*u-rho_old*u_old)*vol/dt + gVec_x*rho*vol;
+			fluxB[iter++] = -(rho*v-rho_old*v_old)*vol/dt + gVec_y*rho*vol;
+			fluxB[iter++] = -(rho*w-rho_old*w_old)*vol/dt + gVec_z*rho*vol;
+			fluxB[iter++] = -(rho*Ht-p-rho_old*Ht_old+p_old)*vol/dt +
+				gVec_x*u*rho*vol + gVec_y*v*rho*vol + gVec_z*w*rho*vol;
 			for(int i=0; i<nSp-1; ++i){
 				fluxB[iter++] = -(rho*Y[i]-rho_old*Y_old[i])*vol/dt;
 			}
 			
+
+
+			// for(int i=0; i<nCurv; ++i){
+				// double curvature = cells[id_curvature[i]];
+				// double sigma = surf_sigma[i];
+				// double dalphadx = cells[id_dalphadx[i]];
+				// double dalphady = cells[id_dalphady[i]];
+				// double dalphadz = cells[id_dalphadz[i]];
+				// fluxB[1] += sigma*curvature*dalphadx*vol;
+				// fluxB[2] += sigma*curvature*dalphady*vol;
+				// fluxB[3] += sigma*curvature*dalphadz*vol;
+				// fluxB[4] += sigma*curvature*( dalphadx*u+dalphady*v+dalphadz*w )*vol;
+			// }
+		
 			
 			
 			return 0;

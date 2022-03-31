@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
 	!bool_resi_isnan
 	){
 		{
-			amr.polyAMR_inline(mesh, controls, solver, var, controls.iterReal);
+			amr.polyAMR(mesh, controls, solver, var, controls.iterReal);
 			// save.fvmFiles("./save/afterAMR/", rank, mesh, controls, var);
 		}
 		

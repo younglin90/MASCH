@@ -270,9 +270,17 @@ public:
 	
 	void settingFiles(string folderName, MASCH_Control& controls);
 	void meshFiles(string folderName, MASCH_Control& controls, MASCH_Mesh& mesh);
+	void dpmSizeFiles(string folderName, MASCH_Control& controls, MASCH_Mesh& mesh);
 	
 	// fvm file 로드
 	void fvmFiles(
+		string folderName, 
+		int rank,
+		MASCH_Mesh& mesh,
+		MASCH_Control& controls, 
+		MASCH_Variables& var);
+	// dpm file 로드
+	void dpmFiles(
 		string folderName, 
 		int rank,
 		MASCH_Mesh& mesh,

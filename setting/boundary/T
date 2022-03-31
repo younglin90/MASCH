@@ -1,22 +1,21 @@
+invwall {
+	type = zeroGradient;
+}
+viswall {
+	type = zeroGradient;
+}
 supinlet {
 	type = fixedValue;
-	value = 0.0035;
+	value = 300.0;
 }
 supoutlet {
 	type = zeroGradient;
 }
-
-invwall {
-	type = zeroGradient;
+gasinlet {
+	type = fixedValue;
+	value = 300.0;
 }
-
-viswall {
-	type = zeroGradient;
+liqinlet {
+	type = fixedValue;
+	value = 300.0;
 }
-moving {
-	type = zeroGradient;
-}
-function{
-	type = zeroGradient;
-}
-

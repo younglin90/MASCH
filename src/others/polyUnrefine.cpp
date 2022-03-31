@@ -225,6 +225,7 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 		
 		// 만약 셀의 레벨이 0 이면, false
 		if(mesh.cells[i].level <= 0) boolCellUnrefine[i] = false;
+		if(mesh.cells[i].level > maxLevel_AMR) boolCellUnrefine[i] = true;
 		// if(boolCellPreserved[i] == true) boolCellUnrefine[i] = false;
 		
 		

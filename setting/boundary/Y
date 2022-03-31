@@ -1,28 +1,33 @@
+invwall {
+	water {
+		type = zeroGradient;
+	}
+}
+viswall {
+	water {
+		type = zeroGradient;
+	}
+}
 supinlet {
 	water {
 		type = fixedValue;
 		value = 0.0;
 	}
 }
-supoutlet{
+supoutlet {
 	water {
 		type = zeroGradient;
 	}
 }
-
-invwall {
+gasinlet {
 	water {
-		type = zeroGradient;
+		type = fixedValue;
+		value = 0.0;
 	}
 }
-
-viswall {
+liqinlet {
 	water {
-		type = zeroGradient;
-	}
-}
-function{
-	water {
-		type = zeroGradient;
+		type = fixedValue;
+		value = 1.0;
 	}
 }

@@ -6,7 +6,6 @@ void MASCH_Load::meshFiles(string folderName, MASCH_Control& controls, MASCH_Mes
 	// MASCH_Mesh_Load mesh_load;
 	
 	(*this).vtu(folderName, controls, mesh);
-	
 }
 
 
@@ -57,6 +56,9 @@ void MASCH_Mesh_Load::vtu(
 	vector<int> pointLevels;
 	loadDatasAtVTU(inputFile, "pointLevels", pointLevels);
 	
+	vector<int> vtkGhostType;
+	loadDatasAtVTU(inputFile, "vtkGhostType", vtkGhostType);
+	
 	vector<int> cellLevels;
 	loadDatasAtVTU(inputFile, "cellLevels", cellLevels);
 	
@@ -101,21 +103,29 @@ void MASCH_Mesh_Load::vtu(
 
 	inputFile.close();
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "B1" << endl;
 	
+	bool ghostTypePres = false;
+	if(vtkGhostType.size()>0) ghostTypePres = true;
+	bool pointLevelsPres = false;
+	if(pointLevels.size()>0) pointLevelsPres = true;
 	
+	// cout << NodeCoordinates.size() << endl;
 	for(int i=0; i<NodeCoordinates.size()/3; ++i){
+		if(pointLevelsPres==true) { if(pointLevels[i]==-100) break; }
 		mesh.addPoint();
 		mesh.points.back().x = NodeCoordinates.at(i*3+0);
 		mesh.points.back().y = NodeCoordinates.at(i*3+1);
 		mesh.points.back().z = NodeCoordinates.at(i*3+2);
 		mesh.points.back().level = 0;
+		// mesh.points.back().level = pointLevels[i];
 	}
 	NodeCoordinates.clear();
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	// 포인트 레벨
 	for(int i=0; i<pointLevels.size(); ++i){
+		if(pointLevelsPres==true) { if(pointLevels[i]==-100) break; }
 		mesh.points.at(i).level = pointLevels[i];
 	}
 	
@@ -123,6 +133,12 @@ void MASCH_Mesh_Load::vtu(
 	int ncells=-1;
 	mesh.faces.clear();
 	for(int i=0; i<read_iL.size(); ++i){
+		// if(ghostTypePres==true) { 
+			// if(vtkGhostType[i]>0) {
+				// cout << "AAAAAA" << endl;
+				// break;
+			// }
+		// }
 		int tmp_iL = read_iL[i];
 		mesh.addFace();
 		mesh.faces.back().iL = tmp_iL;
@@ -150,15 +166,20 @@ void MASCH_Mesh_Load::vtu(
 		mesh.cells.back().group = str_icells[rank] + i;
 	}
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	// 셀 레벨
 	for(int i=0; i<cellLevels.size(); ++i){
+		if(ghostTypePres==true) { if(vtkGhostType[i]>0) break; }
 		mesh.cells.at(i).level = cellLevels.at(i);
 	}
 	// 셀 그룹
 	for(int i=0; i<cellGroups.size(); ++i){
+		if(ghostTypePres==true) { if(vtkGhostType[i]>0) break; }
 		mesh.cells.at(i).group = cellGroups.at(i);
 	}
 	
+	// cout << mesh.faces.size() << " " << read_iR.size() << endl;
 	
 	for(int i=0; i<read_iR.size(); ++i){
 		int tmp_iR = read_iR[i];
@@ -171,6 +192,7 @@ void MASCH_Mesh_Load::vtu(
 	
 	
 	for(int i=0, str=0, iter=0; i<offsets.size(); ++i){
+		if(ghostTypePres==true) { if(vtkGhostType[i]>0) break; }
 		int tmp_offset = offsets[i];
 		for(int j=str; j<tmp_offset; ++j){
 			int ipoint = connectivity[j];
@@ -195,12 +217,11 @@ void MASCH_Mesh_Load::vtu(
 	
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	// cout << mesh.cells.size() << " " << faceoffsets.size() << endl;
 	
 	for(int i=0, str=0; i<faceoffsets.size(); ++i){
+		if(ghostTypePres==true) { if(vtkGhostType[i]>0) break; }
 		int face_size = read_ifaces.at(str++);
 		for(auto& iface : mesh.cells[i].ifaces){
 			int point_size = read_ifaces.at(str++);
@@ -255,6 +276,7 @@ void MASCH_Mesh_Load::vtu(
 	}
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	// if(rank==0) cout << "B2" << endl;
 	
 	
@@ -281,6 +303,98 @@ void MASCH_Mesh_Load::vtu(
 	mesh.informations();
 
 	MPI_Barrier(MPI_COMM_WORLD);
+
+		
+}
+
+
+
+
+
+
+
+void MASCH_Load::dpmSizeFiles(string folderName, MASCH_Control& controls, MASCH_Mesh& mesh){
+	
+   
+	int rank = MPI::COMM_WORLD.Get_rank();
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	if(rank==0){
+		cout << "┌────────────────────────────────────────────────────" << endl;
+		cout << "| execute load vtu dpm data files ... ";
+	}
+		
+	string saveFolderName = folderName;
+	string saveFileName = "parcels";
+	string saveRankName = to_string(rank);
+	
+	ifstream inputFile;
+	string openFileName;
+	
+	// points
+	openFileName = saveFolderName + "/" + saveFileName + "." + saveRankName + ".vtu";
+	inputFile.open(openFileName);
+	if(inputFile.fail()){
+		if(rank==0){
+			cout << "-> completed" << endl;
+			cout << "└────────────────────────────────────────────────────" << endl;
+		}
+		return;
+		cerr << "Unable to open file for reading : " << openFileName << endl;
+		MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	}
+	
+	// int NumberOfPoints = 0;
+	
+	// string nextToken;
+	// while(getline(inputFile, nextToken)){
+	
+		// if( nextToken.find("NumberOfPoints") != string::npos ){
+			// string dummy = nextToken;
+   // // <Piece NumberOfPoints="3" NumberOfCells="0">
+   
+			// dummy.erase(dummy.end()-19,dummy.end());
+			// dummy.erase(dummy.begin(),dummy.begin()+25);
+			// dummy.erase(find(dummy.begin(),dummy.end(),'\"'), dummy.end());
+			
+			// // dummy.erase(find(dummy.begin(),dummy.end(),"NumberOfCells"), dummy.end());
+			// // dummy.erase(remove(dummy.begin(),dummy.end(),'<'), dummy.end());
+			// // dummy.erase(remove(dummy.begin(),dummy.end(),'Piece'), dummy.end());
+			// // dummy.erase(remove(dummy.begin(),dummy.end(),'NumberOfPoints'), dummy.end());
+			// // dummy.erase(remove(dummy.begin(),dummy.end(),'='), dummy.end());
+			// // dummy.erase(remove(dummy.begin(),dummy.end(),' '), dummy.end());
+			// // dummy.erase(remove(dummy.begin(),dummy.end(),"\" NumberOfCells=\"0\">"), dummy.end());
+			
+			// // NumberOfPoints = stoi(dummy);
+			// break;
+		// }
+		
+	// }
+	
+	vector<int> parcel_id;
+	loadDatasAtVTU(inputFile, "id", parcel_id);
+	vector<int> parcel_icell;
+	loadDatasAtVTU(inputFile, "icell", parcel_icell);
+	
+	int NumberOfPoints = parcel_id.size();
+	
+	mesh.parcels.resize(NumberOfPoints);
+	int iter = 0;
+	for(auto& parcel : mesh.parcels){
+		parcel.id = parcel_id[iter];
+		parcel.icell = parcel_icell[iter];
+		parcel.setType(MASCH_Parcel_Types::INSIDE);
+		++iter;
+	}
+	
+	// cout << NumberOfPoints << endl;
+	
+	
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0){
+		cout << "-> completed" << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
+	}
 
 		
 }

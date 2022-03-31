@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 	
 	load.OpenFoam("./grid/", mesh);
 	
-	vector<int> procNoCell(static_cast<int>(mesh.cells.size()),0);
+	vector<int> procNoCell(mesh.cells.size(),0);
 	MASCH_Mesh_Partition partition;
 	partition.parMETIS_Graph_Partition(nSize, procNoCell, mesh);
 	vector<MASCH_Mesh> newMesh(nSize,MASCH_Mesh());

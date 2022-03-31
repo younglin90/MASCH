@@ -279,6 +279,8 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 	}
 	
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
 	// write owner of internal face
@@ -386,6 +388,7 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 	
 	
 	
+	
 	// write of processor faces
 	for(int ip=0; ip<nBlocks; ++ip){
 		int n = nFacesLocal[ip];
@@ -443,14 +446,25 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 	
 	for(int ip=0; ip<nBlocks; ++ip){
 
+// cout<<"AA1" << endl;
 		newMesh[ip].check();
+// cout<<"AA2" << endl;
 		newMesh[ip].setFaceTypes();
+// cout<<"AA3" << endl;
 		newMesh[ip].buildCells();
+// cout<<"AA4" << endl;
 		newMesh[ip].connectFacetoPointsCells();
+// cout<<"AA5" << endl;
 		newMesh[ip].connectCelltoFaces();
+// cout<<"AA6" << endl;
 		newMesh[ip].connectCelltoPoints();
-		newMesh[ip].setCountsProcFaces();
-		newMesh[ip].setDisplsProcFaces();
+// cout<<"AA7" << endl;
+		// newMesh[ip].setCountsProcFaces();
+// cout<<"AA8" << endl;
+		// newMesh[ip].setDisplsProcFaces();
+// cout<<"AA9" << endl;
+	// // MPI_Barrier(MPI_COMM_WORLD);
+	// // MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		
 		nPointsInf.push_back(newMesh[ip].points.size());
 		nFacesInf.push_back(newMesh[ip].faces.size());
@@ -473,6 +487,7 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 			}
 		}
 		
+// cout<<"AA10" << endl;
 		
 		// faces type
 		int nFacesInt = 0;
@@ -496,6 +511,7 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 			}
 		}
 		
+// cout<<"AA11" << endl;
 		
 		
 		// cells type
@@ -522,6 +538,8 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 			}
 		}
 		
+		
+// cout<<"AA12" << endl;
 		nFacesIntInf.push_back(nFacesInt);
 		nFacesBCInf.push_back(nFacesBC);
 		nFacesProcInf.push_back(nFacesProc);
@@ -533,8 +551,13 @@ int nBlocks, vector<int>& idBlockCell, MASCH_Mesh &mesh, vector<MASCH_Mesh>& new
 		nPrismInf.push_back(nPrism);
 		nPyramidInf.push_back(nPyramid);
 		nPolyhedronInf.push_back(nPolyhedron);
+		
+// cout<<"AA13" << endl;
 	}
 	
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 
     if(rank == 0){
 		cout << "┌────────────────────────────────────────────────────" << endl;
@@ -947,12 +970,12 @@ void MASCH_Mesh_Partition::combine(vector<int>& idBlockCell, MASCH_Mesh &mesh){
 		// }
 		
 		recv_idBlockCell.resize(send_idBlockCell.size());
-		MPI_Alltoallv( send_idBlockCell.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   recv_idBlockCell.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_idBlockCell.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   recv_idBlockCell.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 		recv_rank.resize(send_rank.size());
-		MPI_Alltoallv( send_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   recv_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_rank.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   recv_rank.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 	}
 	

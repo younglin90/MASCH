@@ -97,17 +97,62 @@ int main(int argc, char* argv[]) {
 	solver.updateCellAddiValues_All(mesh, controls, var);
 	solver.updateBoundaryFacePrimValues_All(mesh, controls, var);
 	solver.gradientTerms_All(mesh, controls, var);
-	solver.curvatureTerms_All(mesh, controls, var);
+	solver.curvatureTerms_All(mesh, controls, var); 
 	solver.updateProcRightCellValues_All(mesh, controls, var);
 	solver.initOldValues(mesh, controls, var);
 	
+	
+	// AMR 후 초기조건 대입하고 저장 후 종료
+	if(controls.mapArgv.find("-initAMR") != controls.mapArgv.end()){
+		controls.iterReal = stoi(controls.dynamicMeshMap["AMR.interval"])-1;
+		int maxIterAMR = stoi(controls.mapArgv["-initAMR"]);
+		for(int i=0; i<maxIterAMR; ++i){
+			amr.polyAMR(mesh, controls, solver, var, controls.iterReal);
+			controls.saveAfterInitialAMR(mesh, var);
+		}
+		save.fvmFiles("./save/0_AMR/", rank, mesh, controls, var);
+		save.fvmFiles_boundary("./save/0_AMR/", rank, mesh, controls, var);
+		MPI::Finalize();
+		return EXIT_SUCCESS;
+	}
+	
+	
+	
+	
+	
+	
+	// var.fields[controls.fieldVar["parcel-injection-accum-time"].id] = 0.0;
+	// controls.iterReal=0;
+	// var.fields[controls.fieldVar["time-step"].id] = 0.1;
+	// // while( controls.iterReal < 1000 )
 	// {
-		// save.fvmFiles("./save/nan/", rank, mesh, controls, var);
-		// save.fvmFiles_boundary("./save/nan/", rank, mesh, controls, var);
+		// for(int ii=0; ii<1; ++ii){
+			// solver.dpm(mesh, controls, var);
+			
+			// // 시간 업데이트
+			// var.fields[controls.fieldVar["time"].id] +=
+			// var.fields[controls.fieldVar["time-step"].id];
+			
+			// // if(controls.iterReal % 100 == 0)
+			// {
+				// double time = var.fields[controls.fieldVar["time"].id];
+				// save.fvmFiles("./save/"+to_string(time)+"/", rank, mesh, controls, var);
+				// save.parcels("./save/"+to_string(time)+"/", rank, mesh, controls, var);
+				// // save.fvmFiles_boundary("./save/nan/", rank, mesh, controls, var);
+			// }
+		// }
+		
+		// ++controls.iterReal;
 	// }
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI::Finalize();
 	// return EXIT_SUCCESS;
+	
+	
+	
+	
+	
+	
 	
 	
 	// 메인 솔버
@@ -122,7 +167,7 @@ int main(int argc, char* argv[]) {
 	){
 		
 		{
-			amr.polyAMR_inline(mesh, controls, solver, var, controls.iterReal);
+			amr.polyAMR(mesh, controls, solver, var, controls.iterReal);
 			// save.fvmFiles("./save/afterAMR/", rank, mesh, controls, var);
 		}
 		

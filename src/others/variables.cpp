@@ -117,15 +117,15 @@ void MASCH_Variables::setSparCSR(MASCH_Mesh& mesh, MASCH_Control& controls){
 		}
 		recv_rank.resize(proc_size);
 		recv_iL.resize(proc_size);
-		MPI_Alltoallv( send_value0.data(), mesh.countsProcFaces.data(), 
-						mesh.displsProcFaces.data(), MPI_INT, 
-						recv_rank.data(), mesh.countsProcFaces.data(), 
-						mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_value0.data(), mesh.countsSendProcFaces.data(), 
+						mesh.displsSendProcFaces.data(), MPI_INT, 
+						recv_rank.data(), mesh.countsRecvProcFaces.data(), 
+						mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
-		MPI_Alltoallv( send_value1.data(), mesh.countsProcFaces.data(), 
-						mesh.displsProcFaces.data(), MPI_INT, 
-						recv_iL.data(), mesh.countsProcFaces.data(), 
-						mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_value1.data(), mesh.countsSendProcFaces.data(), 
+						mesh.displsSendProcFaces.data(), MPI_INT, 
+						recv_iL.data(), mesh.countsRecvProcFaces.data(), 
+						mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 	}
 	

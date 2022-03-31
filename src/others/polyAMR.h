@@ -110,15 +110,16 @@ public:
 	void polyAMR(
 		MASCH_Mesh& mesh, 
 		MASCH_Control& controls,
-		MASCH_Variables& var,
-		int iter);
-	
-	void polyAMR_inline(
-		MASCH_Mesh& mesh, 
-		MASCH_Control& controls,
 		MASCH_Solver& solver,
 		MASCH_Variables& var,
 		int iter);
+	
+	// void polyAMR_inline(
+		// MASCH_Mesh& mesh, 
+		// MASCH_Control& controls,
+		// MASCH_Solver& solver,
+		// MASCH_Variables& var,
+		// int iter);
 		
 
 	void calcIndicators(
@@ -128,6 +129,7 @@ public:
 		int maxBuffer,
 		int maxLevel,
 		int maxCells,
+		int maxRefineCellPerBlockAMR,
 		double minVolume_AMR,
 		vector<vector<double>>& indicatorCriterion,
 		vector<vector<int>>& indicatorAMR_id, 

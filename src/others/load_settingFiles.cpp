@@ -58,6 +58,9 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	controls.spName = species;
 	
 	
+	// 바디포스
+	string bodyforceFile = folderName + "/physics/bodyforce";
+	load.extractFile(bodyforceFile, controls.bodyforceMap);
 	// 열역학 파라미터 파일 읽어서 map 에 넣기
 	string thermophysicalPropertiesFile = folderName + "/physics/thermophysicalProperties";
 	load.extractFile(thermophysicalPropertiesFile, controls.thermophysicalProperties);
@@ -100,6 +103,7 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	// 컨트롤 파일 읽어서 map 에 넣기
 	string controlParcelsFile = folderName + "/controlParcels";
 	load.extractFile(controlParcelsFile, controls.controlParcelsMap);
+	controls.nameParcels = load.extractVector(controls.controlParcelsMap["name"]);
 	
 	
 	//=====================================

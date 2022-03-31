@@ -150,13 +150,25 @@ vector<int>& to_new_cell_id
 ){
 	
 	
-	int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
-	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	int rank = (MPI::COMM_WORLD.Get_rank()); 
+	int size = (MPI::COMM_WORLD.Get_size()); 
 	
 	auto& mesh = (*this);
 	
-	
-	to_new_cell_id.resize(mesh.cells.size());
+		// if(rank==0){
+			
+			// int leng = 10;
+			// int leng_glo;
+			// MPI_Scatter(&leng, 1, MPI_INT, &leng_glo, 1, MPI_INT, 0, MPI_COMM_WORLD);
+		// }
+		// else{
+			
+			// int leng = 10;
+			// int leng_glo;
+			// MPI_Scatter(NULL, 1, MPI_INT, &leng_glo, 1, MPI_INT, 0, MPI_COMM_WORLD);
+			// cout << leng_glo << endl;
+		// }
+	// to_new_cell_id.resize(mesh.cells.size());
 	
 	
     if(rank == 0){
@@ -183,12 +195,12 @@ vector<int>& to_new_cell_id
 			}
 		}
 		recv_idBlockCell.resize(send_idBlockCell.size());
-		MPI_Alltoallv( send_idBlockCell.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   recv_idBlockCell.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_idBlockCell.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   recv_idBlockCell.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 		recv_rank.resize(send_rank.size());
-		MPI_Alltoallv( send_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-					   recv_rank.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+		MPI_Alltoallv( send_rank.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   recv_rank.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 					   MPI_COMM_WORLD);
 	}
 	
@@ -639,36 +651,36 @@ vector<int>& to_new_cell_id
 			send_localCell_level[proc].push_back(cell.level);
 		}
 		
-		//=======================================
-		// 디버그
-		{
-			int max_group_id = -1;
-			int min_group_id = 1e8;
-			for(int i=0, ip=0; i<mesh.cells.size(); ++i){
-				auto& cell = mesh.cells[i];
-				max_group_id = max(cell.group,max_group_id);
-				min_group_id = min(cell.group,min_group_id);
-			}
+		// //=======================================
+		// // 디버그
+		// {
+			// int max_group_id = -1;
+			// int min_group_id = 1e8;
+			// for(int i=0, ip=0; i<mesh.cells.size(); ++i){
+				// auto& cell = mesh.cells[i];
+				// max_group_id = max(cell.group,max_group_id);
+				// min_group_id = min(cell.group,min_group_id);
+			// }
 			
-			vector<vector<int>> debug_localCell_group(max_group_id-min_group_id+1);
-			for(int i=0, ip=0; i<mesh.cells.size(); ++i){
-				auto& cell = mesh.cells[i];
-				int proc = idBlockCell[i];
-				debug_localCell_group.at(cell.group-min_group_id).push_back(proc);
-			}
+			// vector<vector<int>> debug_localCell_group(max_group_id-min_group_id+1);
+			// for(int i=0, ip=0; i<mesh.cells.size(); ++i){
+				// auto& cell = mesh.cells[i];
+				// int proc = idBlockCell[i];
+				// debug_localCell_group.at(cell.group-min_group_id).push_back(proc);
+			// }
 			
-			for(auto& item : debug_localCell_group){
-				int proc0 = item[0];
-				for(auto& item2 : item){
-					if(proc0 != item2){
-						cout << "proc0!=item2 " << proc0 << " " << item2 << endl;
-					}
-				}
-				// cout << endl;
-			}
+			// for(auto& item : debug_localCell_group){
+				// int proc0 = item[0];
+				// for(auto& item2 : item){
+					// if(proc0 != item2){
+						// cout << "proc0!=item2 " << proc0 << " " << item2 << endl;
+					// }
+				// }
+				// // cout << endl;
+			// }
 			
-		}
-		//=======================================
+		// }
+		// //=======================================
 		
 		
 		vector<vector<int>> recv_localCell_id;
@@ -710,7 +722,7 @@ vector<int>& to_new_cell_id
 		{
 			int maxProcFaceNum = 0;
 			for(int ip=rank; ip<size; ++ip){
-				maxProcFaceNum += mesh.countsProcFaces[ip];
+				maxProcFaceNum += mesh.countsSendProcFaces[ip];
 			}
 			// if(rank==0) cout << maxProcFaceNum << endl;
 			vector<int> tmp_maxProcFaceNum(size);
@@ -737,36 +749,36 @@ vector<int>& to_new_cell_id
 			
 			vector<int> send_proc_numbering;
 			for(int ip=0, numbering=0; ip<rank; ++ip){
-				int str=mesh.displsProcFaces[ip];
-				int end=str+mesh.countsProcFaces[ip];
+				int str=mesh.displsSendProcFaces[ip];
+				int end=str+mesh.countsSendProcFaces[ip];
 				for(int i=str; i<end; ++i){
 					send_proc_numbering.push_back(-1);
 				}
 			}
 			for(int ip=rank, numbering=0; ip<size; ++ip){
-				int str=mesh.displsProcFaces[ip];
-				int end=str+mesh.countsProcFaces[ip];
+				int str=mesh.displsSendProcFaces[ip];
+				int end=str+mesh.countsSendProcFaces[ip];
 				for(int i=str; i<end; ++i){
-					send_proc_numbering.push_back(str_proc_numbering[rank] + i - mesh.displsProcFaces[rank]);
+					send_proc_numbering.push_back(str_proc_numbering[rank] + i - mesh.displsSendProcFaces[rank]);
 				}
 			}
 			vector<int> recv_proc_numbering;
 			recv_proc_numbering.resize(send_proc_numbering.size());
-			MPI_Alltoallv( send_proc_numbering.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
-						   recv_proc_numbering.data(), mesh.countsProcFaces.data(), mesh.displsProcFaces.data(), MPI_INT, 
+			MPI_Alltoallv( send_proc_numbering.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+						   recv_proc_numbering.data(), mesh.countsRecvProcFaces.data(), mesh.displsRecvProcFaces.data(), MPI_INT, 
 						   MPI_COMM_WORLD);
 				
 			
 			for(int ip=0, numbering=0; ip<rank; ++ip){
-				int str=mesh.displsProcFaces[ip];
-				int end=str+mesh.countsProcFaces[ip];
+				int str=mesh.displsRecvProcFaces[ip];
+				int end=str+mesh.countsRecvProcFaces[ip];
 				for(int i=str; i<end; ++i){
 					proc_numbering.push_back(recv_proc_numbering[i]);
 				}
 			}
 			for(int ip=rank, numbering=0; ip<size; ++ip){
-				int str=mesh.displsProcFaces[ip];
-				int end=str+mesh.countsProcFaces[ip];
+				int str=mesh.displsRecvProcFaces[ip];
+				int end=str+mesh.countsRecvProcFaces[ip];
 				for(int i=str; i<end; ++i){
 					proc_numbering.push_back(send_proc_numbering[i]);
 				}
@@ -789,9 +801,6 @@ vector<int>& to_new_cell_id
 		}
 	
 		
-		
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
 		
@@ -823,6 +832,7 @@ vector<int>& to_new_cell_id
 		vector<vector<int>> send_globalFace_PR2PR_toProc(size);
 		vector<vector<int>> send_localFace_PR2PR_ipoints(size);
 		vector<vector<int>> send_localFace_PR2PR_BoolReorder(size);
+		
 		
 		for(int i=0, ip=0; i<mesh.faces.size(); ++i){
 			auto& face = mesh.faces[i];
@@ -1167,6 +1177,13 @@ vector<int>& to_new_cell_id
 	
 		
 		// BC2BC
+		if(size>1){
+			int nbc_glo;
+			MPI_Allreduce(&nbc, &nbc_glo, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+			nbc = nbc_glo;
+		}
+		
+		
 		vector<int> nFaces_boundary(nbc,0);
 		
 		vector<vector<pair<int,int>>> reorder_procFace_BC2BC_proc_id(nbc);
@@ -1174,18 +1191,22 @@ vector<int>& to_new_cell_id
 		for(int ip=0; ip<size; ++ip){
 			for(int i=0, iter=0; i<recv_localFace_BC2BC_BCType[ip].size(); ++i){
 				int ibc = recv_localFace_BC2BC_BCType[ip][i];
-				reorder_procFace_BC2BC_proc_id[ibc].push_back(make_pair(ip,i));
+				// if(ibc>=nbc) cout << ibc << " " << nbc << endl;
+				reorder_procFace_BC2BC_proc_id.at(ibc).push_back(make_pair(ip,i));
 				reorder_procFace_BC2BC_strId[ibc].push_back(iter);
 				int tmp_size = recv_localFace_BC2BC_ipoints[ip].at(iter++);
 				for(int j=0; j<tmp_size; ++j) iter++;
 			}
 		}
+		
+	
 			
 		vector<int> iter_BC2BC(size,0);
 		for(int ibc=0; ibc<nbc; ++ibc){
 			int str_size = meshComb.faces.size();
 			int iter=0;
 			for(auto& [ip, i] : reorder_procFace_BC2BC_proc_id[ibc]){
+				
 				
 				face_state.push_back(BC2BC);
 				
@@ -1233,6 +1254,11 @@ vector<int>& to_new_cell_id
 		// //************************************
 		
 		
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+	
 		
 		// 프로세서
 		vector<int> nFaces_processor(size,0);
@@ -1347,50 +1373,10 @@ vector<int>& to_new_cell_id
 				
 			}
 			
-			
-			// // 디버그
-			// for(int proc=0; proc<size; ++proc){
-				// int iter=0;
-				// int tmp2_size = reorder_procFace_PR2PR_proc_id[proc].size();
-				// for(int ii=0; ii<tmp2_size; ++ii){
-				// // for(auto& [ip, i] : reorder_procFace_PR2PR_proc_id[proc]){
-					// auto& [ip, i] = reorder_procFace_PR2PR_proc_id[proc][ii];
-					// int strId = reorder_procFace_PR2PR_strId[proc][ii];
-					// int procFaceNum = reorder_procFace_PR2PR_procFaceNum[proc][ii];
-					// vector<int> ipoints = reorder_procFace_PR2PR_ipoints[proc][ii];
-			
-					// double avgx = 0.0;
-					// double avgy = 0.0;
-					// double avgz = 0.0;
-					// // int tmp_size = recv_localFace_PR2PR_ipoints[ip].at(strId++);
-					// int tmp_size = ipoints.size();
-					// for(auto& ipoint : ipoints){
-						// // int id_loc = recv_localFace_PR2PR_ipoints[ip].at(strId++);
-						// // int id_glo = points_id_local2global[ip].at(id_loc);
-						// avgx += meshComb.points[ipoint].x/(double)tmp_size;
-						// avgy += meshComb.points[ipoint].y/(double)tmp_size;
-						// avgz += meshComb.points[ipoint].z/(double)tmp_size;
-					// }
-					
-					// if(rank==0 && proc==1){
-						// cout << rank << " " << procFaceNum << endl;
-						// cout << avgx << " " << avgy << " " << avgz << endl;
-						
-					// }
-					// if(rank==1 && proc==0){
-						// cout << rank << " " << procFaceNum << endl;
-						// cout << avgx << " " << avgy << " " << avgz << endl;
-						
-					// }
-				// }
-			// }
+	
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-	
-	
-	
-	
 	
 	
 			
@@ -1547,15 +1533,64 @@ vector<int>& to_new_cell_id
 		
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+		// 바운더리 네임 뿌려주기
+		vector<string> bc_names;
+		if(rank == 0)
+		{
+			vector<string> send_bc_names;
+			for(int ibc=0; ibc<nbc; ++ibc){
+				auto& boundary = mesh.boundaries[ibc];
+				string tmp_name = boundary.name;
+				int leng = tmp_name.length();
+				MPI_Bcast(&leng, 1, MPI_INT, 0, MPI_COMM_WORLD);
+				char *buf = new char[leng];
+				strcpy(buf,tmp_name.c_str());
+				MPI_Bcast(buf, leng, MPI_CHAR, 0, MPI_COMM_WORLD);
+				// MPI_Scatter(tmp_name.c_str(), leng_glo, MPI_CHAR, buf, leng_glo, MPI_CHAR, 0, MPI_COMM_WORLD);
+				// string bla1(buf, leng_glo);
+				// delete [] buf;
+				bc_names.push_back(tmp_name);
+			}
+		}
+		else
+		{
+			for(int ibc=0; ibc<nbc; ++ibc){
+				int leng;
+				MPI_Bcast(&leng, 1, MPI_INT, 0, MPI_COMM_WORLD);
+				char *buf = new char[leng];
+				MPI_Bcast(buf, leng, MPI_CHAR, 0, MPI_COMM_WORLD);
+				string bla1(buf, leng);
+				delete [] buf;
+				bc_names.push_back(bla1);
+			}
+		}
+		
+		
 		
 		// 바운더리
+		if(mesh.boundaries.size()<nbc){
+			// for(auto& item : bc_names){
+				// cout << item << endl;
+			// }
+			mesh.boundaries.resize(nbc);
+		}
 		meshComb.boundaries.clear();
 		for(int ibc=0; ibc<nbc; ++ibc){
+			// if(ibc>=mesh.boundaries.size()) break;
 			auto& boundary = mesh.boundaries[ibc];
 			meshComb.addBoundary();
-			meshComb.boundaries.back().name = boundary.name;
+			
+			string bcName = bc_names[ibc];
+			
+			bcName.erase(std::find_if(bcName.rbegin(), bcName.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), bcName.end());
+			bcName.erase(bcName.begin(), std::find_if(bcName.begin(), bcName.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+			
+			meshComb.boundaries.back().name = bcName;
 			meshComb.boundaries.back().setType(MASCH_Face_Types::BOUNDARY);
 			meshComb.boundaries.back().nFaces = nFaces_boundary[ibc];
+			
+			// if(rank==60) cout << "GG " << nFaces_boundary[ibc] << endl;
 		}
 		
 		for(int ip=0; ip<size; ++ip){
@@ -1571,14 +1606,23 @@ vector<int>& to_new_cell_id
 			}
 		}
 		
+// // int nSizeOrg, int nSizeTar, 
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
-		int maxBCNum = meshComb.boundaries.size()-1;
-		meshComb.boundaries[maxBCNum].startFace = meshComb.faces.size()-meshComb.boundaries[maxBCNum].nFaces;
-		for(int i=maxBCNum-1; i>=0; --i){
-			meshComb.boundaries[i].startFace = meshComb.boundaries[i+1].startFace-meshComb.boundaries[i].nFaces;
+		// if(rank==60) cout << meshComb.boundaries.size() << endl;
+	
+		if(meshComb.boundaries.size()>0){
+			int maxBCNum = meshComb.boundaries.size()-1;
+			meshComb.boundaries[maxBCNum].startFace = meshComb.faces.size()-meshComb.boundaries[maxBCNum].nFaces;
+			for(int i=maxBCNum-1; i>=0; --i){
+				meshComb.boundaries[i].startFace = meshComb.boundaries[i+1].startFace-meshComb.boundaries[i].nFaces;
+			}
 		}
 		
-		
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		
 		// variables 넘기기 위한 재료
 		{
@@ -1599,6 +1643,9 @@ vector<int>& to_new_cell_id
 	
 	
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
 	
 	
 	// 원래 메쉬에 넣기
@@ -1619,6 +1666,9 @@ vector<int>& to_new_cell_id
 		mesh.faces.reserve(meshComb.faces.size());
 		mesh.points.reserve(meshComb.points.size());
 		
+		meshComb.cells.clear();
+		meshComb.cells.shrink_to_fit();
+		
 		for(auto& point : meshComb.points){
 			mesh.addPoint();
 			mesh.points.back().x = point.x;
@@ -1629,6 +1679,8 @@ vector<int>& to_new_cell_id
 				mesh.points.back().connPoints.push_back(make_pair(proc, id));
 			}
 		}
+		meshComb.points.clear();
+		meshComb.points.shrink_to_fit();
 		
 		for(auto& face : meshComb.faces){
 			mesh.addFace();
@@ -1639,6 +1691,8 @@ vector<int>& to_new_cell_id
 				mesh.faces.back().ipoints.push_back(ipoint);
 			}
 		}
+		meshComb.faces.clear();
+		meshComb.faces.shrink_to_fit();
 		
 		for(auto& boundary : meshComb.boundaries){
 			mesh.addBoundary();
@@ -1649,7 +1703,10 @@ vector<int>& to_new_cell_id
 			mesh.boundaries.back().myProcNo = boundary.myProcNo;
 			mesh.boundaries.back().setType(boundary.getType());
 		}
+		meshComb.boundaries.clear();
+		meshComb.boundaries.shrink_to_fit();
 	}
+	
 	
 	
 	
@@ -1657,6 +1714,7 @@ vector<int>& to_new_cell_id
 	mesh.setFaceTypes();
 	mesh.buildCells();
 
+		
 	// **************************
 	// 셀 값
 	{
@@ -1804,6 +1862,9 @@ vector<int>& to_new_cell_id
 	mesh.setDisplsProcFaces();
 	mesh.setFaceLevels();
 	
+	// mesh.setCellStencils();
+	// mesh.setNumberOfFaces();
+	// mesh.cellsGlobal();
 	
 	// mesh.debug_group_procFaces(0.99);
 
@@ -2009,6 +2070,9 @@ vector<int>& to_new_cell_id
 			}
 		}
 		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
 		for(int ip=0; ip<size; ++ip){
 			int size1 = reorder_procFace_id[ip].size();
 			for(int i=0; i<size1; ++i){
@@ -2105,8 +2169,26 @@ vector<int>& to_new_cell_id
 
 	
 	
+	// proc 페이스 매칭 디버깅
+	vector<vector<int>> send_procNFaces(size,vector<int>(1,0));
+	for(auto& boundary : mesh.boundaries){
+		if(boundary.getType()!=MASCH_Face_Types::PROCESSOR) continue;
+		int rightProcNo = boundary.rightProcNo;
+		send_procNFaces[rightProcNo][0] = boundary.nFaces;
+	}
 	
-	// mesh.informations();
+	vector<vector<int>> recv_procNFaces;
+	mpi.Alltoallv(send_procNFaces, recv_procNFaces);
+	
+	for(auto& boundary : mesh.boundaries){
+		if(boundary.getType()!=MASCH_Face_Types::PROCESSOR) continue;
+		int rightProcNo = boundary.rightProcNo;
+		if(recv_procNFaces[rightProcNo][0] != boundary.nFaces){
+			cout << "#WARNING : not match proc faces" << endl;
+		}
+	}
+	
+	// // mesh.informations();
 	
 	// ===========================================
 	// connPoints 디버깅
@@ -2117,6 +2199,25 @@ vector<int>& to_new_cell_id
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	// ===========================================
+	
+	
+	// // 디버깅
+	// {
+		// vector<int> send_idBlockCell;
+		// for(int i=0; i<mesh.faces.size(); ++i){
+			// auto& face = mesh.faces[i];
+			// if(face.getType()==MASCH_Face_Types::PROCESSOR){
+				// send_idBlockCell.push_back(idBlockCell[face.iL]);
+			// }
+		// }
+		// recv_idBlockCell.resize(send_idBlockCell.size());
+		// MPI_Alltoallv( send_idBlockCell.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   // recv_idBlockCell.data(), mesh.countsSendProcFaces.data(), mesh.displsSendProcFaces.data(), MPI_INT, 
+					   // MPI_COMM_WORLD);
+	// }
+	
+	
+	
 	
 	if(rank==0){
 		cout << "-> completed" << endl;

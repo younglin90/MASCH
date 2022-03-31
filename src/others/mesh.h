@@ -226,6 +226,9 @@ public:
 	}
 	// MASCH_Parcel_Types type;
 	// int iproc;
+	
+	int id;
+	
 	int icell;
 };
 
@@ -253,6 +256,15 @@ public:
 	}
 	MASCH_Mesh& addParcel(){
 		parcels.push_back(MASCH_Parcel());
+		return *this;
+	}
+	MASCH_Mesh& addParcel(int inp_icell, int parcel_species_id){
+		(*this).cells[inp_icell].iparcels.push_back((*this).parcels.size());
+		(*this).parcels.push_back(MASCH_Parcel());
+		(*this).parcels.back().id = parcel_species_id;
+		(*this).parcels.back().icell = inp_icell;
+		(*this).parcels.back().setType(MASCH_Parcel_Types::INSIDE);
+		
 		return *this;
 	}
 	
@@ -307,8 +319,10 @@ public:
 	int nProcessorFaces;
 	
 	// 프로세스 관련
-	vector<int> countsProcFaces;
-	vector<int> displsProcFaces;
+	vector<int> countsSendProcFaces;
+	vector<int> displsSendProcFaces;
+	vector<int> countsRecvProcFaces;
+	vector<int> displsRecvProcFaces;
 	
 	vector<int> send_StencilCellsId;
 	vector<int> send_countsStencilCells;

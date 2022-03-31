@@ -1,6 +1,6 @@
-#PBS -l nodes=4:ppn=95
+#PBS -l nodes=4:ppn=96+1:ppn=78
 #PBS -q dque
-#PBS -N jet_in_cross
+#PBS -N aer1
 #PBS -o error
 #PBS -j oe
 echo
@@ -35,10 +35,12 @@ cd $PBS_O_WORKDIR
 cat $PBS_NODEFILE>./hostfile
 
 source $HOME/intel/oneapi/setvars.sh
-export PATH=$PATH:~/SEMO/
-export LD_LIBRARY_PATH=~/SEMO/lib/PETSc/lib:$LD_LIBRARY_PATH
+export PATH=$PATH:~/MASCH/
+#export LD_LIBRARY_PATH=~/SEMO/lib/PETSc/lib:$LD_LIBRARY_PATH
 
 
-mpirun -genv I_MPI_DEBUG 5 -machinefile $PBS_NODEFILE -env I_MPI_FABRICS shm:tmi -np $NOP ~/MASCH/MultiComponent -init >> log
+
+mpirun -genv I_MPI_DEBUG 5 -machinefile $PBS_NODEFILE -env I_MPI_FABRICS shm:tmi -np $NOP ~/MASCH/CompCoupledImplicit -init >> log
+#mpirun -machinefile $PBS_NODEFILE -np $NOP ~/MASCH/CompCoupledImplicit -init
 #mpirun -genv I_MPI_DEBUG 5 -machinefile hostfile -env I_MPI_FABRICS shm:tmi -np 402 ~/SEMO/IncomPressure >> log
 #mpirun -machinefile $PBS_NODEFILE -np $NOP ~/SEMO/IncomPressure >> log
