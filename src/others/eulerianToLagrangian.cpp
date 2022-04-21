@@ -9,7 +9,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	
 	auto& solver = (*this);
 		
-	double eps = -1.e-16;
+	double eps = -1.e-4;
 	
 	
 	int id_par_rho = controls.getId_parcelVar("density");
@@ -24,9 +24,15 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	int id_par_z = controls.getId_parcelVar("z-position");
 	int id_vol = controls.getId_cellVar("volume");
 	int id_rho = controls.getId_cellVar("density");
+	int id_u = controls.getId_cellVar("x-velocity");
+	int id_v = controls.getId_cellVar("y-velocity");
+	int id_w = controls.getId_cellVar("z-velocity");
+	int id_p = controls.getId_cellVar("pressure");
 	int id_nx = controls.getId_faceVar("x unit normal");
 	int id_ny = controls.getId_faceVar("y unit normal");
 	int id_nz = controls.getId_faceVar("z unit normal");
+	
+	double dt = var.fields[controls.getId_fieldVar("time-step")];
 	
 	auto cells = mesh.cells.data();
 	auto cellVar = var.cells.data();
@@ -37,6 +43,25 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 
 	for(int id=0; id<controls.nameParcels.size(); ++id){
 		string name = controls.nameParcels[id];
+		
+		int iSp = -1;
+		for(int i=0; i<controls.spName.size(); ++i){
+			if(name == controls.spName[i]){
+				iSp = i;
+				break;
+			}
+		}
+		if(iSp==-1) cout << "#WARNING : can not fined spname, " << name << endl;
+		
+		if(controls.controlParcelsMap.find(name+".eulerianToLagrangian.interval")==
+		controls.controlParcelsMap.end()) {
+			cout << "#WARNING : not defined, " << name << ".eulerianToLagrangian.interval" << endl;
+			continue;
+		}
+		if( (controls.iterReal+1) %
+			stoi(controls.controlParcelsMap[name+".eulerianToLagrangian.interval"]) != 0){
+			continue;	
+		}
 			
 		if(controls.controlParcelsMap.find(name+".eulerianToLagrangian.type")==
 		controls.controlParcelsMap.end()) {
@@ -53,6 +78,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 		double dx_UDV = stod(controls.controlParcelsMap[name+".eulerianToLagrangian.minRadius"]);
 			
 		// parcel 그룹 찾기 (MPI 사용 안함. 블럭 내부에서만 변경)
+		int id_Ht = controls.getId_cellVar("total-enthalpy");
 		int id_Y = controls.getId_cellVar("mass-fraction-"+name);
 		int id_alpha = controls.getId_cellVar("volume-fraction-"+name);
 		
@@ -145,7 +171,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 			double tmp_alpha = cellVar_i[id_alpha];
 			double cell_vol = cellVar_i[id_vol];
 			
-			target_volume_inCell[i] = tmp_alpha*cell_vol;
+			target_volume_inCell[i] = cell_vol;//tmp_alpha*cell_vol;
 			target_mass_inCell[i] = tmp_rho*tmp_Y*cell_vol;
 		}
 		
@@ -171,7 +197,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 					auto cellStenVar_i = cellVar[icell].data();
 					
 					double target_volume = target_volume_inCell[icell];
-					double target_mass = target_mass_inCell[icell];
+					double target_mass = target_volume;//target_mass_inCell[icell];
+					
 					total_volume += target_volume;
 					total_mass += target_mass;
 					
@@ -241,6 +268,10 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 				// total_volume <= 4.0/3.0*3.141592*R_cri*R_cri*R_cri &&
 				// R_max/(max(dx_UDV,tmp_R) <= alpha_cri)
 				// ){
+				// cout << scientific; cout.precision(2);
+				// cout << total_volume << " " << 4.0/3.0*3.141592*R_cri*R_cri*R_cri << endl;
+				// cout << R_max << " " << tmp_R << " " << alpha_cri << endl;
+				// cout << fixed; cout.precision(0);
 				if(
 				(total_volume <= 4.0/3.0*3.141592*R_cri*R_cri*R_cri) &&
 				(R_max/(max(dx_UDV,tmp_R)) <= alpha_cri)
@@ -283,6 +314,9 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 		
 		// 변환
 		{
+			int iSegEq = 0;
+			int nEq = controls.nEq[iSegEq];
+			
 			for(int iPar=0, SIZE=groupParcelVars.size(); iPar<SIZE; ++iPar){
 				auto& vars = groupParcelVars[iPar];
 				auto& icells = parcelGroups_icells[iPar];
@@ -320,11 +354,19 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 				}
 				
 				if(pres_icell==-1) {
-					cout << scientific; cout.precision(2);
-					cout << "#WARNING : not find parcel location" << endl;
+					cout << scientific; cout.precision(8);
+					cout << "#WARNING : not find parcel location -> deleted" << endl;
+					continue;
 					cout << pres_x << " " << pres_y << " " << pres_z << endl;
 					cout << icells.size() << endl;
+					int iter3 = 0;
+					for(auto& i : icells){
+						auto& cell = mesh.cells[i];
+						cout << iter3 << " | " << cell.x << " " << cell.y << " " << cell.z << endl;
+						++iter3;
+					}
 					cout << fixed; cout.precision(0);
+					MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 				}
 				
 				// parcel 생성
@@ -336,7 +378,25 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 					auto& cellSten = cells[icell];
 					auto cellStenVar_i = cellVar[icell].data();
 					
-					cellStenVar_i[id_Y] = 0.0;
+					double vol = cellStenVar_i[id_vol];
+					double Y_org = cellStenVar_i[id_Y];
+					
+					double fluxB[nEq];
+					for(int iEq=0; iEq<nEq; ++iEq){
+						fluxB[iEq] = 0.0;
+					}
+					fluxB[0] -= Y_org*cellStenVar_i[id_rho]/dt*vol;
+					fluxB[1] -= Y_org*cellStenVar_i[id_rho]*cellStenVar_i[id_u]/dt*vol;
+					fluxB[2] -= Y_org*cellStenVar_i[id_rho]*cellStenVar_i[id_v]/dt*vol;
+					fluxB[3] -= Y_org*cellStenVar_i[id_rho]*cellStenVar_i[id_w]/dt*vol;
+					fluxB[4] -= Y_org*(cellStenVar_i[id_rho]*cellStenVar_i[id_Ht]-
+								cellStenVar_i[id_p])/dt*vol;
+					fluxB[5+iSp] -= Y_org*cellStenVar_i[id_rho]/dt*vol;
+					for(int iEq=0; iEq<nEq; ++iEq){
+						var.accumB( iSegEq, icell, iEq, fluxB[iEq] );
+					}
+					
+					// cellStenVar_i[id_Y] = 1.e-8;
 					
 				}
 			}

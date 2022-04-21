@@ -246,7 +246,7 @@ void MASCH_Solver::solveAMGCL(
 			cout << scientific; cout.precision(2);
 			// cout << solve << endl;
 			// cout << prof << endl;
-			cout << "| iLinSol = " << iters << ", resiLinSol = " << error << endl;
+			cout << "| nLinSol = " << iters << ", resiLinSol = " << error << endl;
 			cout << fixed; cout.precision(0);
 		}
 		

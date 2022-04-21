@@ -122,9 +122,12 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 	int id_nLRx = controls.getId_faceVar("x unit normal of between left and right cell");
 	int id_nLRy = controls.getId_faceVar("y unit normal of between left and right cell");
 	int id_nLRz = controls.getId_faceVar("z unit normal of between left and right cell");
+    
+    
+    
 	
 	
-	using funcType = double(MASCH_NVD::*)(double,double,double,double,double);
+	using funcType = double(MASCH_NVD::*)(double,double,double,double,double,double);
 	vector<funcType> NVD_scheme;
 	{
 		string type = controls.fvSchemeMap["highOrderScheme.p"];
@@ -232,6 +235,22 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 	if(NVD_scheme.size() != 5+nSp-1) cout << "#WARNING : NVD_scheme not matching nEq" << endl;
 	
 	
+	vector<int> id_gammaYL, id_gammaYR;
+    id_gammaYL.push_back(controls.getId_faceVar("left limiter-pressure"));
+    id_gammaYR.push_back(controls.getId_faceVar("right limiter-pressure"));
+    id_gammaYL.push_back(controls.getId_faceVar("left limiter-x-velocity"));
+    id_gammaYR.push_back(controls.getId_faceVar("right limiter-x-velocity"));
+    id_gammaYL.push_back(controls.getId_faceVar("left limiter-y-velocity"));
+    id_gammaYR.push_back(controls.getId_faceVar("right limiter-y-velocity"));
+    id_gammaYL.push_back(controls.getId_faceVar("left limiter-z-velocity"));
+    id_gammaYR.push_back(controls.getId_faceVar("right limiter-z-velocity"));
+    id_gammaYL.push_back(controls.getId_faceVar("left limiter-temperature"));
+    id_gammaYR.push_back(controls.getId_faceVar("right limiter-temperature"));
+	for(int i=0; i<controls.spName.size()-1; ++i){
+        id_gammaYL.push_back(controls.getId_faceVar("left limiter-mass-fraction-"+controls.spName[i]));
+        id_gammaYR.push_back(controls.getId_faceVar("right limiter-mass-fraction-"+controls.spName[i]));
+    }
+    
 	
 	
 	int id_lim_p = controls.getId_cellVar("limiter-unstructured pressure");
@@ -261,7 +280,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 			id_c,nSp,id_alpha,id_nLRx,id_nLRy,id_nLRz,
 			id_xLNv,id_yLNv,id_zLNv,id_xRNv,id_yRNv,id_zRNv,
 			id_lim_p,id_lim_u,id_lim_v,id_lim_w,
-			id_xLF,id_yLF,id_zLF,id_xRF,id_yRF,id_zRF](
+			id_xLF,id_yLF,id_zLF,id_xRF,id_yRF,id_zRF,
+            id_gammaYL,id_gammaYR](
 			double* fields, double* cellsL, double* cellsR, double* faces)->int{
 				auto NVD_scheme_i = NVD_scheme.data();
 				double nvec[3];
@@ -286,6 +306,7 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 				double dt = fields[id_dt];
 				// double rhoL = cellsL[id_rho]; double rhoR = cellsR[id_rho];
 				
+				double rhoL = cellsL[id_rhoL]; double rhoR = cellsR[id_rhoL];
 				double cL = cellsL[id_c]; double cR = cellsR[id_c];
 				double pL = cellsL[id_p]; double pR = cellsR[id_p];
 				double dpdxL = cellsL[id_dpdx]; double dpdxR = cellsR[id_dpdx];
@@ -412,7 +433,7 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 				for(int ii=0; ii<2; ++ii){
 				
 					double phiL2[5+nSp], phiL1[5+nSp], phiR1[5+nSp];
-					double tmp_limGrad = 1.0;
+					// double tmp_limGrad = 1.0;
 					if(ii==0){
 						phiL1[0] = pL; phiR1[0] = pR;
 						phiL2[0] = 0.0;
@@ -420,7 +441,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[0] -= 2.0*dpdyL*xyzLR[1];
 						phiL2[0] -= 2.0*dpdzL*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[0],pL_max,pL_min,phiL2[0], eta);
-						phiL2[0] = phiR1[0] + tmp_limGrad*phiL2[0];
+						// phiL2[0] = phiR1[0] + tmp_limGrad*phiL2[0];
+						phiL2[0] = phiR1[0] + phiL2[0];
 						
 						phiL1[1] = uL; phiR1[1] = uR;
 						phiL2[1] = 0.0;
@@ -428,7 +450,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[1] -= 2.0*dudyL*xyzLR[1];
 						phiL2[1] -= 2.0*dudzL*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[1],uL_max,uL_min,phiL2[1], eta);
-						phiL2[1] = phiR1[1] + tmp_limGrad*phiL2[1];
+						// phiL2[1] = phiR1[1] + tmp_limGrad*phiL2[1];
+						phiL2[1] = phiR1[1] + phiL2[1];
 						
 						phiL1[2] = vL; phiR1[2] = vR;
 						phiL2[2] = 0.0;
@@ -436,15 +459,17 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[2] -= 2.0*dvdyL*xyzLR[1];
 						phiL2[2] -= 2.0*dvdzL*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[2],vL_max,vL_min,phiL2[2], eta);
-						phiL2[2] = phiR1[2] + tmp_limGrad*phiL2[2];
+						// phiL2[2] = phiR1[2] + tmp_limGrad*phiL2[2];
+						phiL2[2] = phiR1[2] + phiL2[2];
 						
 						phiL1[3] = wL; phiR1[3] = wR;
 						phiL2[3] = 0.0;
 						phiL2[3] -= 2.0*dwdxL*xyzLR[0];
 						phiL2[3] -= 2.0*dwdyL*xyzLR[1];
 						phiL2[3] -= 2.0*dwdzL*xyzLR[2];
-						tmp_limGrad = solver.limiter_MLP(phiL1[3],wL_max,wL_min,phiL2[3], eta);
-						phiL2[3] = phiR1[3] + tmp_limGrad*phiL2[3];
+						// tmp_limGrad = solver.limiter_MLP(phiL1[3],wL_max,wL_min,phiL2[3], eta);
+						// phiL2[3] = phiR1[3] + tmp_limGrad*phiL2[3];
+						phiL2[3] = phiR1[3] + phiL2[3];
 						
 						phiL1[4] = TL; phiR1[4] = TR;
 						phiL2[4] = 0.0;
@@ -452,7 +477,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[4] -= 2.0*dTdyL*xyzLR[1];
 						phiL2[4] -= 2.0*dTdzL*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[4],TL_max,TL_min,phiL2[4], eta);
-						phiL2[4] = phiR1[4] + tmp_limGrad*phiL2[4];
+						// phiL2[4] = phiR1[4] + tmp_limGrad*phiL2[4];
+						phiL2[4] = phiR1[4] + phiL2[4];
 						
 						for(int i=0; i<nSp-1; ++i){
 							int tmp_i = 5+i;
@@ -462,7 +488,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 							phiL2[tmp_i] -= 2.0*dYdyL[i]*xyzLR[1];
 							phiL2[tmp_i] -= 2.0*dYdzL[i]*xyzLR[2];
 							// tmp_limGrad = solver.limiter_MLP(phiL1[tmp_i],YL_max[i],YL_min[i],phiL2[tmp_i], eta);
-							phiL2[tmp_i] = phiR1[tmp_i] + tmp_limGrad*phiL2[tmp_i];
+							// phiL2[tmp_i] = phiR1[tmp_i] + tmp_limGrad*phiL2[tmp_i];
+							phiL2[tmp_i] = phiR1[tmp_i] + phiL2[tmp_i];
 							
 							phiL2[tmp_i] = max(0.0,min(1.0,phiL2[tmp_i]));
 						}
@@ -502,7 +529,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[0] += 2.0*dpdyR*xyzLR[1];
 						phiL2[0] += 2.0*dpdzR*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[0],pR_max,pR_min,phiL2[0], eta);
-						phiL2[0] = phiR1[0] + tmp_limGrad*phiL2[0];
+						// phiL2[0] = phiR1[0] + tmp_limGrad*phiL2[0];
+						phiL2[0] = phiR1[0] + phiL2[0];
 						
 						phiL1[1] = uR; phiR1[1] = uL;
 						phiL2[1] = 0.0;
@@ -510,7 +538,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[1] += 2.0*dudyR*xyzLR[1];
 						phiL2[1] += 2.0*dudzR*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[1],uR_max,uR_min,phiL2[1], eta);
-						phiL2[1] = phiR1[1] + tmp_limGrad*phiL2[1];
+						// phiL2[1] = phiR1[1] + tmp_limGrad*phiL2[1];
+						phiL2[1] = phiR1[1] + phiL2[1];
 						
 						phiL1[2] = vR; phiR1[2] = vL;
 						phiL2[2] = 0.0;
@@ -518,7 +547,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[2] += 2.0*dvdyR*xyzLR[1];
 						phiL2[2] += 2.0*dvdzR*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[2],vR_max,vR_min,phiL2[2], eta);
-						phiL2[2] = phiR1[2] + tmp_limGrad*phiL2[2];
+						// phiL2[2] = phiR1[2] + tmp_limGrad*phiL2[2];
+						phiL2[2] = phiR1[2] + phiL2[2];
 						
 						phiL1[3] = wR; phiR1[3] = wL;
 						phiL2[3] = 0.0;
@@ -526,7 +556,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[3] += 2.0*dwdyR*xyzLR[1];
 						phiL2[3] += 2.0*dwdzR*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[3],wR_max,wR_min,phiL2[3], eta);
-						phiL2[3] = phiR1[3] + tmp_limGrad*phiL2[3];
+						// phiL2[3] = phiR1[3] + tmp_limGrad*phiL2[3];
+						phiL2[3] = phiR1[3] + phiL2[3];
 						
 						phiL1[4] = TR; phiR1[4] = TL;
 						phiL2[4] = 0.0;
@@ -534,7 +565,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						phiL2[4] += 2.0*dTdyR*xyzLR[1];
 						phiL2[4] += 2.0*dTdzR*xyzLR[2];
 						// tmp_limGrad = solver.limiter_MLP(phiL1[4],TR_max,TR_min,phiL2[4], eta);
-						phiL2[4] = phiR1[4] + tmp_limGrad*phiL2[4];
+						// phiL2[4] = phiR1[4] + tmp_limGrad*phiL2[4];
+						phiL2[4] = phiR1[4] + phiL2[4];
 						
 						for(int i=0; i<nSp-1; ++i){
 							int tmp_i = 5+i;
@@ -544,7 +576,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 							phiL2[tmp_i] += 2.0*dYdyR[i]*xyzLR[1];
 							phiL2[tmp_i] += 2.0*dYdzR[i]*xyzLR[2];
 							// tmp_limGrad = solver.limiter_MLP(phiL1[tmp_i],YR_max[i],YR_min[i],phiL2[tmp_i], eta);
-							phiL2[tmp_i] = phiR1[tmp_i] + tmp_limGrad*phiL2[tmp_i];
+							// phiL2[tmp_i] = phiR1[tmp_i] + tmp_limGrad*phiL2[tmp_i];
+							phiL2[tmp_i] = phiR1[tmp_i] + phiL2[tmp_i];
 							
 							phiL2[tmp_i] = max(0.0,min(1.0,phiL2[tmp_i]));
 						}
@@ -575,46 +608,83 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 						
 						
 					}
-					
-					// cout << NVD_scheme.size() << endl;
-					for(int i=0; i<5; ++i) phiL1[i] = (solver.NVD.*NVD_scheme_i[i])(phiL2[i],phiL1[i],phiR1[i],0.0,0.0);
+					 
+					for(int i=0; i<5; ++i) {
+                        double tmp_gam = (solver.NVD.*NVD_scheme_i[i])(phiL2[i],phiL1[i],phiR1[i],0.0,0.0,0.0);
+                        tmp_gam = max(0.0,min(1.0,tmp_gam));
+                        if(ii==0) {
+                            faces[id_gammaYL[i]] = tmp_gam;
+                        }
+                        else{
+                            faces[id_gammaYR[i]] = tmp_gam;
+                        }
+                        phiL1[i] = tmp_gam*phiL1[i] + (1.0-tmp_gam)*phiR1[i];
+                    }
 					
 					{
-						// double dt_tmp_L = dx/(sqrt(uL*uL+vL*vL+wL*wL)+cL);
-						// double dt_tmp_R = dx/(sqrt(uR*uR+vR*vR+wR*wR)+cR);
-						// double dt_tmp = dx/(sqrt(phiL1[1]*phiL1[1]+phiL1[2]*phiL1[2]+phiL1[3]*phiL1[3])+cL);
-						// if(ii==1){
-							// dt_tmp = dx/(sqrt(phiL1[1]*phiL1[1]+phiL1[2]*phiL1[2]+phiL1[3]*phiL1[3])+cR);
-						// }		
-						// double max_u = max(uL,uR);
-						// double max_v = max(vL,vR);
-						// double max_w = max(wL,wR);
-						// double max_c = max(cL,cR);
-						// double dt_tmp = dx/(sqrt(max_u*max_u+max_v*max_v+max_w*max_w)+max_c);
-						double max_u = 0.5*(uL+uR);
-						double max_v = 0.5*(vL+vR);
-						double max_w = 0.5*(wL+wR);
-						double max_c = 0.5*(cL+cR);
-						double dt_tmp = dx/(sqrt(max_u*max_u+max_v*max_v+max_w*max_w)+1.e-200);
-						double coDD = 1.0*dt/dt_tmp;
+                        // w_c = 0 이어야지 sharp 해짐
+                        double w_c = min(abs(pL_min)/(abs(pR_max)+1.e-200),abs(pR_min)/(abs(pL_max)+1.e-200));
+                        // double w_c = min(abs(pL)/(abs(pR)+1.e-200),abs(pR)/(abs(pL)+1.e-200));
+                        w_c = 1.0 - w_c;
+                        w_c = w_c*w_c;
+                        // w_c = w_c*w_c;
+                        // w_c = w_c*w_c;
+                        w_c = max(0.0,min(1.0,w_c));
+                        
+                        
+                        
+                        // w_c = 0.0;
+                        
+                        
+                        
+                        
+						double dt_tmp_L = dx/(sqrt(uL*uL+vL*vL+wL*wL)+1.e-200);
+						double dt_tmp_R = dx/(sqrt(uR*uR+vR*vR+wR*wR)+1.e-200);
+						double coDD = 1.0*max(1.0*dt/dt_tmp_L,1.0*dt/dt_tmp_R);
+						
 						
 						for(int i=0; i<nSp-1; ++i){
-							double mfLR[3];
-							mfLR[0] = 0.5*dYdxL[i]+0.5*dYdxR[i];
-							mfLR[1] = 0.5*dYdyL[i]+0.5*dYdyR[i];
-							mfLR[2] = 0.5*dYdzL[i]+0.5*dYdzR[i];
+                            double mfLR[3];
+                            if(ii==0){
+                                mfLR[0] = dYdxL[i];
+                                mfLR[1] = dYdyL[i];
+                                mfLR[2] = dYdzL[i];
+                            }
+                            else{
+                                mfLR[0] = dYdxR[i];
+                                mfLR[1] = dYdyR[i];
+                                mfLR[2] = dYdzR[i];
+                            }
 							double magMfLR = 0.0;
 							for(int j=0; j<3; ++j) magMfLR += mfLR[j]*mfLR[j];
 							magMfLR = sqrt(magMfLR);
 							for(int j=0; j<3; ++j) mfLR[j] = mfLR[j]/(magMfLR+1.e-200);
 							double cosTheta = 0.0;
-							cosTheta += mfLR[0]*faces[id_nx];
-							cosTheta += mfLR[1]*faces[id_ny];
-							cosTheta += mfLR[2]*faces[id_nz];
+							// cosTheta += mfLR[0]*faces[id_nx];
+							// cosTheta += mfLR[1]*faces[id_ny];
+							// cosTheta += mfLR[2]*faces[id_nz];
+                            cosTheta += mfLR[0]*nvec[0];
+                            cosTheta += mfLR[1]*nvec[1];
+                            cosTheta += mfLR[2]*nvec[2];
 							cosTheta = abs(cosTheta);
-							double gamF = min(cosTheta*cosTheta*cosTheta*cosTheta,1.0);
+                            double gamF = cosTheta*cosTheta;
+                            gamF = min(gamF*gamF,1.0);
+                            // double gamF = min(cosTheta,1.0);
 							
-							phiL1[5+i] = (solver.NVD.*NVD_scheme_i[5+i])(phiL2[5+i],phiL1[5+i],phiR1[5+i],coDD,gamF);
+							// phiL1[5+i] = (solver.NVD.*NVD_scheme_i[5+i])(phiL2[5+i],phiL1[5+i],phiR1[5+i],coDD,gamF,w_c);
+                            
+                            double tmp_gam = (solver.NVD.*NVD_scheme_i[5+i])(phiL2[5+i],phiL1[5+i],phiR1[5+i],coDD,gamF,w_c);
+                            tmp_gam = max(0.0,min(1.0,tmp_gam));
+                            if(ii==0) {
+                                faces[id_gammaYL[5+i]] = tmp_gam;
+                            }
+                            else{
+                                faces[id_gammaYR[5+i]] = tmp_gam;
+                            }
+                            // if(tmp_gam>1.0 || tmp_gam<0.0){
+                                // cout << "#WARNING : tmp_gam = " << tmp_gam << endl;
+                            // }
+                            phiL1[5+i] = tmp_gam*phiL1[5+i] + (1.0-tmp_gam)*phiR1[5+i];
 						}
 					}
 					

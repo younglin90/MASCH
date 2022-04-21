@@ -356,29 +356,33 @@ string inp_option){
 		
 		int nVarBoundary = 0;
 		for(auto& [name, tmp_var] : controls.cellVar){
-			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
-				// cout << name << endl;
-				++nVarBoundary;
-			}
+			if(tmp_var.id>=0 && tmp_var.role=="primitive") ++nVarBoundary;
 		}
-		int nVarParticle = 100;
 		
 		var.fields.resize(controls.nFieldVar);
-		if(controls.nCellVar>0){
-			for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
-			for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
-		}
-		if(controls.nFaceVar>0){
-			for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
-		}
-		if(controls.nPointVar>0){
-			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
-		}
-		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-		for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
+		for(auto& item : var.cells) item.resize(controls.nCellVar);
+		for(auto& item : var.procRightCells) item.resize(controls.nCellVar);
+		for(auto& item : var.faces) item.resize(controls.nFaceVar);
+		for(auto& item : var.points) item.resize(controls.nPointVar);
+		for(auto& item : var.boundaries) item.resize(nVarBoundary);
+		for(auto& item : var.parcels) item.resize(controls.nParcelVar);
+		
+		// var.fields.resize(controls.nFieldVar);
+		// if(controls.nCellVar>0){
+			// for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
+			// for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+		// }
+		// if(controls.nFaceVar>0){
+			// for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+		// }
+		// if(controls.nPointVar>0){
+			// for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+		// }
+		// for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+		// for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
 	
 		
-		
+		// 셀 값
 		for(int i=0; i<org_nCells; ++i){
 			int sub_size = cellConn[i].size();
 			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
@@ -446,8 +450,95 @@ string inp_option){
 			}
 		}
 		
-
+		
+		
+		// 파슬 값
+		for(auto& cell : mesh.cells){
+			cell.iparcels.clear();
+		}
+		
+		if(mesh.parcels.size()>0)
+		{
+			MASCH_Math math;
 			
+			double eps = -1.e-1;
+			
+			int id_par_x = controls.getId_parcelVar("x-position");
+			int id_par_y = controls.getId_parcelVar("y-position");
+			int id_par_z = controls.getId_parcelVar("z-position");
+			// auto faceVar = var.faceVar.data();
+			// 파슬 위치 찾기
+			int iter=0;
+			for(auto& parcel : mesh.parcels){
+				int i = parcel.icell;
+				int sub_size = cellConn[i].size();
+				double pres_x = var.parcels[iter][id_par_x];
+				double pres_y = var.parcels[iter][id_par_y];
+				double pres_z = var.parcels[iter][id_par_z];
+				int pres_icell = -1;
+				for(int j=0; j<sub_size; ++j){
+					int id_cell = cellConn.at(i).at(j);
+					auto& cell = mesh.cells[id_cell];
+					bool boolInside = true;
+					for(auto& iface : cell.ifaces){
+						auto& face = mesh.faces[iface];
+						// auto faceVar_i = faceVar[iface].data();
+										
+						vector<double> Vx, Vy, Vz;
+						for(auto& ipoint : face.ipoints){
+							Vx.push_back(mesh.points[ipoint].x);
+							Vy.push_back(mesh.points[ipoint].y);
+							Vz.push_back(mesh.points[ipoint].z);
+						}
+						double VSn=0.0;
+						vector<double> cellCentroid;
+						vector<double> unitNormals(3,0.0);
+						double area;
+						math.calcUnitNormals_Area3dPolygon(
+							face.ipoints.size(), Vx,Vy,Vz,
+							unitNormals, area,
+							face.x, face.y, face.z,
+							VSn, cellCentroid);
+						
+						double x_pF = pres_x - face.x;
+						double y_pF = pres_y - face.y;
+						double z_pF = pres_z - face.z;
+						double nx = -unitNormals[0];
+						double ny = -unitNormals[1];
+						double nz = -unitNormals[2];
+						if(face.iL!=id_cell) {
+							nx = -nx; ny = -ny; nz = -nz;
+						}
+						double Lcond = x_pF*nx + y_pF*ny + z_pF*nz;
+						if(Lcond < eps){
+							boolInside = false;
+							break;
+						}
+					}
+					if(boolInside==false) continue;
+					
+					pres_icell = i;
+					break;
+				}
+				
+				if(pres_icell==-1) {
+					cout << scientific; cout.precision(2);
+					cout << "#WARNING : not find parcel location" << endl;
+					cout << pres_x << " " << pres_y << " " << pres_z << endl;
+					// cout << icells.size() << endl;
+					cout << fixed; cout.precision(0);
+				}
+				
+				parcel.icell = pres_icell;
+				mesh.cells[pres_icell].iparcels.push_back(iter);
+				
+				++iter;
+			}
+			
+		}
+		
+		
+		
 		
 		
 	}
@@ -496,26 +587,31 @@ string inp_option){
 		
 		int nVarBoundary = 0;
 		for(auto& [name, tmp_var] : controls.cellVar){
-			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
-				// cout << name << endl;
-				++nVarBoundary;
-			}
+			if(tmp_var.id>=0 && tmp_var.role=="primitive") ++nVarBoundary;
 		}
-		int nVarParticle = 100;
+		// int nVarParticle = 100;
 		
 		var.fields.resize(controls.nFieldVar);
-		if(controls.nCellVar>0){
-			for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
-			for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
-		}
-		if(controls.nFaceVar>0){
-			for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
-		}
-		if(controls.nPointVar>0){
-			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
-		}
-		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-		for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
+		for(auto& item : var.cells) item.resize(controls.nCellVar);
+		for(auto& item : var.procRightCells) item.resize(controls.nCellVar);
+		for(auto& item : var.faces) item.resize(controls.nFaceVar);
+		for(auto& item : var.points) item.resize(controls.nPointVar);
+		for(auto& item : var.boundaries) item.resize(nVarBoundary);
+		for(auto& item : var.parcels) item.resize(controls.nParcelVar);
+		
+		// var.fields.resize(controls.nFieldVar);
+		// if(controls.nCellVar>0){
+			// for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
+			// for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+		// }
+		// if(controls.nFaceVar>0){
+			// for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+		// }
+		// if(controls.nPointVar>0){
+			// for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+		// }
+		// for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+		// for(int i=0; i<nParcels; ++i) var.parcels[i].resize(controls.nParcelVar);
 	
 		// MPI_Barrier(MPI_COMM_WORLD);
 		// cout << "44" << endl;
@@ -523,6 +619,7 @@ string inp_option){
 		
 		for(int i=0; i<cellConn.size(); ++i){
 			int sub_size = cellConn[i].size();
+            double doub_sub_size = static_cast<double>(sub_size);
 			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
 				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
 				
@@ -530,12 +627,27 @@ string inp_option){
 				for(int j=0; j<sub_size; ++j){
 					int sub_id = cellConn[i][j];
 					double org_value = send_val.at(iprim).at(sub_id);
-					new_value += org_value/(double)sub_size;
+					new_value += org_value/doub_sub_size;
 				}
 				
 				var.cells.at(i).at(id_prim) = new_value;
 			}
 		}
+		
+		
+		
+		// 파슬값
+		if(mesh.parcels.size()>0)
+		{			
+			int iter=0;
+			for(auto& cell : mesh.cells){
+				for(auto& iparcel : cell.iparcels){
+					mesh.parcels[iparcel].icell = iter;
+				}
+				++iter;
+			}
+		}
+		
 		
 		
 		
@@ -549,9 +661,37 @@ string inp_option){
 }
 
 
+// void MASCH_Control::resetParcelPosition(
+// MASCH_Mesh& mesh, MASCH_Variables& var, 
+// vector<vector<int>>& cellConn, string inp_option){
+	
+	// auto& controls = (*this);
+	
+	
+	// if(inp_option=="refine"){
+			
+	
+		
+		
+		
+	// }
+	// else if(inp_option=="unrefine"){
+		
+		
+	// }
+	// else{
+		// cout << "#WARNING" << endl;
+	// }
+			
+	
+	
+// }
+
+
 void MASCH_Control::resetVariableArray(
 MASCH_Mesh& mesh, MASCH_Variables& var,
 vector<int>& cell_ip, vector<int>& cellConn,
+vector<int>& parcel_ip,
 string inp_option){
 	
 	auto& controls = (*this);
@@ -559,129 +699,288 @@ string inp_option){
 	
 	if(inp_option=="repart"){
 		
-		int tmp_nPrimitive = 0;
-		vector<string> tmp_name_prim;
-		vector<string> tmp_name_x_grad_prim;
-		vector<string> tmp_name_y_grad_prim;
-		vector<string> tmp_name_z_grad_prim;
-		for(auto& [name, tmp_var] : controls.cellVar){
-			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
-				tmp_name_prim.push_back(name);
-				string x_grad_name = "x-gradient ";
-				string y_grad_name = "y-gradient ";
-				string z_grad_name = "z-gradient ";
-				x_grad_name += name;
-				y_grad_name += name;
-				z_grad_name += name;
-				tmp_name_x_grad_prim.push_back(x_grad_name);
-				tmp_name_y_grad_prim.push_back(y_grad_name);
-				tmp_name_z_grad_prim.push_back(z_grad_name);
-				++tmp_nPrimitive;
-			}
-		}
+		int rank = MPI::COMM_WORLD.Get_rank(); 
+		int size = MPI::COMM_WORLD.Get_size();
+
+		int org_nCells = var.cells.size();
+		int org_nFaces = var.faces.size();
+		// int org_nProcFaces = var.cells.size();
+		int org_nPoints = var.points.size();
+		int org_nBoundaries = var.boundaries.size();
+		// int org_nParcels = var.parcels.size();
 		
-		int org_nCells = cellConn.size();
-		
-		vector<vector<double>> send_val(tmp_nPrimitive);
-		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
-		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
-		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
-		for(int i=0; i<org_nCells; ++i){
-			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
-				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
-				int id_x_grad_prim = controls.getId_cellVar(tmp_name_x_grad_prim[iprim]);
-				int id_y_grad_prim = controls.getId_cellVar(tmp_name_y_grad_prim[iprim]);
-				int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
-				double value = var.cells[i][id_prim];
-				send_val[iprim].push_back(value);
-				send_x_grad_val[iprim].push_back(var.cells[i][id_x_grad_prim]);
-				send_y_grad_val[iprim].push_back(var.cells[i][id_y_grad_prim]);
-				send_z_grad_val[iprim].push_back(var.cells[i][id_z_grad_prim]);
-			}
-		}
-		
-			
 		int nCells = mesh.cells.size();
 		int nFaces = mesh.faces.size();
 		int nProcFaces = mesh.nProcessorFaces;
 		int nPoints = mesh.points.size();
 		int nBoundaries = mesh.boundaries.size();
-		// int nParticles = controls.parcel.size();
-		int nParticles = 0;
+		// int nParcels = mesh.parcels.size();
 		
-		var.cells.resize(nCells);
-		var.faces.resize(nFaces);
+		int nCellsMax = max(nCells,org_nCells);
+		int nFacesMax = max(nFaces,org_nFaces);
+		// int nProcFacesMax = max(nProcFaces,org_nProcFaces);
+		int nPointsMax = max(nPoints,org_nPoints);
+		int nBoundariesMax = max(nBoundaries,org_nBoundaries);
+		// int nParcelsMax = max(nParcels,org_nParcels);
+		
+		var.cells.resize(nCellsMax);
+		var.faces.resize(nFacesMax);
+		var.points.resize(nPointsMax);
+		var.boundaries.resize(nBoundariesMax);
+		// var.parcels.resize(nParcelsMax);
+		
 		var.procRightCells.resize(nProcFaces);
-		var.points.resize(nPoints);
-		var.boundaries.resize(nBoundaries);
 		
-		// var.parcel.resize(nParticles);
 		
 		int nVarBoundary = 0;
 		for(auto& [name, tmp_var] : controls.cellVar){
 			if(tmp_var.id>=0 && tmp_var.role=="primitive"){
-				// cout << name << endl;
 				++nVarBoundary;
 			}
 		}
-		int nVarParticle = 100;
 		
 		var.fields.resize(controls.nFieldVar);
-		if(controls.nCellVar>0){
-			for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
-			for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
-		}
-		if(controls.nFaceVar>0){
-			for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
-		}
-		if(controls.nPointVar>0){
-			for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
-		}
-		for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-		// for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
-	
+		for(auto& item : var.cells) item.resize(controls.nCellVar);
+		for(auto& item : var.procRightCells) item.resize(controls.nCellVar);
+		for(auto& item : var.faces) item.resize(controls.nFaceVar);
+		for(auto& item : var.points) item.resize(controls.nPointVar);
+		for(auto& item : var.boundaries) item.resize(nVarBoundary);
+		// for(auto& item : var.parcels) item.resize(controls.nParcelVar);
+
 		
-		int rank = MPI::COMM_WORLD.Get_rank();
-		int size = MPI::COMM_WORLD.Get_size();
-	
-		vector<vector<double>> send_value(size);
-		for(int i=0; i<org_nCells; ++i){
-			int send_id = cellConn[i];
-			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
-				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
-				double org_value = send_val[iprim][i];
-				double x_grad = send_x_grad_val.at(iprim).at(i);
-				double y_grad = send_y_grad_val.at(iprim).at(i);
-				double z_grad = send_z_grad_val.at(iprim).at(i);
-				double avg_values = 0.0;
-				
-				double value_interpol = org_value;
-				
-				send_value[cell_ip[i]].push_back(value_interpol);
-					
-			}
-		}
 		MASCH_MPI mpi;
-		vector<vector<double>> recv_value(size);
-		mpi.Alltoallv(send_value, recv_value);
-		for(int ip=0, id=0; ip<size; ++ip){
-			int tmp_size = recv_value[ip].size()/tmp_nPrimitive;
-			for(int i=0, iter=0; i<tmp_size; ++i){
-				for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
-					int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
-					double tmp_value = recv_value[ip][iter++];
-					var.cells[id][id_prim] = tmp_value;
+		
+		// 셀값 전달
+		{
+			int varSize = controls.nCellVar;
+			for(int iprim=0; iprim<varSize; ++iprim){
+				vector<vector<double>> send_value(size);
+				for(int i=0; i<org_nCells; ++i){
+					double org_value = var.cells.at(i).at(iprim);
+					send_value[cell_ip[i]].push_back(org_value);
 				}
-				++id;
+				vector<vector<double>> recv_value(size);
+				mpi.Alltoallv(send_value, recv_value);
+				
+				for(int ip=0, iter=0; ip<size; ++ip){
+					for(auto& item : recv_value[ip]){
+						var.cells.at(iter).at(iprim) = item;
+						++iter;
+					}
+				}
 			}
 		}
+		
+		
+		// // 파슬값 전달
+		// {
+			// vector<int> parcel_ip;
+			// for(int i=0; i<org_nParcels; ++i){
+				// parcel_ip.at(i) = cell_ip.at(parcel.icell);
+			// }
+			
+			// int varSize = controls.nParcelVar;
+			// for(int iprim=0; iprim<varSize; ++iprim){
+				// vector<vector<double>> send_value(size);
+				// for(int i=0; i<org_nParcels; ++i){
+					// double org_value = var.parcels.at(i).at(iprim);
+					// send_value.at(parcel_ip.at(i)).push_back(org_value);
+				// }
+				// // vector<vector<double>> recv_value(size);
+				// // mpi.Alltoallv(send_value, recv_value);
+				
+				// // for(int ip=0, iter=0; ip<size; ++ip){
+					// // for(auto& item : recv_value[ip]){
+						// // var.parcels.at(iter).at(iprim) = item;
+						// // ++iter;
+					// // }
+				// // }
+			// }
+		// }
+		
+		
+		// 재정립
+		var.cells.resize(nCells);
+		var.faces.resize(nFaces);
+		var.points.resize(nPoints);
+		var.boundaries.resize(nBoundaries);
+		// var.parcels.resize(nParcels);
+		
+		var.procRightCells.resize(nProcFaces);
+		
+		
+		
+		
+		
+		int org_nParcels = var.parcels.size();
+		int nParcels = mesh.parcels.size();
+		int nParcelsMax = max(nParcels,org_nParcels);
+		var.parcels.resize(nParcelsMax);
+		for(auto& item : var.parcels) item.resize(controls.nParcelVar);
+		
+		int varSize = controls.nParcelVar;
+		for(int iprim=0; iprim<varSize; ++iprim){
+			vector<vector<double>> send_value(size);
+			for(int i=0; i<org_nParcels; ++i){
+				double org_value = var.parcels.at(i).at(iprim);
+				send_value.at(parcel_ip.at(i)).push_back(org_value);
+			}
+			vector<vector<double>> recv_value(size);
+			mpi.Alltoallv(send_value, recv_value);
+			
+			for(int ip=0, iter=0; ip<size; ++ip){
+				for(auto& item : recv_value[ip]){
+					var.parcels.at(iter).at(iprim) = item;
+					++iter;
+				}
+			}
+		}
+		var.parcels.resize(nParcels);
 		
 		
 	}
+	else{
+		cout << "#WARNING" << endl;
+	}
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+}
+
+// void MASCH_Control::resetVariableArray(
+// MASCH_Mesh& mesh, MASCH_Variables& var,
+// vector<int>& cell_ip, vector<int>& cellConn,
+// string inp_option){
+	
+	// auto& controls = (*this);
+	
+	
+	// if(inp_option=="repart"){
+		
+		// int tmp_nPrimitive = 0;
+		// vector<string> tmp_name_prim;
+		// vector<string> tmp_name_x_grad_prim;
+		// vector<string> tmp_name_y_grad_prim;
+		// vector<string> tmp_name_z_grad_prim;
+		// for(auto& [name, tmp_var] : controls.cellVar){
+			// if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+				// tmp_name_prim.push_back(name);
+				// string x_grad_name = "x-gradient ";
+				// string y_grad_name = "y-gradient ";
+				// string z_grad_name = "z-gradient ";
+				// x_grad_name += name;
+				// y_grad_name += name;
+				// z_grad_name += name;
+				// tmp_name_x_grad_prim.push_back(x_grad_name);
+				// tmp_name_y_grad_prim.push_back(y_grad_name);
+				// tmp_name_z_grad_prim.push_back(z_grad_name);
+				// ++tmp_nPrimitive;
+			// }
+		// }
+		
+		// int org_nCells = cellConn.size();
+		
+		// vector<vector<double>> send_val(tmp_nPrimitive);
+		// vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
+		// vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
+		// vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
+		// for(int i=0; i<org_nCells; ++i){
+			// for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				// int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				// int id_x_grad_prim = controls.getId_cellVar(tmp_name_x_grad_prim[iprim]);
+				// int id_y_grad_prim = controls.getId_cellVar(tmp_name_y_grad_prim[iprim]);
+				// int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
+				// double value = var.cells[i][id_prim];
+				// send_val[iprim].push_back(value);
+				// send_x_grad_val[iprim].push_back(var.cells[i][id_x_grad_prim]);
+				// send_y_grad_val[iprim].push_back(var.cells[i][id_y_grad_prim]);
+				// send_z_grad_val[iprim].push_back(var.cells[i][id_z_grad_prim]);
+			// }
+		// }
+		
+			
+		// int nCells = mesh.cells.size();
+		// int nFaces = mesh.faces.size();
+		// int nProcFaces = mesh.nProcessorFaces;
+		// int nPoints = mesh.points.size();
+		// int nBoundaries = mesh.boundaries.size();
+		// // int nParticles = controls.parcel.size();
+		// int nParticles = 0;
+		
+		// var.cells.resize(nCells);
+		// var.faces.resize(nFaces);
+		// var.procRightCells.resize(nProcFaces);
+		// var.points.resize(nPoints);
+		// var.boundaries.resize(nBoundaries);
+		
+		// // var.parcel.resize(nParticles);
+		
+		// int nVarBoundary = 0;
+		// for(auto& [name, tmp_var] : controls.cellVar){
+			// if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+				// // cout << name << endl;
+				// ++nVarBoundary;
+			// }
+		// }
+		// int nVarParticle = 100;
+		
+		// var.fields.resize(controls.nFieldVar);
+		// if(controls.nCellVar>0){
+			// for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
+			// for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+		// }
+		// if(controls.nFaceVar>0){
+			// for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+		// }
+		// if(controls.nPointVar>0){
+			// for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+		// }
+		// for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+		// // for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
+	
+		
+		// int rank = MPI::COMM_WORLD.Get_rank();
+		// int size = MPI::COMM_WORLD.Get_size();
+	
+		// vector<vector<double>> send_value(size);
+		// for(int i=0; i<org_nCells; ++i){
+			// int send_id = cellConn[i];
+			// for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+				// int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+				// double org_value = send_val[iprim][i];
+				// double x_grad = send_x_grad_val.at(iprim).at(i);
+				// double y_grad = send_y_grad_val.at(iprim).at(i);
+				// double z_grad = send_z_grad_val.at(iprim).at(i);
+				// double avg_values = 0.0;
+				
+				// double value_interpol = org_value;
+				
+				// send_value[cell_ip[i]].push_back(value_interpol);
+					
+			// }
+		// }
+		// MASCH_MPI mpi;
+		// vector<vector<double>> recv_value(size);
+		// mpi.Alltoallv(send_value, recv_value);
+		// for(int ip=0, id=0; ip<size; ++ip){
+			// int tmp_size = recv_value[ip].size()/tmp_nPrimitive;
+			// for(int i=0, iter=0; i<tmp_size; ++i){
+				// for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
+					// int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
+					// double tmp_value = recv_value[ip][iter++];
+					// var.cells[id][id_prim] = tmp_value;
+				// }
+				// ++id;
+			// }
+		// }
+		
+		
+	// }
 			
 	
 	
-}
+// }
 
 
 
@@ -1056,6 +1355,10 @@ void MASCH_Control::saveAfterInitial(MASCH_Mesh& mesh){
 					cell.level = -1;
 				}
 			}
+            
+            // if(cell.ipoints.size()==5 && cell.ifaces.size()==5) cell.level = -1;  
+            // if(cell.ipoints.size()==4 && cell.ifaces.size()==4) cell.level = -1; 
+            
 			if(cell.level==-1) ++noAMR_Cells;
 			
 		}
@@ -1496,68 +1799,120 @@ void MASCH_Control::save_pvdFile(MASCH_Mesh& mesh, MASCH_Variables& var){
 	// ==========================================
 	// PVD file
 	if(rank==0 && startSave==true){
-// cout << foldername << endl;
-		string filenamePvtu = "./save/plot.pvd";
-		string stime = foldername;
-		stime.erase(stime.find("./save/"),7);
-		stime.erase(stime.find("/"),1);
-		
-		ifstream inputFile;
-		inputFile.open(filenamePvtu);
-		// if(inputFile && stod(stime)-controls.timeStep != 0.0){
-		if(inputFile){
+        
+        // fvm 파일
+        {
+            string filenamePvtu = "./save/plot.pvd";
+            string stime = foldername;
+            stime.erase(stime.find("./save/"),7);
+            stime.erase(stime.find("/"),1);
+            
+            ifstream inputFile;
+            inputFile.open(filenamePvtu);
+            // if(inputFile && stod(stime)-controls.timeStep != 0.0){
+            if(inputFile){
 
-			string nextToken;
-			int lineStart = 0;
-			while(getline(inputFile, nextToken)){
-				if( nextToken.find("</Collection>") != string::npos ){
-					break;
-				}
-				++lineStart;
-			}
-			inputFile.close();
-			
-			outputFile.open(filenamePvtu, ios::in);
-			outputFile.seekp(-26, ios::end);
-			
-			// outputFile << saveLines;
-			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
-			if(controls.nameParcels.size()!=0){
-				outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"parcels." << stime << ".pvtu\"/>" << endl;
-			}
-			outputFile << "  </Collection>" << endl;
-			outputFile << "</VTKFile>";
-			outputFile.close();
-			
-		}
-		else{
-			inputFile.close();
-			
-			outputFile.open(filenamePvtu);
-			
-			// string out_line;
-			outputFile << "<?xml version=\"1.0\"?>" << endl;
-			outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
-			outputFile << "  <Collection>" << endl;
-			outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
-			if(controls.nameParcels.size()!=0){
-				outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"parcels." << stime << ".pvtu\"/>" << endl;
-			}
-			outputFile << "  </Collection>" << endl;
-			outputFile << "</VTKFile>";
-			
-			
-			outputFile.close();
-			
-		}
+                string nextToken;
+                int lineStart = 0;
+                while(getline(inputFile, nextToken)){
+                    if( nextToken.find("</Collection>") != string::npos ){
+                        break;
+                    }
+                    ++lineStart;
+                }
+                inputFile.close();
+                
+                outputFile.open(filenamePvtu, ios::in);
+                outputFile.seekp(-26, ios::end);
+                
+                // outputFile << saveLines;
+                outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+                outputFile << "  </Collection>" << endl;
+                outputFile << "</VTKFile>";
+                outputFile.close();
+                
+            }
+            else{
+                inputFile.close();
+                
+                outputFile.open(filenamePvtu);
+                
+                // string out_line;
+                outputFile << "<?xml version=\"1.0\"?>" << endl;
+                outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+                outputFile << "  <Collection>" << endl;
+                outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"plot." << stime << ".pvtu\"/>" << endl;
+                outputFile << "  </Collection>" << endl;
+                outputFile << "</VTKFile>";
+                
+                
+                outputFile.close();
+                
+            }
+            
+        }
 		
+        // dpm 파일
+        {
+            string filenamePvtu = "./save/parcels.pvd";
+            string stime = foldername;
+            stime.erase(stime.find("./save/"),7);
+            stime.erase(stime.find("/"),1);
+            
+            ifstream inputFile;
+            inputFile.open(filenamePvtu);
+            // if(inputFile && stod(stime)-controls.timeStep != 0.0){
+            if(inputFile){
+
+                string nextToken;
+                int lineStart = 0;
+                while(getline(inputFile, nextToken)){
+                    if( nextToken.find("</Collection>") != string::npos ){
+                        break;
+                    }
+                    ++lineStart;
+                }
+                inputFile.close();
+                
+                outputFile.open(filenamePvtu, ios::in);
+                outputFile.seekp(-26, ios::end);
+                
+                if(controls.nameParcels.size()!=0){
+                    outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"parcels." << stime << ".pvtu\"/>" << endl;
+                }
+                outputFile << "  </Collection>" << endl;
+                outputFile << "</VTKFile>";
+                outputFile.close();
+                
+            }
+            else{
+                inputFile.close();
+                
+                outputFile.open(filenamePvtu);
+                
+                // string out_line;
+                outputFile << "<?xml version=\"1.0\"?>" << endl;
+                outputFile << " <VTKFile type=\"Collection\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+                outputFile << "  <Collection>" << endl;
+                if(controls.nameParcels.size()!=0){
+                    outputFile << "    <DataSet timestep=\"" << stime << "\" group=\"\" part=\"0\" file=\"parcels." << stime << ".pvtu\"/>" << endl;
+                }
+                outputFile << "  </Collection>" << endl;
+                outputFile << "</VTKFile>";
+                
+                
+                outputFile.close();
+                
+            }
+            
+        }
 		
 	}
 }
 
 
 bool MASCH_Control::check_isnan(double value){
-	if(std::isnan(value) || value < -1.e12 || value > 1.e12){
+	if(std::isnan(value) || value < -1.e2 || value > 1.e2){
 		return true;
 	}
 	else{
@@ -1611,16 +1966,13 @@ void MASCH_Control::show_dpm_information(){
 		" |" << endl;
 		// cout << "└────────────────────────────────────────────────────" << endl;
 	}
-	// if( (controls.iterReal+1) % stoi(controls.controlDictMap["printLog"]) == 0 ){
-		// cout << scientific; cout.precision(2);
-		// if(rank==0) cout << 
-		// "| iReal = " << controls.iterReal+1 << 
-		// ", " << "iPseudo = " << controls.iterPseudo+1 << 
-		// ", " << "t = " << var.fields[controls.getId_fieldVar("time")] << 
-		// ", " << "dt = " << var.fields[controls.getId_fieldVar("time-step")] << 
-		// ", " << "resi = " << var.fields[controls.getId_fieldVar("residual")] << 
-		// " |" << endl;
-		// cout << fixed; cout.precision(0);
-		// controls.log.show();
-	// }
+	
+	controls.nIterDPM = 0;
+	controls.nChangeParcelsE2L = 0;
+	controls.nInsideParcels = 0;
+	controls.nToProcsRishtParcels = 0;
+	controls.nReflectParcels = 0;
+	controls.nEscapeParcels = 0;
+	controls.nDeleteParcels = 0;
+	
 }

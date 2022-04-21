@@ -229,6 +229,7 @@ public:
 		string inp_option);
 	void resetVariableArray(MASCH_Mesh& mesh, MASCH_Variables& var,
 		vector<int>& cell_ip, vector<int>& cellConn,
+		vector<int>& parcel_ip,
 		string inp_option);
 	
 	// 지오메트릭 관련
@@ -275,6 +276,36 @@ public:
 	
 	// 리미터 관련
 	vector<int> limiterNamesForUnst;
+    
+    
+    // patch 바운더리 관련
+    vector<double> timeVaryingMappedFixedValueNCycle;
+    vector<double> timeVaryingMappedFixedValueTimeCycle;
+    vector<double> timeVaryingMappedFixedValueTime1;
+    vector<double> timeVaryingMappedFixedValueTime2;
+    vector<int> timeVaryingMappedFixedValueTimeOrder;
+    vector<vector<double>> timeVaryingMappedFixedValueTime;
+    vector<vector<double>> timeVaryingMappedFixedValueValue1;
+    vector<vector<double>> timeVaryingMappedFixedValueValue2;
+    vector<int> timeVaryingMappedFixedValueValueIter;
+    vector<vector<string>> timeVaryingMappedFixedValueFileName;
+    
+     
+    // 평균값 관련
+    vector<string> saveMeanCellValues;
+    vector<string> saveSMDValues;
+    vector<int> meanSurfInp_cell_id;
+    vector<int> meanSurfOut_cell_id;
+    vector<int> meanVolInp_cell_id;
+    vector<int> meanVolOut_cell_id;
+    vector<int> meanInp_cell_id;
+    vector<int> meanInp_cell_totalTime_id;
+    vector<int> meanOut_cell_id;
+    vector<int> meanInp_parcel_id;
+    vector<int> meanInp_parcel_totalTime_id;
+    vector<int> meanOut_parcel_id;
+    
+    
 };
 
 

@@ -346,9 +346,12 @@ public:
 	
 	// 로드밸런싱 리파티셔닝
 	void repartitioning(
-		vector<int>& idBlockCell, int maxLevel, vector<int>& connCelll);
+		vector<int>& idBlockCell, int maxLevel, vector<int>& connCelll, vector<int>& parcel_ip);
 	void repartParMETIS(
 		int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh);
+	void getFaceOrders(
+	int maxLevel, vector<MASCH_Point>& points, vector<MASCH_Face>& faces, 
+		vector<int>& procFaces, vector<int>& reorderFaceIds);
 	
 	// 메쉬 형상 관련
 	int nBoundTypes = 0;

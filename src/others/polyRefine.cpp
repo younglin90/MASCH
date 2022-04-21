@@ -103,6 +103,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// if(rank==0) cout << "START0" << endl;
 	
+    bool boolDebug = false;
 	
 	
 	if(rank==0){
@@ -139,6 +140,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 		// cout << maxCells_AMR << endl;
 		// cout << mesh.cells.size() << " " << minVolume_AMR << endl;
 		for(int i=0; i<mesh.cells.size(); ++i){
+            auto& cell = mesh.cells[i];
+            boolCellRefine[i] = false;
 			// for(int indi=0; indi<indicatorCriterion.size(); ++indi)
 			// {
 				// for(int level=0; level<indicatorCriterion.at(indi).size(); ++level)
@@ -167,14 +170,78 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 				// cout << mesh.cells[i].volume << " " << minVolume_AMR << endl;
 				// boolCellRefine[i] = false;
 			// }
+            
+            boolCellRefine[i] = true;
+            
 			if(mesh.cells[i].level >= maxLevel_AMR) boolCellRefine[i] = false;
 			if(mesh.cells[i].level < 0) boolCellRefine[i] = false;
 			if(boolMaxCells==true) boolCellRefine[i] = false;
+            
+            
+            // if(cell.ipoints.size()==5 && cell.ifaces.size()==5 && boolCellRefine[i]==true) cout << "AAAAAAAAA" << endl;
 			
 			
 			// if(boolCellPreserved[i] == true) boolCellRefine[i] = false;
 		} 
-		
+        
+        
+		// for(int i=0; i<mesh.nInternalFaces; ++i){
+            // auto& face = mesh.faces[i];
+            // if(mesh.cells[face.iL].level < 0) boolCellRefine[face.iR] = false;
+            // if(mesh.cells[face.iR].level < 0) boolCellRefine[face.iL] = false; 
+		// } 
+        
+        
+		// for(int i=0; i<mesh.faces.size(); ++i){
+            // auto& face = mesh.faces[i];
+            // if(face.getType()==MASCH_Face_Types::PROCESSOR){
+                // boolCellRefine[face.iL] = false;
+                
+            // }
+            // // if(mesh.cells[face.iL].level < 0) boolCellRefine[face.iR] = false;
+            // // if(mesh.cells[face.iR].level < 0) boolCellRefine[face.iL] = false; 
+		// } 
+        
+	// // processor faces
+    // {
+        // vector<int> recv_value2;
+        // if(size>1){
+
+            // vector<int> send_value2;
+            // send_value2.reserve(mesh.send_StencilCellsId.size());
+            // for(auto& icell : mesh.send_StencilCellsId){
+                // if(mesh.cells[icell].level<0){
+                    // send_value2.push_back(1);
+                // }
+                // else{
+                    // send_value2.push_back(0);
+                // }
+            // }
+            // recv_value2.resize(mesh.recv_displsStencilCells[size]);
+            // MPI_Alltoallv( send_value2.data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_INT, 
+                           // recv_value2.data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_INT, 
+                           // MPI_COMM_WORLD);
+            
+        // }
+        // for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
+            // auto& cell = mesh.cells[i];
+            
+            // bool tmp_bool = false;
+            // if(cell.level<0) tmp_bool = true;
+            // for(auto& icell : cell.iStencils){
+                // auto& cellSten = mesh.cells[icell];
+                // if(cellSten.level<0) tmp_bool = true;
+            // }
+            
+        // // controls.log.pop();
+            // for(auto& icell : cell.recv_iStencils){
+                // if(recv_value2[icell]==1) tmp_bool = true;
+            // }
+            
+            // if(tmp_bool==true) boolCellRefine[i] = false;
+        // }
+    // }
+    
 		
 	// }
 	
@@ -189,8 +256,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START1" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START1" << endl;
 	
 	
 	// amr 정보 mpi 교환
@@ -287,8 +354,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START2" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START2" << endl;
 	
 	
 	
@@ -421,6 +488,7 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 						int isertP = groupChildFace.vertexCenterPoints[j];
 						
 						proc_edgeCenterPoints_id[iEdge] = isertP;
+                    // if(rank==419 && iEdge==9321) cout << "AAAAAAAAAA" << endl;
 					}
 				}
 			}
@@ -478,8 +546,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START3" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START3" << endl;
 	
 	
 	
@@ -524,20 +592,26 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 			int tmp_size = recv_edgeId[ip].size();
 			for(int i=0; i<tmp_size; ++i){
 				int id = recv_edgeId[ip][i];
-				if(bool_edges[id]==true) continue;
-				bool_edges[id] = true;
-				
+                
+                // if(bool_edges[id]==true) continue;
+                // bool_edges[id] = true;
+					
 				int ipoint0 = edgesPoint0[id];
 				int ipoint1 = edgesPoint1[id];
 				
 				int ibool = recv_boolEdgeRefine[ip][i];
 				if(ibool==1 && boolEdgeRefine[id]==false){
 					// F2T_proc_boolEdgeRefine[id] = true;
+                    
+                    if(bool_edges[id]==true) continue;
+                    bool_edges[id] = true;
 					
 					// 포인트 생성
 					int tmp_point_id = mesh.points.size();
 					// new_edge_center_point_id[id] = tmp_point_id;
 					proc_edgeCenterPoints_id[id] = tmp_point_id;
+                    
+                    // if(rank==419 && id==9321) cout << "AAAAAAAAAA" << endl;
 					
 					mesh.addPoint();
 					mesh.points.back().x = 0.5*(mesh.points[ipoint0].x + mesh.points[ipoint1].x);
@@ -590,6 +664,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 				}
 				else if(boolEdgeRefine[id]==true){
 					// T_proc_boolEdges[id] = true;
+                    
+                    if(bool_edges[id]==true) continue;
+                    bool_edges[id] = true;
 					
 					int ipoint = proc_edgeCenterPoints_id[id];
 					if(ipoint==-1) cout << "ERROR3" << endl;
@@ -620,7 +697,11 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 				int recv_ipoint = recv_pointId2[ip][i];
 				
 				int ipoint = proc_edgeCenterPoints_id[iedge];
-				if(ipoint==-1) cout << "ERROR4" << endl;
+				if(ipoint==-1) {
+                    cout << "ERROR4" << endl;
+                    cout << rank << " " << iedge << " " << endl;
+                    MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+                }
 				
 				int tmp_iter = 0;
 				for(auto& [proc, id] : mesh.points[ipoint].connPoints){
@@ -641,8 +722,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START4" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START4" << endl;
 	
 	
 	
@@ -741,8 +822,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	}
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START5" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START5" << endl;
 	
 	
 	// =====================================
@@ -853,8 +934,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START6" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START6" << endl;
 	
 	
 	
@@ -987,8 +1068,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	}
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START7" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7" << endl;
 	
 	
 	// 페이스 넘버링
@@ -997,50 +1078,64 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	// 셀 겉면 페이스 넘버링
 	for(int i=0; i<mesh.faces.size(); ++i){
-		if(mesh.faces[i].getType() == MASCH_Face_Types::INTERNAL){
-			if(groupChildFaces_id[i] != -1){
-				auto& groupChildFace = groupChildFaces[groupChildFaces_id[i]];
-				startFaces[i] = faceResizeNum;
+		if(mesh.faces.at(i).getType() == MASCH_Face_Types::INTERNAL){
+			if(groupChildFaces_id.at(i) != -1){
+				auto& groupChildFace = groupChildFaces.at(groupChildFaces_id.at(i));
+				startFaces.at(i) = faceResizeNum;
 				faceResizeNum += groupChildFace.faces.size();
 			}
 			else{
-				startFaces[i] = faceResizeNum;
+				startFaces.at(i) = faceResizeNum;
 				++faceResizeNum;
 			}
 		}
 	}
+    
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.1" << endl;
 	
 	// 셀 안쪽 페이스 넘버링
 	vector<int> startIntFaces(mesh.cells.size(),-1);
 	for(int i=0; i<mesh.cells.size(); ++i){
-		if(groupCellInternalFaces_id[i] != -1){
-			auto& groupChildFace = groupChildFaces[groupCellInternalFaces_id[i]];
-			startIntFaces[i] = faceResizeNum;
+		if(groupCellInternalFaces_id.at(i) != -1){
+			auto& groupChildFace = groupChildFaces.at(groupCellInternalFaces_id.at(i));
+			startIntFaces.at(i) = faceResizeNum;
 			faceResizeNum += groupChildFace.faces.size();
 		}
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.2" << endl;
 	
 	// proc & 바운더리 페이스 넘버링
 	for(int i=0; i<mesh.faces.size(); ++i){
-		if(mesh.faces[i].getType() != MASCH_Face_Types::INTERNAL){
-			if(groupChildFaces_id[i] != -1){
-				auto& groupChildFace = groupChildFaces[groupChildFaces_id[i]];
-				startFaces[i] = faceResizeNum;
+		if(mesh.faces.at(i).getType() != MASCH_Face_Types::INTERNAL){
+			if(groupChildFaces_id.at(i) != -1){
+				auto& groupChildFace = groupChildFaces.at(groupChildFaces_id.at(i));
+				startFaces.at(i) = faceResizeNum;
 				faceResizeNum += groupChildFace.faces.size();
 			}
 			else{
-				startFaces[i] = faceResizeNum;
+				startFaces.at(i) = faceResizeNum;
 				++faceResizeNum;
 			}
 		}
 	}
 	
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.3" << endl;
 	
 	// 원래 페이스 다시 제작
 	int orgFaceSize = mesh.faces.size();
 	int orgCellSize = mesh.cells.size();
 	
+	MPI_Barrier(MPI_COMM_WORLD); 
+	if(rank==0 && boolDebug) cout << "START7.3.1" << endl;
+    
+    if(faceResizeNum>100000000) cout << "rank = " << rank << ", face number > 1 million ";
 	mesh.faces.resize(faceResizeNum);
+    
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.3.2" << endl;
 	
 	// Proc & B.C. faces	
 	for(auto& boundary : mesh.boundaries){
@@ -1049,30 +1144,34 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 		if(boundary.rightProcNo <= rank) continue;
 		int str = boundary.startFace;
 		int end = str + boundary.nFaces;
+        // cout << "AA" << endl;
 		for(int i=str; i<end; ++i){
-			if(groupChildFaces_id[i] != -1){
-				auto& groupChildFace = groupChildFaces[groupChildFaces_id[i]];
+			if(groupChildFaces_id.at(i) != -1){
+				auto& groupChildFace = groupChildFaces.at(groupChildFaces_id.at(i));
 				std::reverse(groupChildFace.faces.begin()+1,groupChildFace.faces.end());
 			}
 		}
+        // cout << "BB" << endl;
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.4" << endl;
 	
 	int saveI = 0;
 	for(int i=orgFaceSize-1; i>=0; --i){
-		if(mesh.faces[i].getType() != MASCH_Face_Types::INTERNAL){
-			int str = startFaces[i];
-			if(groupChildFaces_id[i] != -1){
-				auto& groupChildFace = groupChildFaces[groupChildFaces_id[i]];
+		if(mesh.faces.at(i).getType() != MASCH_Face_Types::INTERNAL){
+			int str = startFaces.at(i);
+			if(groupChildFaces_id.at(i) != -1){
+				auto& groupChildFace = groupChildFaces.at(groupChildFaces_id.at(i));
 
 				int tmpNum = 0;
 				for(auto& face : groupChildFace.faces){
 					mesh.faces[str+tmpNum].ipoints.clear();
 					for(auto& j : face.ipoints){
-						mesh.faces[str+tmpNum].ipoints.push_back(j);
+						mesh.faces.at(str+tmpNum).ipoints.push_back(j);
 					}
-					mesh.faces[str+tmpNum].iL = face.iL;
-					mesh.faces[str+tmpNum].iR = -1;
-					mesh.faces[str+tmpNum].setType(mesh.faces[i].getType());
+					mesh.faces.at(str+tmpNum).iL = face.iL;
+					mesh.faces.at(str+tmpNum).iR = -1;
+					mesh.faces.at(str+tmpNum).setType(mesh.faces.at(i).getType());
 					
 					
 					++tmpNum;
@@ -1095,48 +1194,52 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 			saveI = i;
 		}
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.5" << endl;
 	
 	
 	// cell internal faces
 	for(int i=orgCellSize-1; i>=0; --i){
-		if(groupCellInternalFaces_id[i] != -1){
-			int str = startIntFaces[i];
-			auto& groupChildFace = groupChildFaces[groupCellInternalFaces_id[i]];
+		if(groupCellInternalFaces_id.at(i) != -1){
+			int str = startIntFaces.at(i);
+			auto& groupChildFace = groupChildFaces.at(groupCellInternalFaces_id.at(i));
 			int tmpNum = 0;
 			for(auto& face : groupChildFace.faces){
-				mesh.faces[str+tmpNum].ipoints.clear();
+				mesh.faces.at(str+tmpNum).ipoints.clear();
 				for(auto& j : face.ipoints){
-					mesh.faces[str+tmpNum].ipoints.push_back(j);
+					mesh.faces.at(str+tmpNum).ipoints.push_back(j);
 				}
-				mesh.faces[str+tmpNum].iL = face.iL;
-				mesh.faces[str+tmpNum].iR = face.iR;
-				mesh.faces[str+tmpNum].setType(MASCH_Face_Types::INTERNAL);
+				mesh.faces.at(str+tmpNum).iL = face.iL;
+				mesh.faces.at(str+tmpNum).iR = face.iR;
+				mesh.faces.at(str+tmpNum).setType(MASCH_Face_Types::INTERNAL);
 				++tmpNum;
 			}
 		}
 	}
 	
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.6" << endl;
 	
 	// cell outer faces
 	for(int i=saveI-1; i>=0; --i){
-		if(mesh.faces[i].getType() == MASCH_Face_Types::INTERNAL){
-			int str = startFaces[i];
-			if(groupChildFaces_id[i] != -1){
-				auto& groupChildFace = groupChildFaces[groupChildFaces_id[i]];
+		if(mesh.faces.at(i).getType() == MASCH_Face_Types::INTERNAL){
+			int str = startFaces.at(i);
+			if(groupChildFaces_id.at(i) != -1){
+				auto& groupChildFace = groupChildFaces.at(groupChildFaces_id.at(i));
 				int tmpNum = 0;
 				for(auto& face : groupChildFace.faces){
-					mesh.faces[str+tmpNum].ipoints.clear();
+					mesh.faces.at(str+tmpNum).ipoints.clear();
 					for(auto& j : face.ipoints){
-						mesh.faces[str+tmpNum].ipoints.push_back(j);
+						mesh.faces.at(str+tmpNum).ipoints.push_back(j);
 					}
-					mesh.faces[str+tmpNum].iL = face.iL;
-					mesh.faces[str+tmpNum].iR = face.iR;
-					mesh.faces[str+tmpNum].setType(MASCH_Face_Types::INTERNAL);
+					mesh.faces.at(str+tmpNum).iL = face.iL;
+					mesh.faces.at(str+tmpNum).iR = face.iR;
+					mesh.faces.at(str+tmpNum).setType(MASCH_Face_Types::INTERNAL);
 					++tmpNum;
 				}
 			}
 			else{
-				mesh.faces[str] = mesh.faces[i];
+				mesh.faces.at(str) = mesh.faces.at(i);
 				
 				// // ========================
 				// if(addiFaces[i].ipoints.size()>0){
@@ -1150,19 +1253,23 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 		}
 	}
 	
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.7" << endl;
 	
 
 	// boundary setting
 	for (int i=0; i<mesh.boundaries.size(); ++i) {
-		mesh.boundaries[i].startFace = startFaces[ mesh.boundaries[i].startFace ];
+		mesh.boundaries.at(i).startFace = startFaces.at( mesh.boundaries.at(i).startFace );
 	}
 	
 	for (int i=0; i<mesh.boundaries.size()-1; ++i) {;
-		mesh.boundaries[i].nFaces = mesh.boundaries[i+1].startFace-mesh.boundaries[i].startFace;
+		mesh.boundaries.at(i).nFaces = mesh.boundaries.at(i+1).startFace-mesh.boundaries.at(i).startFace;
 	}
 	int maxBDsize = mesh.boundaries.size()-1;
-	mesh.boundaries[maxBDsize].nFaces = mesh.faces.size()-mesh.boundaries[maxBDsize].startFace;
+	mesh.boundaries.at(maxBDsize).nFaces = mesh.faces.size()-mesh.boundaries.at(maxBDsize).startFace;
 	
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.8" << endl;
 	
 	int tmpCellNum = totalCellNum-1;
 	mesh.cells.resize(totalCellNum,MASCH_Cell());
@@ -1171,31 +1278,31 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	boolCellRefine.resize(totalCellNum);
 	boolCellUnrefine.resize(totalCellNum);
 	for(int i=orgCellSize-1; i>=0; --i){
-		int subCellSize = groupCell_Levels[i].size();
+		int subCellSize = groupCell_Levels.at(i).size();
 		
-		child_new_cell_id_of_org[i].resize(subCellSize);
+		child_new_cell_id_of_org.at(i).resize(subCellSize);
 		
 		for(int j=0; j<subCellSize; ++j){
 			// mesh.cells[tmpCellNum].var.assign(mesh.cells[i].var.begin(),mesh.cells[i].var.end());
 			
-			child_new_cell_id_of_org[i][j] = tmpCellNum;
+			child_new_cell_id_of_org.at(i).at(j) = tmpCellNum;
 			
-			boolCellRefine[tmpCellNum] = boolCellRefine[i];
-			boolCellUnrefine[tmpCellNum] = boolCellUnrefine[i];
-			boolCellPreserved[tmpCellNum] = boolCellPreserved[i];
+			boolCellRefine.at(tmpCellNum) = boolCellRefine.at(i);
+			boolCellUnrefine.at(tmpCellNum) = boolCellUnrefine.at(i);
+			boolCellPreserved.at(tmpCellNum) = boolCellPreserved.at(i);
 			// boolCellPreserved[tmpCellNum] = true;
 			
 			
 			
-			mesh.cells[tmpCellNum].ipoints.clear();
-			mesh.cells[tmpCellNum].ifaces.clear();
+			mesh.cells.at(tmpCellNum).ipoints.clear();
+			mesh.cells.at(tmpCellNum).ifaces.clear();
 			--tmpCellNum;
 		}
 	}
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START8" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START8" << endl;
 	
 	
 	// mesh.check();
@@ -1209,8 +1316,8 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// mesh.informations();
 	
 	
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// if(rank==0) cout << "START9" << endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START9" << endl;
 	
 	
 	
@@ -1462,52 +1569,6 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	// }
 			
 
-	
-		// //=======================================
-		// // 디버그
-		// {
-			// int max_group_id = -1;
-			// int min_group_id = 1e8;
-			// for(int i=0, ip=0; i<mesh.cells.size(); ++i){
-				// auto& cell = mesh.cells[i];
-				// max_group_id = max(cell.group,max_group_id);
-				// min_group_id = min(cell.group,min_group_id);
-			// }
-			
-			// vector<vector<int>> debug_localCell_group(max_group_id-min_group_id+1);
-			// // for(int i=0, ip=0; i<mesh.cells.size(); ++i){
-				// // auto& cell = mesh.cells[i];
-				// // int proc = idBlockCell[i];
-				// // debug_localCell_group.at(cell.group-min_group_id).push_back(proc);
-			// // }
-			// for(auto& boundary : mesh.boundaries){
-				// if(boundary.getType()!=MASCH_Face_Types::PROCESSOR) continue;
-				// int str = boundary.startFace;
-				// int end = str + boundary.nFaces;
-				// int rightProcNo = boundary.rightProcNo;
-				// for(int i=str; i<end; ++i){
-					// auto& face = mesh.faces[i];
-					// int iL = face.iL;
-					// int igroup = mesh.cells[iL].group-min_group_id;
-					// debug_localCell_group[igroup].push_back(rightProcNo);
-				// }
-			// }
-			
-			// for(auto& item : debug_localCell_group){
-				// if(item.size()==0) continue;
-				// int proc0 = item[0];
-				// for(auto& item2 : item){
-					// if(proc0 != item2){
-						// cout << "proc0!=item2 " << proc0 << " " << item2 << endl;
-					// }
-				// }
-				// // cout << endl;
-			// }
-			
-		// }
-		// //=======================================
-		
-	
 
 		// //=======================================
 		// // 디버그
@@ -1632,9 +1693,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	
 	// ===========================================
 	// connPoints 디버깅
-	mesh.debug_connPoints(1.e-5);
+	mesh.debug_connPoints(1.e-12);
 	// proc face points 디버깅
-	mesh.debug_procFacePoints(1.e-5);
+	mesh.debug_procFacePoints(1.e-12);
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
@@ -1652,7 +1713,9 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 	int addedFaceSize = afterFaceSize - beforeFaceSize;
 	int addedPointSize = afterPointSize - beforePointSize;
 	
-	int addedCellSize_glb, addedFaceSize_glb, addedPointSize_glb;
+	int addedCellSize_glb = addedCellSize, 
+    addedFaceSize_glb = addedFaceSize, 
+    addedPointSize_glb = addedPointSize;
 	if(size>1){
 		MPI_Allreduce(&addedCellSize, &addedCellSize_glb, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&addedFaceSize, &addedFaceSize_glb, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

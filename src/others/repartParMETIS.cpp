@@ -32,7 +32,7 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 	
 	int wgtflag=0;
 	int numflag=0;
-	real_t tpwgts[nSize*ncon];
+	vector<real_t> tpwgts(nSize*ncon);
 	for(int i=0;i<nSize*ncon;++i) 
 		tpwgts[i]=1.0/nSize;
 
@@ -130,17 +130,17 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 		// cout << item << endl;
 	// }
 
-	// ParMETIS_V3_PartKway(
-		// vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, &wgtflag, &numflag,
-		// &ncon, &nSize, tpwgts, &ubvec,
-		// options, &objval, cell_ip.data(), &comm);
-		
-	idx_t vsize = NULL;
-	real_t itr = 1000.0;
-	ParMETIS_V3_AdaptiveRepart(
-		vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, nullptr, &wgtflag, &numflag,
-		&ncon, &nSize, tpwgts, &ubvec, &itr, 
+	ParMETIS_V3_PartKway(
+		vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, &wgtflag, &numflag,
+		&ncon, &nSize, tpwgts.data(), &ubvec,
 		options, &objval, cell_ip.data(), &comm);
+		
+	// idx_t vsize = NULL;
+	// real_t itr = 50.0;
+	// ParMETIS_V3_AdaptiveRepart(
+		// vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, nullptr, &wgtflag, &numflag,
+		// &ncon, &nSize, tpwgts.data(), &ubvec, &itr, 
+		// options, &objval, cell_ip.data(), &comm);
 		
 	
 	// 그룹 재정립

@@ -353,6 +353,7 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	vector<int> newCellsNumber(mesh.cells.size(),-1);
 	vector<int> cellsLevel(mesh.cells.size(),-1);
 	vector<int> cellsGroup(mesh.cells.size(),-1);
+	vector<vector<int>> cells_iparcels(mesh.cells.size());
 	int newCellNum = 0;
 	for(int i=0; i<mesh.cells.size(); ++i){
 		if(groupCells_id[i] == -1){
@@ -362,6 +363,8 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 			cellsLevel[newCellNum] = mesh.cells[i].level;
 			// if(boolCanNotUnrefineCells[i]==true) cellsLevel[newCellNum] = -1;
 			cellsGroup[newCellNum] = mesh.cells[i].group;
+			
+			cells_iparcels[newCellNum] = mesh.cells[i].iparcels;
 			
 			newCellsNumber[i] = newCellNum;
 			
@@ -373,14 +376,23 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 			cellsLevel[newCellNum] = mesh.cells[i].level-1;
 			// if(boolCanNotUnrefineCells[i]==true) cellsLevel[newCellNum] = -1;
 			cellsGroup[newCellNum] = mesh.cells[i].group;
+			
+			vector<int> tmp_iparcels;
 			int tmp_id = groupCells_id[i];
 			for(auto& j : groupCellsUnrefine[tmp_id].ichild){
 				// child_org_cell_id_of_new.back().push_back(i);
 				
 				newCellsNumber[j] = newCellNum;
+				
+				for(auto& item : mesh.cells[i].iparcels){
+					tmp_iparcels.push_back(item);
+				}
+				
 				++i;
 			}
 			--i;
+			
+			cells_iparcels[newCellNum] = tmp_iparcels;
 			
 			++newCellNum;
 		}
@@ -1396,6 +1408,7 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 	for(int i=0; i<mesh.cells.size(); ++i){
 		mesh.cells[i].level = cellsLevel[i];
 		mesh.cells[i].group = cellsGroup[i];
+		mesh.cells[i].iparcels = cells_iparcels[i];
 	}
 	
 	{

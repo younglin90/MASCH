@@ -22,12 +22,16 @@ MASCH_Mesh mesh;
 MASCH_Variables var;
 vector<string> primScalarNames;
 vector<string> primVector3Names;
+vector<string> parcel_primScalarNames;
+vector<string> parcel_primVector3Names;
 
-vector<int> cell_ip;
+vector<int> cell_ip_g;
+vector<int> parcel_ip_g;
 
 int varSize;
 int varScalarSize;
 int varVector3Size;
+// int parcelVarSize;
 
 void loadVTUfiles(string folderName){
 
@@ -495,6 +499,229 @@ void loadVTUfiles(string folderName){
 
 
 
+void loadDPMFiles(string folderName){
+		
+	int rank = MPI::COMM_WORLD.Get_rank(); 
+	int size = MPI::COMM_WORLD.Get_size();
+	
+	{
+		string saveFolderName = folderName;
+		string saveFileName = "parcels";
+		string saveRankName = to_string(0);
+		
+		ifstream inputFile;
+		string openFileName;
+		
+		openFileName = saveFolderName + "/" + saveFileName + "." + saveRankName + ".vtu";
+		inputFile.open(openFileName);
+		if(inputFile.fail()){
+			return;
+			// cerr << "Unable to open file for reading : " << openFileName << endl;
+			// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		}
+		
+		
+		string nextToken;
+		// boolBinary = false;
+		load.boolCompress = false;
+		while(getline(inputFile, nextToken)){
+			if( nextToken.find("VTKFile") != string::npos ){
+				if( nextToken.find("vtkZLibDataCompressor") != string::npos ){
+					load.boolCompress = true;
+				}
+				break;
+			}
+		}
+		
+
+		while(getline(inputFile, nextToken)){
+			if( nextToken.find("DataArray") != string::npos ){
+				if( nextToken.find("Name") != string::npos ){
+					if( nextToken.find("NumberOfTuples") != string::npos ) continue;
+					
+					if( nextToken.find("NumberOfComponents") != string::npos ){
+						int str = nextToken.find("Name")+6;
+						int end = nextToken.find("NumberOfComponents")-2;
+						string tmp_name = nextToken.substr(str,end-str);
+						parcel_primVector3Names.push_back(tmp_name);
+					}
+					else{
+						int str = nextToken.find("Name")+6;
+						int end = nextToken.find("format")-2;
+						string tmp_name = nextToken.substr(str,end-str);
+						parcel_primScalarNames.push_back(tmp_name);
+					}
+				}
+			}
+		}
+		
+		inputFile.close();
+		
+		
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "id"), parcel_primScalarNames.end());
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "icell"), parcel_primScalarNames.end());
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "connectivity"), parcel_primScalarNames.end());
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "offsets"), parcel_primScalarNames.end());
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "types"), parcel_primScalarNames.end());
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "faces"), parcel_primScalarNames.end());
+		parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "faceoffsets"), parcel_primScalarNames.end());
+		
+		parcel_primVector3Names.erase(remove(parcel_primVector3Names.begin(), parcel_primVector3Names.end(), "Position"), parcel_primVector3Names.end());
+			
+	}
+	
+	
+	
+		
+	string saveFolderName = folderName;
+	string saveFileName = "parcels";
+	string saveRankName = to_string(rank);
+	
+	ifstream inputFile;
+	string openFileName;
+	
+	openFileName = saveFolderName + "/" + saveFileName + "." + saveRankName + ".vtu";
+	inputFile.open(openFileName);
+	if(inputFile.fail()){
+		return;
+		// cerr << "Unable to open file for reading : " << openFileName << endl;
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	}
+	
+	
+	string nextToken;
+	// boolBinary = false;
+	load.boolCompress = false;
+	while(getline(inputFile, nextToken)){
+		if( nextToken.find("VTKFile") != string::npos ){
+			if( nextToken.find("vtkZLibDataCompressor") != string::npos ){
+				load.boolCompress = true;
+			}
+			break;
+		}
+	}
+	
+
+	// while(getline(inputFile, nextToken)){
+		// if( nextToken.find("DataArray") != string::npos ){
+			// if( nextToken.find("Name") != string::npos ){
+				// if( nextToken.find("NumberOfTuples") != string::npos ) continue;
+				
+				// if( nextToken.find("NumberOfComponents") != string::npos ){
+					// int str = nextToken.find("Name")+6;
+					// int end = nextToken.find("NumberOfComponents")-2;
+					// string tmp_name = nextToken.substr(str,end-str);
+					// parcel_primVector3Names.push_back(tmp_name);
+				// }
+				// else{
+					// int str = nextToken.find("Name")+6;
+					// int end = nextToken.find("format")-2;
+					// string tmp_name = nextToken.substr(str,end-str);
+					// parcel_primScalarNames.push_back(tmp_name);
+				// }
+			// }
+		// }
+	// }
+	
+	
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "id"), parcel_primScalarNames.end());
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "icell"), parcel_primScalarNames.end());
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "connectivity"), parcel_primScalarNames.end());
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "offsets"), parcel_primScalarNames.end());
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "types"), parcel_primScalarNames.end());
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "faces"), parcel_primScalarNames.end());
+	// parcel_primScalarNames.erase(remove(parcel_primScalarNames.begin(), parcel_primScalarNames.end(), "faceoffsets"), parcel_primScalarNames.end());
+	
+	// parcel_primVector3Names.erase(remove(parcel_primVector3Names.begin(), parcel_primVector3Names.end(), "Position"), parcel_primVector3Names.end());
+		
+	
+	
+	vector<int> parcel_id;
+	load.loadDatasAtVTU(inputFile, "id", parcel_id);
+	vector<int> parcel_icell;
+	load.loadDatasAtVTU(inputFile, "icell", parcel_icell);
+	
+	int NumberOfPoints = parcel_id.size();
+	
+	mesh.parcels.resize(NumberOfPoints);
+	{
+		int iter = 0;
+		for(auto& parcel : mesh.parcels){
+			parcel.id = parcel_id[iter];
+			parcel.icell = parcel_icell[iter];
+			parcel.setType(MASCH_Parcel_Types::INSIDE);
+			++iter;
+		}
+	}
+	
+	
+	var.parcels.resize(mesh.parcels.size());
+	
+	// int parcelVarSize = controls.nParcelVar;
+	int parcelVarSize = parcel_primScalarNames.size()+3*parcel_primVector3Names.size()+3;
+
+	
+	for(auto& parcel : var.parcels){
+		parcel.resize(parcelVarSize);
+	}
+	
+	
+	int id = 0;
+	for(auto& name : parcel_primScalarNames){
+		vector<double> tmp_cellVars;
+		load.loadDatasAtVTU(inputFile, name, tmp_cellVars);
+		int iter = 0;
+		for(auto& parcel : var.parcels){
+			parcel[id] = tmp_cellVars[iter++];
+		}
+		++id;
+	}
+	{
+		int iter_main = 0;
+		for(auto& name : parcel_primVector3Names){
+			vector<double> tmp_cellVars;
+			load.loadDatasAtVTU(inputFile, name, tmp_cellVars);
+			int id0 = parcel_primScalarNames.size() + 3*iter_main;
+			int id1 = id0+1;
+			int id2 = id0+2;
+			int iter = 0;
+			for(auto& parcel : var.parcels){
+				parcel[id0] = tmp_cellVars[iter++];
+				parcel[id1] = tmp_cellVars[iter++];
+				parcel[id2] = tmp_cellVars[iter++];
+			}
+			++iter_main;
+			++id; ++id; ++id;
+		}
+	}
+	{
+		vector<double> tmp_cellVars;
+		load.loadDatasAtVTU(inputFile, "Position", tmp_cellVars);
+		int id0 = id;
+		int id1 = id+1;
+		int id2 = id+2;
+		int iter = 0;
+		for(auto& parcel : var.parcels){
+			parcel[id0] = tmp_cellVars[iter++];
+			parcel[id1] = tmp_cellVars[iter++];
+			parcel[id2] = tmp_cellVars[iter++];
+		}
+	}
+	
+	
+	
+	inputFile.close();
+	
+}
+
+
+
+
+
+
+
+
+
 
 void repartParMETIS(int nSizeOrg, int nSizeTar){
 
@@ -646,7 +873,7 @@ void repartParMETIS(int nSizeOrg, int nSizeTar){
 		// cout << item << endl;
 	// }
 
-	cell_ip.resize(ncells);
+	cell_ip_g.resize(ncells);
 	
 	
 	if(boolZeroCell){
@@ -672,11 +899,11 @@ void repartParMETIS(int nSizeOrg, int nSizeTar){
 	ParMETIS_V3_PartKway(
 		vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, &wgtflag, &numflag,
 		&ncon, &nSizeTar, tpwgts.data(), &ubvec,
-		options, &objval, cell_ip.data(), &comm);
+		options, &objval, cell_ip_g.data(), &comm);
 		
 		
 		
-	// for(auto& item : cell_ip){
+	// for(auto& item : cell_ip_g){
 		// if(rank==60) cout << item << endl;
 	// }
 		
@@ -685,35 +912,35 @@ void repartParMETIS(int nSizeOrg, int nSizeTar){
 	// ParMETIS_V3_AdaptiveRepart(
 		// vtxdist.data(), xadj.data(), adjncy.data(), nullptr, nullptr, nullptr, &wgtflag, &numflag,
 		// &ncon, &nSizeTar, tpwgts.data(), &ubvec, &itr, 
-		// options, &objval, cell_ip.data(), &comm);
+		// options, &objval, cell_ip_g.data(), &comm);
 		
 	
-	// // 그룹 재정립
-	// vector<int> nIps(nSize,0);
-	// for(int i=0; i<mesh.cells.size(); ++i){
-		// int group0 = mesh.cells[i].group;
-		// int cell_ip0 = cell_ip[i];
-		// int group = group0;
-		// vector<int> tmp_icell;
-		// tmp_icell.push_back(i);
-		// vector<int> tmp_ip;
-		// tmp_ip.push_back(cell_ip[i]); ++nIps[cell_ip[i]];
-		// int ip_max = cell_ip[i];
-		// while(1){
-			// ++i;
-			// if(i==mesh.cells.size()) break;
-			// group = mesh.cells[i].group;
-			// if(group0!=group) break;
-			// tmp_icell.push_back(i);
-			// tmp_ip.push_back(cell_ip[i]); ++nIps[cell_ip[i]];
-			// if(nIps[cell_ip[i-1]]<nIps[cell_ip[i]]) ip_max = cell_ip[i];
-		// }
-		// --i;
+	// 그룹 재정립
+	vector<int> nIps(size,0);
+	for(int i=0; i<mesh.cells.size(); ++i){
+		int group0 = mesh.cells[i].group;
+		int cell_ip_g0 = cell_ip_g[i];
+		int group = group0;
+		vector<int> tmp_icell;
+		tmp_icell.push_back(i);
+		vector<int> tmp_ip;
+		tmp_ip.push_back(cell_ip_g[i]); ++nIps[cell_ip_g[i]];
+		int ip_max = cell_ip_g[i];
+		while(1){
+			++i;
+			if(i==mesh.cells.size()) break;
+			group = mesh.cells[i].group;
+			if(group0!=group) break;
+			tmp_icell.push_back(i);
+			tmp_ip.push_back(cell_ip_g[i]); ++nIps[cell_ip_g[i]];
+			if(nIps[cell_ip_g[i-1]]<nIps[cell_ip_g[i]]) ip_max = cell_ip_g[i];
+		}
+		--i;
 		
-		// for(auto& icell : tmp_icell){
-			// cell_ip[icell] = ip_max;
-		// }
-	// }
+		for(auto& icell : tmp_icell){
+			cell_ip_g[icell] = ip_max;
+		}
+	}
 	
 	
 	varSize = primScalarNames.size() + 3*primVector3Names.size();
@@ -756,88 +983,156 @@ void resetVariableArray(vector<int>& cellConn){
 	int size = MPI::COMM_WORLD.Get_size();
 
 	
-	int org_nCells = cellConn.size();
+	// int org_nCells = cellConn.size();
+	int org_nCells = var.cells.size();
+	int org_nFaces = var.faces.size();
+	int org_nProcFaces = var.cells.size();
+	int org_nPoints = var.points.size();
+	int org_nBoundaries = var.boundaries.size();
+	int org_nParcels = var.parcels.size();
 	
 	
-	var.cells.resize(org_nCells);
-	for(auto& cell : var.cells){
-		cell.resize(varSize);
-	}
+	// var.cells.resize(org_nCells);
+	// for(auto& cell : var.cells){
+		// cell.resize(varSize);
+	// }
 	
-	vector<vector<double>> send_val(varSize);
-	for(int i=0; i<org_nCells; ++i){
-		for(int iprim=0; iprim<varSize; ++iprim){
-			double value = var.cells.at(i).at(iprim);
-			send_val[iprim].push_back(value);
-		}
-	}
+	
+	// vector<vector<double>> send_val(varSize);
+	// vector<vector<double>> send_parcel_val(parcelVarSize);
+	// vector<int> send_parcel_size;
+	// for(int i=0; i<org_nCells; ++i){
+		// for(int iprim=0; iprim<varSize; ++iprim){
+			// double value = var.cells.at(i).at(iprim);
+			// send_val[iprim].push_back(value);
+		// }
+		// send_parcel_size.push_back(var.parcels.at(i).size());
+		// // if(var.parcels.at(i).size()>0){
+			// // for(int iprim=0; iprim<parcelVarSize; ++iprim){
+				// // double value = var.parcels.at(i).at(iprim);
+				// // send_parcel_val[iprim].push_back(value);
+			// // }
+		// // }
+	// }
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	int nCells = mesh.cells.size();
 	int nFaces = mesh.faces.size();
 	int nProcFaces = mesh.nProcessorFaces;
 	int nPoints = mesh.points.size();
 	int nBoundaries = mesh.boundaries.size();
-	// int nParticles = controls.parcel.size();
-	int nParticles = 0;
+	int nParcels = mesh.parcels.size();
 	
+	
+	
+	
+	int nCellsMax = max(nCells,org_nCells);
+	int nFacesMax = max(nFaces,org_nFaces);
+	int nProcFacesMax = max(nProcFaces,org_nProcFaces);
+	int nPointsMax = max(nPoints,org_nPoints);
+	int nBoundariesMax = max(nBoundaries,org_nBoundaries);
+	int nParcelsMax = max(nParcels,org_nParcels);
+	
+	
+	
+	var.cells.resize(nCellsMax);
+	var.faces.resize(nFacesMax);
+	var.procRightCells.resize(nProcFacesMax);
+	var.points.resize(nPointsMax);
+	var.boundaries.resize(nBoundariesMax);
+	var.parcels.resize(nParcelsMax);
+	
+	
+	// if(size>1){
+		// int nbc_glo;
+		// MPI_Allreduce(&parcelVarSize, &nbc_glo, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+		// parcelVarSize = nbc_glo;
+	// }
+	int parcelVarSize = parcel_primScalarNames.size()+3*parcel_primVector3Names.size()+3;
+	
+	
+	// int nVarBoundary = 0;
+	// for(auto& [name, tmp_var] : controls.cellVar){
+		// if(tmp_var.id>=0 && tmp_var.role=="primitive"){
+			// ++nVarBoundary;
+		// }
+	// }
+	
+	// var.fields.resize(controls.nFieldVar);
+	for(auto& item : var.cells){
+		item.resize(varSize);
+	}
+	// if(controls.nCellVar>0){
+		// for(int i=0; i<nCells; ++i) var.cells[i].resize(varSize);
+		// // for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
+	// }
+	// if(controls.nFaceVar>0){
+		// for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
+	// }
+	// if(controls.nPointVar>0){
+		// for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
+	// }
+	// for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
+	for(auto& item : var.parcels){
+		item.resize(parcelVarSize);
+	}
+	// for(int i=0; i<nParcels; ++i) var.parcels[i].resize(parcelVarSize);
+
+	
+	MASCH_MPI mpi;
+	for(int iprim=0; iprim<varSize; ++iprim){
+		vector<vector<double>> send_value(size);
+		for(int i=0; i<org_nCells; ++i){
+			double org_value = var.cells.at(i).at(iprim);
+			send_value[cell_ip_g[i]].push_back(org_value);
+		}
+		vector<vector<double>> recv_value(size);
+		mpi.Alltoallv(send_value, recv_value);
+		
+		for(int ip=0, iter=0; ip<size; ++ip){
+			for(auto& item : recv_value[ip]){
+				var.cells.at(iter).at(iprim) = item;
+				++iter;
+			}
+		}
+	}
+	
+	// if(rank==0) cout << parcelVarSize << endl;
+	// cout << org_nParcels << endl;
+	
+	for(int iprim=0; iprim<parcelVarSize; ++iprim){
+		vector<vector<double>> send_value(size);
+		for(int i=0; i<org_nParcels; ++i){
+			double org_value = var.parcels.at(i).at(iprim);
+			// cout << org_value << endl;
+			send_value[parcel_ip_g[i]].push_back(org_value);
+		}
+		vector<vector<double>> recv_value(size);
+		mpi.Alltoallv(send_value, recv_value);
+		
+		for(int ip=0, iter=0; ip<size; ++ip){
+			for(auto& item : recv_value[ip]){
+				var.parcels.at(iter).at(iprim) = item;
+				++iter;
+			}
+		}
+	}
+	
+	// 재정립
 	var.cells.resize(nCells);
 	var.faces.resize(nFaces);
 	var.procRightCells.resize(nProcFaces);
 	var.points.resize(nPoints);
 	var.boundaries.resize(nBoundaries);
+	var.parcels.resize(nParcels);
 	
-	
-	
-	// var.parcel.resize(nParticles);
-	
-	int nVarBoundary = 0;
-	for(auto& [name, tmp_var] : controls.cellVar){
-		if(tmp_var.id>=0 && tmp_var.role=="primitive"){
-			// cout << name << endl;
-			++nVarBoundary;
-		}
-	}
-	int nVarParticle = 100;
-	
-	var.fields.resize(controls.nFieldVar);
-	if(controls.nCellVar>0){
-		for(int i=0; i<nCells; ++i) var.cells[i].resize(controls.nCellVar);
-		for(int i=0; i<nProcFaces; ++i) var.procRightCells[i].resize(controls.nCellVar);
-	}
-	if(controls.nFaceVar>0){
-		for(int i=0; i<nFaces; ++i) var.faces[i].resize(controls.nFaceVar);
-	}
-	if(controls.nPointVar>0){
-		for(int i=0; i<nPoints; ++i) var.points[i].resize(controls.nPointVar);
-	}
-	for(int i=0; i<nBoundaries; ++i) var.boundaries[i].resize(nVarBoundary);
-	// for(int i=0; i<nParticles; ++i) var.parcel[i].resize(nVarParticle);
-
-	
-	vector<vector<double>> send_value(size);
-	for(int i=0; i<org_nCells; ++i){
-		int send_id = cellConn[i];
-		for(int iprim=0; iprim<varSize; ++iprim){
-			double org_value = send_val[iprim][i];
-			send_value[cell_ip[i]].push_back(org_value);
-				
-		}
-	}
-	MASCH_MPI mpi;
-	vector<vector<double>> recv_value(size);
-	mpi.Alltoallv(send_value, recv_value);
-	for(int ip=0, id=0; ip<size; ++ip){
-		int tmp_size = recv_value[ip].size()/varSize;
-		for(int i=0, iter=0; i<tmp_size; ++i){
-			for(int iprim=0; iprim<varSize; ++iprim){
-				double tmp_value = recv_value[ip][iter++];
-				var.cells[id][iprim] = tmp_value;
-			}
-			++id;
-		}
-	}
-		
-			
+	// for(auto& item : var.cells){
+		// item.resize(varSize);
+	// }
+	// for(auto& item : var.parcels){
+		// item.resize(parcelVarSize);
+	// }
 	
 	
 }
@@ -853,7 +1148,7 @@ void resetVariableArray(vector<int>& cellConn){
 
 
 
-void fvmFiles(string folder, int rank){
+void saveVTUFiles(string folder, int rank){
 	
 	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
 	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
@@ -921,7 +1216,8 @@ void fvmFiles(string folder, int rank){
 	{
 		outputFile << "     <DataArray type=\"Float64\" Name=\"TimeValue\" NumberOfTuples=\"1\" format=\"" << saveFormat << "\">" << endl;
 		vector<double> values;
-		values.push_back(var.fields[controls.fieldVar["time"].id]);
+		// values.push_back(var.fields[controls.fieldVar["time"].id]);
+		values.push_back(stod(controls.startFrom));
 		save.writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
@@ -933,6 +1229,9 @@ void fvmFiles(string folder, int rank){
 	mesh.cells.size()  << 
 	// mesh.cells.size() + 1 << 
 	"\">" << endl;
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	// Points data
 	outputFile << "    <PointData>" << endl;
@@ -958,7 +1257,7 @@ void fvmFiles(string folder, int rank){
 		// vector<int> values;
 		// values.reserve(mesh.cells.size());
 		// for(auto& cell : mesh.cells) values.push_back(0);
-		// for(auto& cell : ro_proc_cell_ipoints) values.push_back(1);
+		// for(auto& cell : ro_proc_cell_ip_goints) values.push_back(1);
 		// save.writeDatasAtVTU(controls, outputFile, values);
 		// outputFile << "     </DataArray>" << endl;
 		
@@ -970,7 +1269,7 @@ void fvmFiles(string folder, int rank){
 		vector<int> values;
 		values.reserve(mesh.cells.size());
 		for(auto& cell : mesh.cells) values.push_back(cell.level);
-		// for(auto& cell : ro_proc_cell_ipoints) values.push_back(-100);
+		// for(auto& cell : ro_proc_cell_ip_goints) values.push_back(-100);
 		save.writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
@@ -979,11 +1278,10 @@ void fvmFiles(string folder, int rank){
 		vector<int> values;
 		values.reserve(mesh.cells.size());
 		for(auto& cell : mesh.cells) values.push_back(cell.group);
-		// for(auto& cell : ro_proc_cell_ipoints) values.push_back(-100);
+		// for(auto& cell : ro_proc_cell_ip_goints) values.push_back(-100);
 		save.writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
-	
 	
 	
 	
@@ -1228,12 +1526,210 @@ void fvmFiles(string folder, int rank){
 	outputFile.close();
 	
 	
+	if(rank==0){
+		cout << "-> completed" << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
+	}
 	
 	
 }
 
 
 
+
+
+
+void saveDPMFiles(string folder, int rank){
+	
+	// if(controls.nameParcels.size()==0) return;
+	
+
+	// int rank = static_cast<int>(MPI::COMM_WORLD.Get_rank()); 
+	int size = static_cast<int>(MPI::COMM_WORLD.Get_size()); 
+	
+	// 폴더 만들기
+    // auto ret = filesystem::create_directories(folder);
+	char folder_name[1000];
+	strcpy(folder_name, folder.c_str());
+	save.mkdirs(folder_name);
+	
+	if(rank==0){
+		cout << "┌────────────────────────────────────────────────────" << endl;
+		cout << "| execute save parcel files ... ";
+	}
+	
+	ofstream outputFile;
+	string filenamePlot = folder + "parcels." + to_string(rank) + ".vtu";
+	
+	
+	outputFile.open(filenamePlot);
+	if(outputFile.fail()){
+		cerr << "Unable to write file for writing." << endl;
+		MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	}
+	
+	string saveFormat = controls.saveFormat;
+	
+	outputFile << "<?xml version=\"1.0\"?>" << endl;
+	if(controls.saveFormat == "ascii"){
+		outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+	}
+	else if(controls.saveFormat == "binary"){
+		if(controls.saveCompression==0){
+			outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+		}
+		else{
+			outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\" compressor=\"vtkZLibDataCompressor\">" << endl;
+		}
+	}
+	else{
+		cout << endl;
+		cout << endl;
+		cout << "| warning : not defined saveFormat at controlDic file" << endl;
+		cout << endl;
+		cout << endl;
+	}
+	
+	outputFile << "  <UnstructuredGrid>" << endl;
+
+	outputFile << "    <FieldData>" << endl;
+	outputFile << "    </FieldData>" << endl;
+
+	outputFile << "   <Piece NumberOfPoints=\"" << mesh.parcels.size() << "\" NumberOfCells=\"" << 0 << "\">" << endl;
+	
+	outputFile << "    <PointData>" << endl;
+	
+	
+	// 필수 데이터 저장
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"" <<
+		"id" << "\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.parcels.size());
+		for(auto& parcel : mesh.parcels){
+			values.push_back(parcel.id);
+		}
+		if(values.size()!=0) save.writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	{
+		outputFile << "     <DataArray type=\"Int32\" Name=\"" <<
+		"icell" << "\" format=\"" << saveFormat << "\">" << endl;
+		vector<int> values;
+		values.reserve(mesh.parcels.size());
+		for(auto& parcel : mesh.parcels){
+			values.push_back(parcel.icell);
+		}
+		if(values.size()!=0) save.writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	
+	
+	// 스칼라 형식 데이터 저장
+	for(int id=0; id<parcel_primScalarNames.size(); ++id)
+	{
+		outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
+		parcel_primScalarNames[id] << "\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		values.reserve(mesh.parcels.size());
+		auto parcelVar = var.parcels.data();
+		for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
+			auto parcelVar_i = parcelVar[i];
+			values.push_back(parcelVar_i[id]);
+		}
+	
+		if(values.size()!=0) save.writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	
+	
+	// 벡터형식 데이터 저장
+	for(int id=0; id<parcel_primVector3Names.size(); ++id)
+	{
+		{
+			outputFile << "     <DataArray type=\"Float64\" Name=\"" <<
+			parcel_primVector3Names[id] << "\" NumberOfComponents=\"" << 3 << 
+			"\" format=\"" << saveFormat << "\">" << endl;
+			vector<double> values;
+			values.reserve(3*mesh.parcels.size());
+			vector<int> id_phi;
+			auto parcelVar = var.parcels.data();
+			int real_id0 = parcel_primScalarNames.size() + 3*id;
+			int real_id1 = parcel_primScalarNames.size() + 3*id + 1;
+			int real_id2 = parcel_primScalarNames.size() + 3*id + 2;
+			for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
+				auto parcelVar_i = parcelVar[i];
+				values.push_back(parcelVar_i[real_id0]);
+				values.push_back(parcelVar_i[real_id1]);
+				values.push_back(parcelVar_i[real_id2]);
+			}
+			if(values.size()!=0) save.writeDatasAtVTU(controls, outputFile, values);
+			outputFile << "     </DataArray>" << endl;
+			
+		}
+	}
+	
+	
+	
+	
+	outputFile << "    </PointData>" << endl;
+
+	
+	// Cells data
+	outputFile << "    <CellData>" << endl;
+	outputFile << "    </CellData>" << endl;
+	
+	// Points
+	outputFile << "    <Points>" << endl;
+	{
+		outputFile << "     <DataArray type=\"Float64\" Name=\"Position\" NumberOfComponents=\"3\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		auto parcelVar = var.parcels.data();
+		int str = parcel_primScalarNames.size()+3*parcel_primVector3Names.size();
+		int id_x = str;
+		int id_y = str+1;
+		int id_z = str+2;
+		for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i) {
+			auto parcelVar_i = parcelVar[i].data();
+			values.push_back(parcelVar_i[id_x]);
+			values.push_back(parcelVar_i[id_y]);
+			values.push_back(parcelVar_i[id_z]);
+		}
+		if(values.size()!=0) save.writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+	outputFile << "   </Points>" << endl;
+	
+	
+	outputFile << "   <Cells>" << endl; 
+	outputFile << "    <DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faces\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "    <DataArray type=\"Int64\" IdType=\"1\" Name=\"faceoffsets\" format=\"ascii\">" << endl;
+	outputFile << "    </DataArray>" << endl;
+	outputFile << "   </Cells>" << endl;
+	
+	
+	outputFile << "  </Piece>" << endl;
+	outputFile << " </UnstructuredGrid>" << endl;
+	outputFile << "</VTKFile>" << endl;
+	outputFile.close();
+	// MPI_Barrier(MPI_COMM_WORLD);
+	
+	
+	
+
+
+	if(rank==0){
+		cout << "-> completed" << endl;
+		cout << "└────────────────────────────────────────────────────" << endl;
+	}
+}
 
 
 
@@ -1276,19 +1772,43 @@ int main(int argc, char* argv[]) {
 	load.settingFiles("./setting/", controls);
 	// 파일 로드
 	loadVTUfiles(controls.getLoadFolderName());
+	loadDPMFiles(controls.getLoadFolderName());
 	
 	repartParMETIS(nSizeOrg, nSizeTar); 
-	if(rank>=nSizeOrg) cell_ip.clear();
+	if(rank>=nSizeOrg) cell_ip_g.clear();
+	{
+		parcel_ip_g.resize(mesh.parcels.size());
+		int iter=0;
+		for(auto& parcel : mesh.parcels){
+			parcel_ip_g[iter] = cell_ip_g[parcel.icell];
+			++iter;
+		}
+	}
 	
+	vector<int> dummy;
 	vector<int> to_new_cell_id(mesh.cells.size());
-	int maxLevel =3;
-	mesh.repartitioning(cell_ip, maxLevel, to_new_cell_id);
+	
+	int maxLevel = -1;
+	for(auto& cell : mesh.cells){
+		maxLevel = max(cell.level,maxLevel);
+	}
+	if(size>1){
+		int nbc_glo;
+		MPI_Allreduce(&maxLevel, &nbc_glo, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+		maxLevel = nbc_glo;
+	}
+	
+	mesh.repartitioning(cell_ip_g, maxLevel, to_new_cell_id, dummy);
 	
 	
 	resetVariableArray(to_new_cell_id);
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
-	if(rank<nSizeTar) fvmFiles("./save/repartition/",rank);
+	
+	if(rank<nSizeTar) saveVTUFiles("./save/repartition/",rank);
+	if(rank<nSizeTar) saveDPMFiles("./save/repartition/",rank);
 	
 	// if(rank==61) cout << mesh.cells.size() << " " << nSizeTar<< endl;
 	
@@ -1359,11 +1879,71 @@ int main(int argc, char* argv[]) {
 	}
 	
 	
-	MPI_Barrier(MPI_COMM_WORLD);
+	// ==========================================
+	// pvtu file
 	if(rank==0){
-		cout << "-> completed" << endl;
-		cout << "└────────────────────────────────────────────────────" << endl;
+		ofstream outputFile;
+		string filenamePvtu = "./save/parcels.";
+		string stime = "./save/repartition/";
+		stime.erase(stime.find("./save/"),7);
+		stime.erase(stime.find("/"),1);
+		filenamePvtu += stime;
+		filenamePvtu += ".pvtu";
+		
+		outputFile.open(filenamePvtu);
+		if(outputFile.fail()){
+			cerr << "Unable to write file for writing." << endl;
+			MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		}
+		
+		// string out_line;
+		outputFile << "<?xml version=\"1.0\"?>" << endl;
+		outputFile << " <VTKFile type=\"PUnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
+		outputFile << "  <PUnstructuredGrid>" << endl;
+
+		outputFile << "   <PFieldData>" << endl;
+		outputFile << "   </PFieldData>" << endl;
+		
+		outputFile << "   <PPoints>" << endl;
+		outputFile << "    <PDataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"Points\"/>" << endl;
+		outputFile << "   </PPoints>" << endl;
+		for(int ip=0; ip<nSizeTar; ++ip){
+			string filenamevtus = "./" + stime;
+			filenamevtus += "/parcels.";
+			filenamevtus += to_string(ip);
+			filenamevtus += ".vtu";
+			outputFile << "    <Piece Source=\"" << filenamevtus << "\"/>" << endl;
+		}
+		outputFile << "   <PPointData>" << endl;
+
+		outputFile << "    <PDataArray type=\"Int32\" Name=\"" << "id" << "\"/>" << endl;
+		outputFile << "    <PDataArray type=\"Int32\" Name=\"" << "icell" << "\"/>" << endl;
+		for(auto& name : parcel_primScalarNames)
+		{
+			outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
+		}
+		for(auto& sup_name : parcel_primVector3Names){
+			outputFile << "    <PDataArray type=\"Float64\" Name=\"" <<
+			sup_name << "\" NumberOfComponents=\"" << 3 << "\"/>" << endl;
+		}
+		outputFile << "   </PPointData>" << endl;
+		outputFile << "   <PCellData>" << endl;
+		outputFile << "   </PCellData>" << endl;
+		outputFile << "  </PUnstructuredGrid>" << endl;
+		outputFile << "</VTKFile>" << endl;
+		
+		
+		outputFile.close();
+		
 	}
+	
+	
+	
+	MPI_Barrier(MPI_COMM_WORLD);
+	// if(rank==0){
+		// cout << "-> completed" << endl;
+		// cout << "└────────────────────────────────────────────────────" << endl;
+	// }
 	
 	
 	

@@ -2,26 +2,26 @@
 language = kor;
 
 //
-startFrom = 0.000976122;
+startFrom = 0.0;
 stopAt = 10.0;
 
 //
-timeStep = 1.e-1; //
+timeStep = 3.e-7; //
 adjustTimeStep = yes;
-maxCFL = 0.01;
-maxTimeStep = 1.e-4;
+maxCFL = 0.05;
+maxTimeStep = 1.e-5;
 
 againWhenDiverge = no;
-multiCFL = 0.1;
+multiCFL = 0.05;
 minTimeStep = 1.e-12;
 
 // 
-saveControl = timeStep;
-saveInterval = 500;
+saveControl = runTime;//timeStep;
+saveInterval = 5.e-6;//500;
 saveFormat = binary;
 saveCompression = 6;
 writePrecision = 8;
 saveCellValues = (density);
-saveGradientValues = ();
+saveGradientData = ();
 
 printLog = 1;

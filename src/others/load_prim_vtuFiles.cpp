@@ -67,16 +67,60 @@ void MASCH_Mesh_Load::vtuPrimitive(string folderName, int rank,
 			scal_cell_save_name.push_back(name);
 		}
 	}
-	
+    
+    
+    // 평균값 로드 
+    for(auto& item : controls.saveMeanCellValues){
+        scal_cell_save_name.push_back("mean-"+item);
+    }
+    for(auto& item : controls.saveSMDValues){
+        scal_cell_save_name.push_back("fvm-mean-surface-area-"+item);
+        scal_cell_save_name.push_back("fvm-mean-volume-"+item);
+        
+        scal_cell_save_name.push_back("parcel-mean-surface-area-"+item);
+        scal_cell_save_name.push_back("parcel-mean-volume-"+item);
+        
+        scal_cell_save_name.push_back("fvm-sauter-mean-diameter-"+item);
+        scal_cell_save_name.push_back("parcel-sauter-mean-diameter-"+item);
+        scal_cell_save_name.push_back("sauter-mean-diameter-"+item);
+    }
+    // 평균값의 시간
+    vector<string> total_times;
+    for(auto& item : controls.saveMeanCellValues){
+        total_times.push_back("total-time-of-mean-"+item);
+    }
+    for(auto& item : controls.saveSMDValues){
+        total_times.push_back("total-time-of-fvm-mean-surface-area-"+item);
+        total_times.push_back("total-time-of-fvm-mean-volume-"+item);
+    }
+	// 필드값 로드
+	for(auto& name : total_times){
+		vector<double> tmp_vars;
+		loadDatasAtVTU(inputFile, name, tmp_vars);
+		int id = controls.getId_fieldVar(name);
+        if(tmp_vars.size()>0){
+            var.fields[id] = tmp_vars[0];
+        }
+        else{
+            var.fields[id] = 0.0;
+        }
+	}
+    
+	// 셀 값 로드
 	for(auto& name : scal_cell_save_name){
 		vector<double> tmp_cellVars;
 		loadDatasAtVTU(inputFile, name, tmp_cellVars);
 		// cout << name << " " << tmp_cellVars.size() << endl;
 		int id = controls.getId_cellVar(name);
 		int iter = 0;
-		for(auto& cell : var.cells){
-			cell[id] = tmp_cellVars[iter++];
-		}
+        if(tmp_cellVars.size()>0){
+            for(auto& cell : var.cells){
+                cell[id] = tmp_cellVars.at(iter++);
+            }
+        }
+        else{
+            for(auto& cell : var.cells){ cell[id] = 0.0; }
+        }
 	}
 	{
 		int iter_main = 0;

@@ -6,9 +6,10 @@ dpmMaxTimeStep = 1.e-1;
 water {
 	eulerianToLagrangian {
 		type = yes;
-		criterionVolumeFraction = 0.1;//0.3;
-		criterionRadius = 1000.0;//0.1;
-		criterionRatioRadius = 10000.0;//4.0;
+		interval = 10;
+		criterionVolumeFraction = 0.1;
+		criterionRadius = 1.e-3;
+		criterionRatioRadius = 4.0;
 		minRadius = 1.e-200;
 	}
 
@@ -21,7 +22,7 @@ water {
 	}
 
 	thermodynamics {
-		rho = 1000.0;
+		rho = 998.0;
 		T = 300.0;
 	}
 

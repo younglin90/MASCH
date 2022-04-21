@@ -81,6 +81,7 @@ vector<string>& inp_cell){
 	
 	
 	vector<bool> interfaceRegion(mesh.cells.size(),false);
+    // bool* interfaceRegion_ptr = interfaceRegion.data();
 	{
 		for(int j=0; j<inp_size; ++j){
 			int ip = 0;
@@ -126,11 +127,12 @@ vector<string>& inp_cell){
 	
 	double hmin = 1.e8;
 	vector<double> hmin_loc(mesh.cells.size());
+    auto hmin_loc_ptr = hmin_loc.data();
 	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
 		if(interfaceRegion[i]==false) continue;
 		auto cellVar_i = cellVar[i].data();
-		hmin_loc[i] = pow(cellVar_i[id_vol],0.3);
-		hmin = min(hmin, hmin_loc[i]);
+		hmin_loc_ptr[i] = pow(cellVar_i[id_vol],0.3);
+		hmin = min(hmin, hmin_loc_ptr[i]);
 	}
 	double hmin_glob;
 	MPI_Allreduce(&hmin, &hmin_glob, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
@@ -172,11 +174,12 @@ vector<string>& inp_cell){
 	
 	
 	// smoothing 레벨셋
-	int iterVFSmoothingMax = 6;
+	int iterVFSmoothingMax = 8;
 	for(int iter=0; iter<iterVFSmoothingMax; ++iter){
 		for(int j=0; j<inp_size; ++j){
 			int id_ls = id_levelSet_inp[j];
 			vector<double> flux_diff(mesh.cells.size(),0.0);
+            auto flux_diff_ptr = flux_diff.data();
 			for(int i=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
 				auto& face = mesh.faces[i];
 				auto faceVar_i = faceVar[i].data();
@@ -189,13 +192,13 @@ vector<string>& inp_cell){
 				
 					double alphaL = cellVar_iL[id_ls];
 					double alphaR = cellVar_iR[id_ls];
-					flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
-					flux_diff[face.iR] -= (alphaR-alphaL)/dLR*area;
+					flux_diff_ptr[face.iL] += (alphaR-alphaL)/dLR*area;
+					flux_diff_ptr[face.iR] -= (alphaR-alphaL)/dLR*area;
 				}
 				else if(face.getType() == MASCH_Face_Types::BOUNDARY){
 					auto cellVar_iL = cellVar[face.iL].data();
 					double alphaL = cellVar_iL[id_ls];
-					// flux_diff[face.iL] += (0.0-alphaL)/dLR*area;
+					// flux_diff_ptr[face.iL] += (0.0-alphaL)/dLR*area;
 				
 				}
 			}
@@ -233,7 +236,7 @@ vector<string>& inp_cell){
 							double dLR = faceVar_i[id_dLR];
 							double alphaL = cellVar_iL[id_ls];
 							double alphaR = recv_value3_ptr[ip];
-							flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
+							flux_diff_ptr[face.iL] += (alphaR-alphaL)/dLR*area;
 							
 							++ip;
 						}
@@ -247,15 +250,15 @@ vector<string>& inp_cell){
 				double maxA = cellVar_i[id_maxA];
 				double minA = cellVar_i[id_minA];
 				
-				// cellVar_i[id_ls] += 0.0001*hmin*flux_diff[i];
-				// cellVar_i[id_ls] += 1.e-9*flux_diff[i]/vol;
+				// cellVar_i[id_ls] += 0.0001*hmin*flux_diff_ptr[i];
+				// cellVar_i[id_ls] += 1.e-9*flux_diff_ptr[i]/vol;
 				// if(interfaceRegion[i]==false){
-					// cellVar_i[id_ls] += hmin*flux_diff[i]/vol;
+					// cellVar_i[id_ls] += hmin*flux_diff_ptr[i]/vol;
 				// }
 				double Dcoeff = hmin;
-				double CFL = 0.8;
+				double CFL = 0.3;
 				double dt = minA/Dcoeff/6.0;
-					cellVar_i[id_ls] += CFL * dt * (Dcoeff*flux_diff[i]/vol);
+					cellVar_i[id_ls] += CFL * dt * (Dcoeff*flux_diff_ptr[i]/vol);
 					
 				if(abs(cellVar_i[id_ls])>=1.e3){
 					cout << "#WARNING : level-set smoothing values >= 1.e3 in curvature" << endl;
@@ -458,10 +461,14 @@ vector<string>& inp_cell){
 	
 	// 수직벡터 계산
 	vector<vector<double>> magGradAlpha(inp_size,vector<double>(mesh.cells.size()));
+    auto magGradAlpha_ptr = magGradAlpha.data();
 	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
 		auto cellVar_i = cellVar[i].data();
 		
 		for(int j=0; j<inp_size; ++j){
+            
+            auto magGradAlpha_ptr_j = magGradAlpha_ptr[j].data();
+            
 			int id_x = unitNormalId_nx[j];
 			int id_y = unitNormalId_ny[j];
 			int id_z = unitNormalId_nz[j];
@@ -475,7 +482,7 @@ vector<string>& inp_cell){
 			magGrad += cellVar_i[id_gradz]*cellVar_i[id_gradz];
 			magGrad = sqrt(magGrad);
 			
-			magGradAlpha[j][i] = magGrad;
+			magGradAlpha_ptr_j[i] = magGrad;
 		
 			//magGrad += 1.e-8*pow(cellVar_i[id_vol],0.3333);
 			cellVar_i[id_x] = 0.0;
@@ -574,10 +581,11 @@ vector<string>& inp_cell){
 			int id_gradz = id_gradz_inp[j];
 
 			vector<double> flux(mesh.cells.size(),0.0);
-			vector<double> flux_diff(mesh.cells.size(),0.0);
-			vector<double> gradx_magGradAlp(mesh.cells.size(),0.0);
-			vector<double> grady_magGradAlp(mesh.cells.size(),0.0);
-			vector<double> gradz_magGradAlp(mesh.cells.size(),0.0);
+            auto flux_ptr = flux.data();
+			// vector<double> flux_diff(mesh.cells.size(),0.0);
+			// vector<double> gradx_magGradAlp(mesh.cells.size(),0.0);
+			// vector<double> grady_magGradAlp(mesh.cells.size(),0.0);
+			// vector<double> gradz_magGradAlp(mesh.cells.size(),0.0);
 			for(int i=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
 				auto& face = mesh.faces[i];
 				auto faceVar_i = faceVar[i].data();
@@ -598,22 +606,22 @@ vector<string>& inp_cell){
 					n_n += (wCL*cellVar_iL[id_y] + wCR*cellVar_iR[id_y])*nvec[1];
 					n_n += (wCL*cellVar_iL[id_z] + wCR*cellVar_iR[id_z])*nvec[2];
 						
-					flux[face.iL] += n_n*area;
-					flux[face.iR] -= n_n*area;
+					flux_ptr[face.iL] += n_n*area;
+					flux_ptr[face.iR] -= n_n*area;
 					
-					double magGradAlphaF = 0.5*(magGradAlpha[j][face.iL]+magGradAlpha[j][face.iR]);
-					gradx_magGradAlp[face.iL] += magGradAlphaF*nvec[0]*area;
-					grady_magGradAlp[face.iL] += magGradAlphaF*nvec[1]*area;
-					gradz_magGradAlp[face.iL] += magGradAlphaF*nvec[2]*area;
+					// double magGradAlphaF = 0.5*(magGradAlpha[j][face.iL]+magGradAlpha[j][face.iR]);
+					// gradx_magGradAlp[face.iL] += magGradAlphaF*nvec[0]*area;
+					// grady_magGradAlp[face.iL] += magGradAlphaF*nvec[1]*area;
+					// gradz_magGradAlp[face.iL] += magGradAlphaF*nvec[2]*area;
 					
-					gradx_magGradAlp[face.iR] -= magGradAlphaF*nvec[0]*area;
-					grady_magGradAlp[face.iR] -= magGradAlphaF*nvec[1]*area;
-					gradz_magGradAlp[face.iR] -= magGradAlphaF*nvec[2]*area;
+					// gradx_magGradAlp[face.iR] -= magGradAlphaF*nvec[0]*area;
+					// grady_magGradAlp[face.iR] -= magGradAlphaF*nvec[1]*area;
+					// gradz_magGradAlp[face.iR] -= magGradAlphaF*nvec[2]*area;
 					
-					double alphaL = cellVar_iL[id_ls];
-					double alphaR = cellVar_iR[id_ls];
-					flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
-					flux_diff[face.iR] -= (alphaR-alphaL)/dLR*area;
+					// double alphaL = cellVar_iL[id_ls];
+					// double alphaR = cellVar_iR[id_ls];
+					// flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
+					// flux_diff[face.iR] -= (alphaR-alphaL)/dLR*area;
 				}
 				else if(face.getType() == MASCH_Face_Types::INTERNAL){
 					auto cellVar_iL = cellVar[face.iL].data();
@@ -621,14 +629,14 @@ vector<string>& inp_cell){
 					double n_n = cellVar_iL[id_x]*nvec[0];
 					n_n += cellVar_iL[id_y]*nvec[1];
 					n_n += cellVar_iL[id_z]*nvec[2];
+                    
+					flux_ptr[face.iL] += n_n*area;
 					
-					double magGradAlphaF = magGradAlpha[j][face.iL];
-					gradx_magGradAlp[face.iL] += magGradAlphaF*nvec[0]*area;
-					grady_magGradAlp[face.iL] += magGradAlphaF*nvec[1]*area;
-					gradz_magGradAlp[face.iL] += magGradAlphaF*nvec[2]*area;
+					// double magGradAlphaF = magGradAlpha[j][face.iL];
+					// gradx_magGradAlp[face.iL] += magGradAlphaF*nvec[0]*area;
+					// grady_magGradAlp[face.iL] += magGradAlphaF*nvec[1]*area;
+					// gradz_magGradAlp[face.iL] += magGradAlphaF*nvec[2]*area;
 						
-					flux[face.iL] += n_n*area;
-					
 					// double alphaL = cellVar_iL[id_ls];
 					// flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
 				}
@@ -639,8 +647,8 @@ vector<string>& inp_cell){
 				send_value0.reserve(proc_size);
 				send_value1.reserve(proc_size);
 				send_value2.reserve(proc_size);
-				send_value3.reserve(proc_size);
-				send_value4.reserve(proc_size);
+				// send_value3.reserve(proc_size);
+				// send_value4.reserve(proc_size);
 				for(auto& boundary : mesh.boundaries){
 					if(boundary.getType()==MASCH_Face_Types::PROCESSOR){
 						int str = boundary.startFace;
@@ -650,16 +658,16 @@ vector<string>& inp_cell){
 							send_value0.push_back(cellVar_i[id_x]);
 							send_value1.push_back(cellVar_i[id_y]);
 							send_value2.push_back(cellVar_i[id_z]);
-							send_value3.push_back(cellVar_i[id_ls]);
-							send_value4.push_back(magGradAlpha[j][faces[i].iL]);
+							// send_value3.push_back(cellVar_i[id_ls]);
+							// send_value4.push_back(magGradAlpha[j][faces[i].iL]);
 						}
 					}
 				}
 				vector<double> recv_value0(proc_size);
 				vector<double> recv_value1(proc_size);
 				vector<double> recv_value2(proc_size);
-				vector<double> recv_value3(proc_size);
-				vector<double> recv_value4(proc_size);
+				// vector<double> recv_value3(proc_size);
+				// vector<double> recv_value4(proc_size);
 				MPI_Alltoallv( send_value0.data(), mesh.countsSendProcFaces.data(), 
 								mesh.displsSendProcFaces.data(), MPI_DOUBLE, 
 								recv_value0.data(), mesh.countsRecvProcFaces.data(), 
@@ -675,21 +683,21 @@ vector<string>& inp_cell){
 								recv_value2.data(), mesh.countsRecvProcFaces.data(), 
 								mesh.displsRecvProcFaces.data(), MPI_DOUBLE, 
 							   MPI_COMM_WORLD);
-				MPI_Alltoallv( send_value3.data(), mesh.countsSendProcFaces.data(), 
-								mesh.displsSendProcFaces.data(), MPI_DOUBLE, 
-								recv_value3.data(), mesh.countsRecvProcFaces.data(), 
-								mesh.displsRecvProcFaces.data(), MPI_DOUBLE, 
-							   MPI_COMM_WORLD);
-				MPI_Alltoallv( send_value4.data(), mesh.countsSendProcFaces.data(), 
-								mesh.displsSendProcFaces.data(), MPI_DOUBLE, 
-								recv_value4.data(), mesh.countsRecvProcFaces.data(), 
-								mesh.displsRecvProcFaces.data(), MPI_DOUBLE, 
-							   MPI_COMM_WORLD);
+				// MPI_Alltoallv( send_value3.data(), mesh.countsSendProcFaces.data(), 
+								// mesh.displsSendProcFaces.data(), MPI_DOUBLE, 
+								// recv_value3.data(), mesh.countsRecvProcFaces.data(), 
+								// mesh.displsRecvProcFaces.data(), MPI_DOUBLE, 
+							   // MPI_COMM_WORLD);
+				// MPI_Alltoallv( send_value4.data(), mesh.countsSendProcFaces.data(), 
+								// mesh.displsSendProcFaces.data(), MPI_DOUBLE, 
+								// recv_value4.data(), mesh.countsRecvProcFaces.data(), 
+								// mesh.displsRecvProcFaces.data(), MPI_DOUBLE, 
+							   // MPI_COMM_WORLD);
 				auto recv_value0_ptr = recv_value0.data();
 				auto recv_value1_ptr = recv_value1.data();
 				auto recv_value2_ptr = recv_value2.data();
-				auto recv_value3_ptr = recv_value3.data();
-				auto recv_value4_ptr = recv_value4.data();
+				// auto recv_value3_ptr = recv_value3.data();
+				// auto recv_value4_ptr = recv_value4.data();
 				int ip=0;
 				for(auto& boundary : mesh.boundaries){
 					if(boundary.getType()==MASCH_Face_Types::PROCESSOR){
@@ -712,16 +720,16 @@ vector<string>& inp_cell){
 							n_n += (wCL*cellVar_iL[id_y] + wCR*recv_value1_ptr[ip])*nvec[1];
 							n_n += (wCL*cellVar_iL[id_z] + wCR*recv_value2_ptr[ip])*nvec[2];
 							
-							flux[face.iL] += n_n*area;
+							flux_ptr[face.iL] += n_n*area;
 									
-							double magGradAlphaF = 0.5*(magGradAlpha[j][face.iL]+recv_value4_ptr[ip]);
-							gradx_magGradAlp[face.iL] += magGradAlphaF*nvec[0]*area;
-							grady_magGradAlp[face.iL] += magGradAlphaF*nvec[1]*area;
-							gradz_magGradAlp[face.iL] += magGradAlphaF*nvec[2]*area;
+							// double magGradAlphaF = 0.5*(magGradAlpha[j][face.iL]+recv_value4_ptr[ip]);
+							// gradx_magGradAlp[face.iL] += magGradAlphaF*nvec[0]*area;
+							// grady_magGradAlp[face.iL] += magGradAlphaF*nvec[1]*area;
+							// gradz_magGradAlp[face.iL] += magGradAlphaF*nvec[2]*area;
 							
-							double alphaL = cellVar_iL[id_ls];
-							double alphaR = recv_value3_ptr[ip];
-							flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
+							// double alphaL = cellVar_iL[id_ls];
+							// double alphaR = recv_value3_ptr[ip];
+							// flux_diff[face.iL] += (alphaR-alphaL)/dLR*area;
 							
 							++ip;
 						}
@@ -732,34 +740,34 @@ vector<string>& inp_cell){
 			for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
 				auto cellVar_i = cellVar[i].data();
 				double vol = cellVar_i[id_vol];
-				// cellVar_i[id] = -flux[i]/vol;
-				// double magGrad = 0.0;
-				// magGrad += cellVar_i[id_gradx]*cellVar_i[id_gradx];
-				// magGrad += cellVar_i[id_grady]*cellVar_i[id_grady];
-				// magGrad += cellVar_i[id_gradz]*cellVar_i[id_gradz];
-				// magGrad = sqrt(magGrad);
+				// // cellVar_i[id] = -flux[i]/vol;
+				// // double magGrad = 0.0;
+				// // magGrad += cellVar_i[id_gradx]*cellVar_i[id_gradx];
+				// // magGrad += cellVar_i[id_grady]*cellVar_i[id_grady];
+				// // magGrad += cellVar_i[id_gradz]*cellVar_i[id_gradz];
+				// // magGrad = sqrt(magGrad);
 				
-				flux_diff[i] /= vol;
-				gradx_magGradAlp[i] /= vol;
-				grady_magGradAlp[i] /= vol;
-				gradz_magGradAlp[i] /= vol;
+				// flux_diff[i] /= vol;
+				// gradx_magGradAlp[i] /= vol;
+				// grady_magGradAlp[i] /= vol;
+				// gradz_magGradAlp[i] /= vol;
 				
-				double first_term = 0.0;
-				first_term += cellVar_i[id_x]*gradx_magGradAlp[i];
-				first_term += cellVar_i[id_y]*grady_magGradAlp[i];
-				first_term += cellVar_i[id_z]*gradz_magGradAlp[i];
+				// double first_term = 0.0;
+				// first_term += cellVar_i[id_x]*gradx_magGradAlp[i];
+				// first_term += cellVar_i[id_y]*grady_magGradAlp[i];
+				// first_term += cellVar_i[id_z]*gradz_magGradAlp[i];
 				
-				double tmp_kappa = (first_term - flux_diff[i]);
+				// double tmp_kappa = (first_term - flux_diff[i]);
 				
-				double magGrad = magGradAlpha[j][i];
+				// double magGrad = magGradAlpha[j][i];
 				
-				cellVar_i[id] = 0.0;
-				if(magGrad!=0){
-					cellVar_i[id] = tmp_kappa/magGrad;
-				}
+				// cellVar_i[id] = 0.0;
+				// if(magGrad!=0){
+					// cellVar_i[id] = tmp_kappa/magGrad;
+				// }
 				
 				
-				cellVar_i[id] = -flux[i]/vol;
+				cellVar_i[id] = -flux_ptr[i]/vol;
 			}
 		}
 	}		
@@ -796,9 +804,10 @@ vector<string>& inp_cell){
 			int id_y = unitNormalId_ny[i_id];
 			int id_z = unitNormalId_nz[i_id];
 			vector<double> kappa(mesh.cells.size(),0.0);
+            auto kappa_ptr = kappa.data();
 			for(int i=0; i<mesh.cells.size(); ++i){
 				auto cellVar_i = cellVar[i].data();
-				kappa[i] = cellVar_i[id_kappa];
+				kappa_ptr[i] = cellVar_i[id_kappa];
 			}
 			
 			
@@ -806,6 +815,8 @@ vector<string>& inp_cell){
 			{
 				vector<double> smoothUp(mesh.cells.size(),0.0);
 				vector<double> smoothDown(mesh.cells.size(),0.0);
+                auto smoothUp_ptr = smoothUp.data();
+                auto smoothDown_ptr = smoothDown.data();
 				
 				for(int i=0; i<mesh.faces.size(); ++i){
 					auto& face = mesh.faces[i];
@@ -820,13 +831,13 @@ vector<string>& inp_cell){
 						double alpha_org_R = cellVar_R[id_phi];
 						double alpha_org_F = 0.5*(alpha_org_L+alpha_org_R);
 						double weight = sqrt(alpha_org_F*(1.0-alpha_org_F)+1.e-3);
-						double kappa_F = 0.5*(kappa[iL]+kappa[iR]);
+						double kappa_F = 0.5*(kappa_ptr[iL]+kappa_ptr[iR]);
 						
-						smoothUp[iL] += weight*kappa_F;
-						smoothDown[iL] += weight;
+						smoothUp_ptr[iL] += weight*kappa_F;
+						smoothDown_ptr[iL] += weight;
 						
-						smoothUp[iR] += weight*kappa_F;
-						smoothDown[iR] += weight;
+						smoothUp_ptr[iR] += weight*kappa_F;
+						smoothDown_ptr[iR] += weight;
 					}
 					else if(face.getType() == MASCH_Face_Types::BOUNDARY){
 						auto cellVar_L = cellVar[iL].data();
@@ -835,8 +846,8 @@ vector<string>& inp_cell){
 						double alpha_org_F = alpha_org_L;
 						double weight = sqrt(alpha_org_F*(1.0-alpha_org_F)+1.e-6);
 						
-						smoothUp[iL] += weight*kappa[iL];
-						smoothDown[iL] += weight;
+						smoothUp_ptr[iL] += weight*kappa_ptr[iL];
+						smoothDown_ptr[iL] += weight;
 					}
 					
 				}
@@ -844,13 +855,15 @@ vector<string>& inp_cell){
 				if(size>1){
 					// processor faces
 					vector<double> sendValues, sendValues2;
+                    sendValues.reserve(proc_size);
+                    sendValues2.reserve(proc_size);
 					for(int i=0; i<mesh.faces.size(); ++i){
 						auto& face = mesh.faces[i];
 						int iL = face.iL;
 						
 						if(face.getType() == MASCH_Face_Types::PROCESSOR){
 							auto cellVar_L = cellVar[iL].data();
-							sendValues.push_back(kappa[iL]);
+							sendValues.push_back(kappa_ptr[iL]);
 							sendValues2.push_back(cellVar_L[id_phi]);
 						}
 					}
@@ -872,10 +885,10 @@ vector<string>& inp_cell){
 							double alpha_org_R = smoothAi_recv[ip];
 							double alpha_org_F = 0.5*(alpha_org_L+alpha_org_R);
 							double weight = sqrt(alpha_org_F*(1.0-alpha_org_F)+1.e-3);
-							double kappa_F = 0.5*(kappa[iL]+recvValues[ip]);
+							double kappa_F = 0.5*(kappa_ptr[iL]+recvValues[ip]);
 							
-							smoothUp[iL] += weight*kappa_F;
-							smoothDown[iL] += weight;
+							smoothUp_ptr[iL] += weight*kappa_F;
+							smoothDown_ptr[iL] += weight;
 							
 							++ip;
 						}
@@ -885,15 +898,15 @@ vector<string>& inp_cell){
 				for(int i=0; i<mesh.cells.size(); ++i){
 					auto cellVar_i = cellVar[i].data();
 					double alpha_i = cellVar_i[id_phi];
-					double kappa_i = smoothUp[i]/smoothDown[i];
+					double kappa_i = smoothUp_ptr[i]/smoothDown_ptr[i];
 					double weight = 2.0*sqrt(alpha_i*(1.0-alpha_i));
-					kappa[i] = weight*kappa[i] + (1.0-weight)*kappa_i;
+					kappa_ptr[i] = weight*kappa_ptr[i] + (1.0-weight)*kappa_i;
 				}
 			}
 			
 			for(int i=0; i<mesh.cells.size(); ++i){
 				auto cellVar_i = cellVar[i].data();
-				cellVar_i[id_kappa] = kappa[i];
+				cellVar_i[id_kappa] = kappa_ptr[i];
 			}
 		}
 	}

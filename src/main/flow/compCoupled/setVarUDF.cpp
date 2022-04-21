@@ -78,6 +78,10 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 		string tmp_name = ("mass-fraction-"+species[i]);
 		(*this).setVarible({"cell"},"gradient "+tmp_name,"","","","vector3",
 							{"x-gradient "+tmp_name,"y-gradient "+tmp_name,"z-gradient "+tmp_name},{"","",""},{"","",""});
+                            
+		// string tmp_name2 = ("volume-fraction-"+species[i]);
+		// (*this).setVarible({"cell"},"gradient "+tmp_name2,"","","","vector3",
+							// {"x-gradient "+tmp_name2,"y-gradient "+tmp_name2,"z-gradient "+tmp_name2},{"","",""},{"","",""});
 	}
 	(*this).setVarible({"cell"},"gradient density","","","","vector3",
 						{"x-gradient density","y-gradient density","z-gradient density"},{"","",""},{"","",""});
@@ -87,6 +91,7 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({"cell"},"old pressure","","","","scalar");
 	(*this).setVarible({"cell"},"old velocity","","","","vector3",
 						{"old x-velocity","old y-velocity","old z-velocity"},{"","",""},{"","",""});
+	(*this).setVarible({"cell"},"old temperature","","","","scalar");
 	(*this).setVarible({"cell"},"old density","","","","scalar");
 	(*this).setVarible({"cell"},"old total-enthalpy","","","","scalar");
 	for(int i=0; i<species.size()-1; ++i){
@@ -117,6 +122,22 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	(*this).setVarible({"face"},"right total-enthalpy","","","","scalar");
 	(*this).setVarible({"face"},"left viscosity","","","","scalar");
 	(*this).setVarible({"face"},"right viscosity","","","","scalar");
+    
+    // 페이스 리미터
+    (*this).setVarible({"face"},"left limiter-pressure","","","","scalar");
+    (*this).setVarible({"face"},"right limiter-pressure","","","","scalar");
+    (*this).setVarible({"face"},"left limiter-x-velocity","","","","scalar");
+    (*this).setVarible({"face"},"right limiter-x-velocity","","","","scalar");
+    (*this).setVarible({"face"},"left limiter-y-velocity","","","","scalar");
+    (*this).setVarible({"face"},"right limiter-y-velocity","","","","scalar");
+    (*this).setVarible({"face"},"left limiter-z-velocity","","","","scalar");
+    (*this).setVarible({"face"},"right limiter-z-velocity","","","","scalar");
+    (*this).setVarible({"face"},"left limiter-temperature","","","","scalar");
+    (*this).setVarible({"face"},"right limiter-temperature","","","","scalar");
+	for(int i=0; i<species.size()-1; ++i){
+        (*this).setVarible({"face"},"left limiter-mass-fraction-"+species[i],"","","","scalar");
+        (*this).setVarible({"face"},"right limiter-mass-fraction-"+species[i],"","","","scalar");
+    }
 	
 	
 	// 곡률 관련
@@ -153,6 +174,49 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	
 	
 	
+	// 셀 평균 플랏팅 관련
+	// (*this).setVarible({"cell"},"mean-pressure","","","","scalar");
+	// (*this).setVarible({"cell"},"mean-x-velocity","","","","scalar");
+	// (*this).setVarible({"cell"},"mean-y-velocity","","","","scalar");
+	// (*this).setVarible({"cell"},"mean-z-velocity","","","","scalar");
+	// (*this).setVarible({"cell"},"mean-temperature","","","","scalar");
+	(*this).setVarible({"cell"},"mean-density","","","","scalar");
+	(*this).setVarible({"field"},"total-time-of-mean-density","","","","scalar");
+    
+    
+	for(int i=0; i<species.size()-1; ++i){
+        (*this).setVarible({"cell"},"fvm-surface-area-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"fvm-volume-"+species[i],"","","","scalar");
+        
+        (*this).setVarible({"cell"},"fvm-mean-surface-area-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-fvm-mean-surface-area-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"parcel-mean-surface-area-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-parcel-mean-surface-area-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"mean-surface-area-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-mean-surface-area-"+species[i],"","","","scalar");
+        
+        (*this).setVarible({"cell"},"fvm-mean-volume-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-fvm-mean-volume-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"parcel-mean-volume-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-parcel-mean-volume-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"mean-volume-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-mean-volume-"+species[i],"","","","scalar");
+        
+        (*this).setVarible({"cell"},"fvm-sauter-mean-diameter-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"parcel-sauter-mean-diameter-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"sauter-mean-diameter-"+species[i],"","","","scalar");
+          
+        // controls.meanInp_cell_id.push_back(controls.getId_cellVar("fvm-volume-"+item));
+        // controls.meanInp_cell_totalTime_id.push_back(controls.getId_fieldVar("total-time-of-fvm-mean-volume-"+item));
+        // controls.meanOut_cell_id.push_back(controls.getId_cellVar("fvm-mean-volume-"+item));
+        // (*this).setVarible({"field"},"total-time-of-mean-pressure","","","","scalar");
+        // (*this).setVarible({"field"},"total-time-of-mean-x-velocity","","","","scalar");
+        // (*this).setVarible({"field"},"total-time-of-mean-y-velocity","","","","scalar");
+        // (*this).setVarible({"field"},"total-time-of-mean-z-velocity","","","","scalar");
+        // (*this).setVarible({"field"},"total-time-of-mean-temperature","","","","scalar");
+        
+        
+	}
 	
 	
 	

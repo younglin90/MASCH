@@ -512,6 +512,7 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 			controls.setGeometricOnlyCell_xyz(mesh);
 			
 			controls.resetVariableArray(mesh, var, org_xyz, child_new_cell_id_of_org, "refine");
+			// controls.resetParcelPosition(mesh, var, child_new_cell_id_of_org, "refine");
 		}
 		
 		// 언리파인
@@ -527,6 +528,7 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 				0);
 			
 			controls.resetVariableArray(mesh, var, dummy, child_org_cell_id_of_new, "unrefine");
+			// controls.resetParcelPosition(mesh, var, child_org_cell_id_of_new, "unrefine");
 		}
 		
 		
@@ -542,14 +544,15 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 		// if(rank==0) cout << "| exe. Dynamic Load Balancing" << endl;
 		vector<int> cell_ip(mesh.cells.size(),rank);
 		mesh.repartParMETIS(size, cell_ip, mesh);
-		vector<int> to_new_cell_id;
+		vector<int> to_new_cell_id(mesh.cells.size());
 		// if(rank==0) cout << "AA" << endl;
-		mesh.repartitioning(cell_ip, maxLevel, to_new_cell_id);
+		vector<int> parcel_ip;
+		mesh.repartitioning(cell_ip, maxLevel, to_new_cell_id, parcel_ip);
 		// if(rank==0) cout << "BB" << endl;
 		
 		controls.setGeometricOnlyCell_xyz(mesh);
 		
-		controls.resetVariableArray(mesh, var, cell_ip, to_new_cell_id, "repart");
+		controls.resetVariableArray(mesh, var, cell_ip, to_new_cell_id, parcel_ip, "repart");
 	}
 	
 	

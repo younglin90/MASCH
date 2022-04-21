@@ -2,10 +2,9 @@
 #include "./mesh.h"
 
 
-void getFaceOrders(
+void MASCH_Mesh::getFaceOrders(
 int maxLevel, vector<MASCH_Point>& points, vector<MASCH_Face>& faces, 
 vector<int>& procFaces, vector<int>& reorderFaceIds) {
-	
 	
 	int faceSize = procFaces.size();
 
@@ -67,6 +66,96 @@ vector<int>& procFaces, vector<int>& reorderFaceIds) {
 			}
 		}
 	}
+	
+	// int faceSize = procFaces.size();
+
+	
+	// reorderFaceIds.clear();
+
+	// vector<vector<int>> masterFaces(maxLevel+1);
+	// for (int level = 1; level <= maxLevel; ++level) {
+		// for (int i = 0; i < faceSize; ++i) {
+			// bool boolStartFace = false;
+			// for (auto& ipoint : faces[procFaces[i]].ipoints) {
+				// if (points[ipoint].level <= level-1) {
+					// boolStartFace = true;
+					// break;
+				// }
+			// }
+			// if (boolStartFace == true) masterFaces[level].push_back( procFaces[i] );
+		// }
+	// }
+
+	// {
+		// // if(masterFaces.size()<=1) cout << "AAAAAAAAA" << endl;
+		// // if(masterFaces[1].size()<1) cout << "AAAAAAAAA" << endl;
+		// // reverse(masterFaces[1].begin() + 1, masterFaces[1].end());
+		// for (auto& item : masterFaces[1]) {
+			// reorderFaceIds.push_back(item);
+		// }
+		// // reverse(masterFaces[1].begin() + 1, masterFaces[1].end());
+
+		// for (int level = 1; level < maxLevel; ++level) {
+			// int nextLv = level + 1;
+			// // if(masterFaces.size()<=level) cout << "AAAAAAA" << endl;
+			// auto& masterFaces_lv = masterFaces[level];
+			// auto& masterFaces_nextLv = masterFaces[nextLv];
+			// for (int i = 0; i < masterFaces_lv.size() - 1; ++i) {
+				// int str_id = masterFaces_lv[i];
+				// int end_id = masterFaces_lv[i + 1];
+				// auto str_ptr = find(masterFaces_nextLv.begin(), masterFaces_nextLv.end(), str_id);
+				// auto end_ptr = find(masterFaces_nextLv.begin(), masterFaces_nextLv.end(), end_id);
+				// int str = 0;
+				// // if(str_ptr==masterFaces_lv.end()) {
+					// // str = masterFaces_lv.size()-1;
+				// // }
+				// // else{
+					// // str = str_ptr - masterFaces_nextLv.begin();
+					// str = masterFaces_nextLv.begin() - masterFaces_nextLv.begin();
+				// // }
+				// int end = 0;
+				// // if(end_ptr==masterFaces_nextLv.end()) {
+					// // end = masterFaces_nextLv.size()-1;
+				// // }
+				// // else{
+					// // end = end_ptr - masterFaces_nextLv.begin();
+					// end = masterFaces_nextLv.begin() - masterFaces_nextLv.begin();
+				// // }
+				// vector<int> tmp_vec2;
+				// // cout << str << " " << end << endl;
+				// for (int jj = str; jj < end; ++jj) {
+					// // tmp_vec2.push_back(masterFaces_nextLv.at(j));
+				// }
+				// // // if (tmp_vec.size() > 0) {
+					// // // // reverse(tmp_vec.begin() + 1, tmp_vec.end());
+					// // // int insert_str = find(reorderFaceIds.begin(), reorderFaceIds.end(), tmp_vec[0]) - reorderFaceIds.begin();
+					// // // // reorderFaceIds.insert(reorderFaceIds.begin() + insert_str + 1,
+						// // // // tmp_vec.begin() + 1, tmp_vec.end());
+				// // // }
+			// }
+			// // {
+				// // int str_id = masterFaces[level].back();
+				// // auto str_ptr = find(masterFaces[nextLv].begin(), masterFaces[nextLv].end(), str_id);
+				// // int str = 0;
+				// // if(str_ptr==masterFaces[nextLv].end()) {
+					// // str = masterFaces[nextLv].size()-1;
+				// // }
+				// // else{
+					// // str = str_ptr - masterFaces[nextLv].begin();
+				// // }
+				// // vector<int> tmp_vec;
+				// // for (int j = str; j < masterFaces[nextLv].size(); ++j) {
+					// // tmp_vec.push_back(masterFaces[nextLv][j]);
+				// // }
+				// // // if (tmp_vec.size() > 0) {
+					// // // // reverse(tmp_vec.begin() + 1, tmp_vec.end());
+					// // // int insert_str = find(reorderFaceIds.begin(), reorderFaceIds.end(), tmp_vec[0]) - reorderFaceIds.begin();
+					// // // // reorderFaceIds.insert(reorderFaceIds.begin() + insert_str + 1,
+						// // // // tmp_vec.begin() + 1, tmp_vec.end());
+				// // // }
+			// // }
+		// }
+	// }
 
 };
 
@@ -146,7 +235,8 @@ vector<int>& procFaces, vector<int>& reorderFaceIds) {
 void MASCH_Mesh::repartitioning(
 vector<int>& idBlockCell, 
 int maxLevel, 
-vector<int>& to_new_cell_id
+vector<int>& to_new_cell_id,
+vector<int>& parcel_ip
 ){
 	
 	
@@ -222,6 +312,13 @@ vector<int>& to_new_cell_id
 	vector<bool> procFace_boolReorder;
 	//*************************
 	
+	//=======================================	
+	// parcel 위치 정보 넘기기
+	vector<vector<int>> recv_localParcel_size;
+	vector<vector<int>> recv_localParcel_id;
+	vector<vector<int>> recv_localParcel_icell;
+	//=======================================	
+		
 	// 포인트
 	{
 		
@@ -1582,6 +1679,7 @@ vector<int>& to_new_cell_id
 			meshComb.addBoundary();
 			
 			string bcName = bc_names[ibc];
+			// string bcName = boundary.name;
 			
 			bcName.erase(std::find_if(bcName.rbegin(), bcName.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), bcName.end());
 			bcName.erase(bcName.begin(), std::find_if(bcName.begin(), bcName.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
@@ -1592,6 +1690,8 @@ vector<int>& to_new_cell_id
 			
 			// if(rank==60) cout << "GG " << nFaces_boundary[ibc] << endl;
 		}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		
 		for(int ip=0; ip<size; ++ip){
 			if(nFaces_processor[ip]>0){
@@ -1612,13 +1712,13 @@ vector<int>& to_new_cell_id
 	
 		// if(rank==60) cout << meshComb.boundaries.size() << endl;
 	
-		if(meshComb.boundaries.size()>0){
+		// if(meshComb.boundaries.size()>0){
 			int maxBCNum = meshComb.boundaries.size()-1;
 			meshComb.boundaries[maxBCNum].startFace = meshComb.faces.size()-meshComb.boundaries[maxBCNum].nFaces;
 			for(int i=maxBCNum-1; i>=0; --i){
 				meshComb.boundaries[i].startFace = meshComb.boundaries[i+1].startFace-meshComb.boundaries[i].nFaces;
 			}
-		}
+		// }
 		
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
@@ -1632,13 +1732,83 @@ vector<int>& to_new_cell_id
 			mpi.Alltoallv(send_nCells_local, recv_nCells_local);
 			int iter = 0;
 			for(auto& [proc, id] : send_localCell_proc_id){
-				to_new_cell_id[iter++] = recv_nCells_local[proc][0] + id;
+				to_new_cell_id.at(iter++) = recv_nCells_local[proc][0] + id;
+				// to_new_cell_id.at(iter++);
 			}
 		}
 		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		
+	
+		
+		//=======================================	
+		// parcel 위치 정보 넘기기
+		// vector<vector<int>> recv_localParcel_size;
+		// vector<vector<int>> recv_localParcel_id;
+		// vector<vector<int>> recv_localParcel_icell;
+		{
+			// vector<vector<int>> send_localParcel_size(size);
+			vector<vector<int>> send_localParcel_id(size);
+			vector<vector<int>> send_localParcel_icell(size);
+			// int iter = 0;
+			// idBlockCell
+			for(auto& parcel : mesh.parcels){
+				auto& [proc, id] = send_localCell_proc_id[parcel.icell];
+				send_localParcel_id[proc].push_back(parcel.id);
+				send_localParcel_icell[proc].push_back(id);
+			}
+			// for(auto& [proc, id] : send_localCell_proc_id){
+				// auto& cell = mesh.cells[iter++];
+				// send_localParcel_size[proc].push_back(cell.iparcels.size());
+				// for(auto& iparcel : cell.iparcels){
+					// auto& parcel = mesh.parcels[iparcel];
+					// send_localParcel_id[proc].push_back(parcel.id);
+					// send_localParcel_icell[proc].push_back(id);
+				// }
+			// }
+			// mpi.Alltoallv(send_localParcel_size, recv_localParcel_size);
+			mpi.Alltoallv(send_localParcel_id, recv_localParcel_id);
+			mpi.Alltoallv(send_localParcel_icell, recv_localParcel_icell);
+			
+			
+			// for(int ip=0, tmp_id=0; ip<size; ++ip){
+				// for(auto& id : recv_localParcel_icell[ip]){
+					// int id_glo = nCells_local[ip] + id;
+					// mesh.cells[id_glo].
+				// }
+				// int str = nCells_local[ip];
+				// int end = nCells_local[ip+1];
+				// for(int i=str; i<end; ++i){
+					// auto& cell = mesh.cells[i];
+					// // cell.group = recv_localCell_group[ip][i-str];
+					// cell.level = recv_localCell_level[ip][i-str];
+				// }
+			// }
+		
+		}
+		//=======================================	
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		//=======================================	
+		
+		
+		
+		
+	
 		
 	}
+	
+	
+	
 	
 	
 	
@@ -1708,12 +1878,222 @@ vector<int>& to_new_cell_id
 	}
 	
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
 	mesh.check();
 	mesh.setFaceTypes();
 	mesh.buildCells();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		// {
+			// double resi_normals = 0.7;
+			
+			// vector<vector<int>> tmp_procFace_id(size);
+			// vector<vector<int>> tmp_procFace_group(size);
+			// for(auto& boundary : mesh.boundaries){
+				// if(boundary.getType()!=MASCH_Face_Types::PROCESSOR) continue;
+				// int str = boundary.startFace;
+				// int end = str + boundary.nFaces;
+				// int rightProcNo = boundary.rightProcNo;
+				// for(int i=str, iter=0; i<end; ++i){
+					// auto& face = mesh.faces[i];
+					// int iL = face.iL;
+					// // int igroup = mesh.cells[iL].group-min_group_id;
+					// int igroup = mesh.cells[iL].group;
+					// tmp_procFace_id[rightProcNo].push_back(i);
+					// tmp_procFace_group[rightProcNo].push_back(igroup);
+				// }
+			// }
+		
+			// MASCH_Math math;
+		
+			
+			// vector<vector<vector<int>>> reorder_procFace_id(size);
+			// // vector<vector<vector<double>>> reorder_procFace_x(size);
+			// // vector<vector<vector<double>>> reorder_procFace_y(size);
+			// // vector<vector<vector<double>>> reorder_procFace_z(size);
+			// for(int ip=0; ip<size; ++ip){
+				// int size_procFace = tmp_procFace_group[ip].size();
+					
+				// vector<vector<int>> tmp_face_group;
+				// // vector<vector<double>> tmp_face_group_x;
+				// // vector<vector<double>> tmp_face_group_y;
+				// // vector<vector<double>> tmp_face_group_z;
+					
+				// // sort(tmp_procFace_group[ip].begin(),tmp_procFace_group[ip].end());
+				// for(int i=0; i<size_procFace; ++i){
+					// int id0 = tmp_procFace_id[ip][i];
+					// int igroup0 = tmp_procFace_group[ip][i];
+					// vector<int> tmp_id;
+					// tmp_id.push_back(id0);
+					// while(1){
+						// ++i;
+						// if(i==size_procFace) break;
+						// int id = tmp_procFace_id[ip][i];
+						// int igroup = tmp_procFace_group[ip][i];
+						// if(igroup0!=igroup) break;
+						// tmp_id.push_back(id);
+					// }
+					// --i;
+					// {
+						// vector<vector<double>> procFace_unitNormals;
+						// for(auto& iface : tmp_id){
+							// auto& face = mesh.faces[iface];
+							// vector<double> Vx, Vy, Vz;
+							// for(auto& ipoint : face.ipoints){
+								// Vx.push_back(mesh.points[ipoint].x);
+								// Vy.push_back(mesh.points[ipoint].y);
+								// Vz.push_back(mesh.points[ipoint].z);
+							// }
+							
+							// double VSn=0.0;
+							// vector<double> cellCentroid;
+							// vector<double> tmp_unitNormals(3,0.0);
+							// double area;
+							// math.calcUnitNormals_Area3dPolygon(
+								// face.ipoints.size(), Vx,Vy,Vz,
+								// tmp_unitNormals, area,
+								// face.x, face.y, face.z,
+								// VSn, cellCentroid);
+								
+							// procFace_unitNormals.push_back(tmp_unitNormals);
+						// }
+						
+						// int tmp_faceSize = procFace_unitNormals.size();
+						// for(int j=0; j<tmp_faceSize; ++j){
+							// double normal0x = procFace_unitNormals[j][0];
+							// double normal0y = procFace_unitNormals[j][1];
+							// double normal0z = procFace_unitNormals[j][2];
+							
+							// vector<int> tmp_face;
+							// // vector<double> tmp_x;
+							// // vector<double> tmp_y;
+							// // vector<double> tmp_z;
+							// tmp_face.push_back(tmp_id[j]);
+							// // tmp_x.push_back(normal0x);
+							// // tmp_y.push_back(normal0y);
+							// // tmp_z.push_back(normal0z);
+							
+							// while(1){
+								// ++j;
+								// if(j==tmp_faceSize) break;
+								// double normalx = procFace_unitNormals[j][0];
+								// double normaly = procFace_unitNormals[j][1];
+								// double normalz = procFace_unitNormals[j][2];
+								
+								// double resi = 0.0;
+								// resi += normalx*normal0x;
+								// resi += normaly*normal0y;
+								// resi += normalz*normal0z;
+								// if(resi>resi_normals){
+									// tmp_face.push_back(tmp_id[j]);
+									// // tmp_x.push_back(normalx);
+									// // tmp_y.push_back(normaly);
+									// // tmp_z.push_back(normalz);
+								// }
+								// else{
+									// break;
+								// }
+								
+							// }
+							// --j;
+							
+							// tmp_face_group.push_back(tmp_face);
+							// // tmp_face_group_x.push_back(tmp_x);
+							// // tmp_face_group_y.push_back(tmp_y);
+							// // tmp_face_group_z.push_back(tmp_z);
+						// }
+					// }
+				// }
+					
+				// reorder_procFace_id[ip] = (tmp_face_group);
+				// // reorder_procFace_x[ip] = (tmp_face_group_x);
+				// // reorder_procFace_y[ip] = (tmp_face_group_y);
+				// // reorder_procFace_z[ip] = (tmp_face_group_z);
+			// }
+			
+		// // MPI_Barrier(MPI_COMM_WORLD);
+		// // MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
+			
+			// int str_proFace_id = -1;
+			// for(auto& boundary : mesh.boundaries){
+				// if(boundary.getType()!=MASCH_Face_Types::PROCESSOR) continue;
+				// if(str_proFace_id==-1 && boundary.nFaces>0){
+					// str_proFace_id = boundary.startFace;
+					// break;
+				// }
+			// }
+			
+		// // MPI_Barrier(MPI_COMM_WORLD);
+		// // MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+			
+			// for(int ip=0; ip<size; ++ip){
+				// int size1 = reorder_procFace_id[ip].size();
+				// for(int i=0; i<size1; ++i){
+					// auto& procFace = reorder_procFace_id[ip][i];
+					// int size2 = procFace.size();
+					// if(size2<=1) continue;
+					
+					// int id0 = procFace[0];
+					// if(procFace_boolReorder[id0-str_proFace_id]==false) continue;
+					
+					// vector<int> reorderFaceIds;
+					// mesh.getFaceOrders(maxLevel, mesh.points, mesh.faces, procFace, reorderFaceIds);
+					
+					// vector<int> tmp_iL;
+					// vector<vector<int>> tmp_ipoints;
+					// // for(int j=size2-1; j>=0; --j){
+					// for(int j=0; j<size2; ++j){
+						// int id = reorderFaceIds[j];
+						// tmp_iL.push_back(mesh.faces[id].iL);
+						// tmp_ipoints.push_back(vector<int>());
+						// for(auto& ipoint : mesh.faces[id].ipoints){
+							// tmp_ipoints.back().push_back(ipoint);
+						// }
+					// }
+						
+					// for(int j=0; j<size2; ++j){
+						// int id = procFace[j];
+						// mesh.faces[id].iL = tmp_iL[j];
+						// mesh.faces[id].ipoints.clear();
+						// for(auto& ipoint : tmp_ipoints[j]){
+							// mesh.faces[id].ipoints.push_back(ipoint);
+						// }
+					// }
+				// }
+				
+			// }
+		// }
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		
 	// **************************
 	// 셀 값
@@ -1728,6 +2108,60 @@ vector<int>& to_new_cell_id
 			}
 		}
 	}
+	
+	
+	
+	
+	
+	//=======================================	
+	// parcel 위치 정보 넘기기
+	// 파슬값 전달
+	{
+		// vector<int> parcel_ip(mesh.parcels.size());
+		parcel_ip.resize(mesh.parcels.size());
+		for(int i=0; i<mesh.parcels.size(); ++i){
+			parcel_ip.at(i) = idBlockCell.at(mesh.parcels[i].icell);
+		}
+		
+		mesh.parcels.clear();
+		for(int ip=0; ip<size; ++ip){
+			int iter=0;
+			for(auto& id : recv_localParcel_icell[ip]){
+				int id_glo = nCells_local[ip] + id;
+				int parcel_id = recv_localParcel_id[ip][iter];
+				mesh.addParcel(id_glo, parcel_id);
+				++iter;
+			}
+		}
+		
+		// int org_nParcels = var.parcels.size();
+		// int nParcels = mesh.parcels.size();
+		// int nParcelsMax = max(nParcels,org_nParcels);
+		// var.parcels.resize(nParcelsMax);
+		// for(auto& item : var.parcels) item.resize(controls.nParcelVar);
+		
+		// int varSize = controls.nParcelVar;
+		// for(int iprim=0; iprim<varSize; ++iprim){
+			// vector<vector<double>> send_value(size);
+			// for(int i=0; i<org_nParcels; ++i){
+				// double org_value = var.parcels.at(i).at(iprim);
+				// send_value.at(parcel_ip.at(i)).push_back(org_value);
+			// }
+			// vector<vector<double>> recv_value(size);
+			// mpi.Alltoallv(send_value, recv_value);
+			
+			// for(int ip=0, iter=0; ip<size; ++ip){
+				// for(auto& item : recv_value[ip]){
+					// var.parcels.at(iter).at(iprim) = item;
+					// ++iter;
+				// }
+			// }
+		// }
+		// var.parcels.resize(nParcels);
+	}
+	
+	//=======================================
+	
 	
 	
 	
@@ -1756,6 +2190,9 @@ vector<int>& to_new_cell_id
 		}
 		
 		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
 
 		
 		
@@ -1854,6 +2291,9 @@ vector<int>& to_new_cell_id
 	}
 	// **************************
 	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		
 	
 	mesh.connectFacetoPointsCells();
 	mesh.connectCelltoFaces();
@@ -1930,11 +2370,14 @@ vector<int>& to_new_cell_id
 		// }
 		
 		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
 		
 		
 		
 		
-		double resi_normals = 0.6;
+		double resi_normals = 0.9;
 		
 		vector<vector<int>> tmp_procFace_id(size);
 		vector<vector<int>> tmp_procFace_group(size);
@@ -1948,8 +2391,8 @@ vector<int>& to_new_cell_id
 				int iL = face.iL;
 				// int igroup = mesh.cells[iL].group-min_group_id;
 				int igroup = mesh.cells[iL].group;
-				tmp_procFace_id[rightProcNo].push_back(i);
-				tmp_procFace_group[rightProcNo].push_back(igroup);
+				tmp_procFace_id.at(rightProcNo).push_back(i);
+				tmp_procFace_group.at(rightProcNo).push_back(igroup);
 			}
 		}
 	
@@ -1964,21 +2407,16 @@ vector<int>& to_new_cell_id
 			int size_procFace = tmp_procFace_group[ip].size();
 				
 			vector<vector<int>> tmp_face_group;
-			// vector<vector<double>> tmp_face_group_x;
-			// vector<vector<double>> tmp_face_group_y;
-			// vector<vector<double>> tmp_face_group_z;
-				
-			// sort(tmp_procFace_group[ip].begin(),tmp_procFace_group[ip].end());
 			for(int i=0; i<size_procFace; ++i){
-				int id0 = tmp_procFace_id[ip][i];
-				int igroup0 = tmp_procFace_group[ip][i];
+				int id0 = tmp_procFace_id[ip].at(i);
+				int igroup0 = tmp_procFace_group[ip].at(i);
 				vector<int> tmp_id;
 				tmp_id.push_back(id0);
 				while(1){
 					++i;
 					if(i==size_procFace) break;
-					int id = tmp_procFace_id[ip][i];
-					int igroup = tmp_procFace_group[ip][i];
+					int id = tmp_procFace_id[ip].at(i);
+					int igroup = tmp_procFace_group[ip].at(i);
 					if(igroup0!=igroup) break;
 					tmp_id.push_back(id);
 				}
@@ -1989,9 +2427,9 @@ vector<int>& to_new_cell_id
 						auto& face = mesh.faces[iface];
 						vector<double> Vx, Vy, Vz;
 						for(auto& ipoint : face.ipoints){
-							Vx.push_back(mesh.points[ipoint].x);
-							Vy.push_back(mesh.points[ipoint].y);
-							Vz.push_back(mesh.points[ipoint].z);
+							Vx.push_back(mesh.points.at(ipoint).x);
+							Vy.push_back(mesh.points.at(ipoint).y);
+							Vz.push_back(mesh.points.at(ipoint).z);
 						}
 						
 						double VSn=0.0;
@@ -2009,32 +2447,26 @@ vector<int>& to_new_cell_id
 					
 					int tmp_faceSize = procFace_unitNormals.size();
 					for(int j=0; j<tmp_faceSize; ++j){
-						double normal0x = procFace_unitNormals[j][0];
-						double normal0y = procFace_unitNormals[j][1];
-						double normal0z = procFace_unitNormals[j][2];
+						double normal0x = procFace_unitNormals.at(j).at(0);
+						double normal0y = procFace_unitNormals.at(j).at(1);
+						double normal0z = procFace_unitNormals.at(j).at(2);
 						
 						vector<int> tmp_face;
-						// vector<double> tmp_x;
-						// vector<double> tmp_y;
-						// vector<double> tmp_z;
-						tmp_face.push_back(tmp_id[j]);
-						// tmp_x.push_back(normal0x);
-						// tmp_y.push_back(normal0y);
-						// tmp_z.push_back(normal0z);
+						tmp_face.push_back(tmp_id.at(j));
 						
 						while(1){
 							++j;
 							if(j==tmp_faceSize) break;
-							double normalx = procFace_unitNormals[j][0];
-							double normaly = procFace_unitNormals[j][1];
-							double normalz = procFace_unitNormals[j][2];
+							double normalx = procFace_unitNormals.at(j)[0];
+							double normaly = procFace_unitNormals.at(j)[1];
+							double normalz = procFace_unitNormals.at(j)[2];
 							
 							double resi = 0.0;
 							resi += normalx*normal0x;
 							resi += normaly*normal0y;
 							resi += normalz*normal0z;
 							if(resi>resi_normals){
-								tmp_face.push_back(tmp_id[j]);
+								tmp_face.push_back(tmp_id.at(j));
 								// tmp_x.push_back(normalx);
 								// tmp_y.push_back(normaly);
 								// tmp_z.push_back(normalz);
@@ -2060,6 +2492,9 @@ vector<int>& to_new_cell_id
 			// reorder_procFace_z[ip] = (tmp_face_group_z);
 		}
 		
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
 		
 		int str_proFace_id = -1;
 		for(auto& boundary : mesh.boundaries){
@@ -2072,65 +2507,30 @@ vector<int>& to_new_cell_id
 		
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+	
+		// if(rank==5) cout << "AAAAAAAA " << rank << endl;
 		
 		for(int ip=0; ip<size; ++ip){
 			int size1 = reorder_procFace_id[ip].size();
 			for(int i=0; i<size1; ++i){
-				auto& procFace = reorder_procFace_id[ip][i];
+				auto& procFace = reorder_procFace_id[ip].at(i);
 				int size2 = procFace.size();
 				if(size2<=1) continue;
 				
-				int id0 = procFace[0];
-				if(procFace_boolReorder[id0-str_proFace_id]==false){
-					
-					// if(rank==0){
-						// cout << "false" << endl;
-						// for(int j=0; j<size2; ++j){
-							// int id = procFace[j];
-							// cout << id << " " << face_state[id] << " " <<  
-							// procFace_boolReorder[procFace[j]-str_proFace_id]
-							// << endl;
-							// for(auto& ipoint : mesh.faces[id].ipoints){
-								// cout << 
-								// mesh.points[ipoint].x << " " <<
-								// mesh.points[ipoint].y << " " <<
-								// mesh.points[ipoint].z << " " << endl;
-							// }
-							// cout << endl;
-						// }
-					// }
-					
-					continue;
-				}
-				else{
-				
-					// if(rank==0){
-						// cout << "true" << endl;
-						// for(int j=0; j<size2; ++j){
-							// int id = procFace[j];
-							// cout << id << " " << face_state[id] << " " <<  
-							// procFace_boolReorder[procFace[j]-str_proFace_id]
-							// << endl;
-							// for(auto& ipoint : mesh.faces[id].ipoints){
-								// cout << 
-								// mesh.points[ipoint].x << " " <<
-								// mesh.points[ipoint].y << " " <<
-								// mesh.points[ipoint].z << " " << endl;
-							// }
-							// cout << endl;
-						// }
-					// }
-				}
+				int id0 = procFace.at(0);
+				if(procFace_boolReorder.at(id0-str_proFace_id)==false) continue;
 				
 				vector<int> reorderFaceIds;
-				getFaceOrders(maxLevel, mesh.points, mesh.faces, procFace, reorderFaceIds);
+				// if(rank==5) cout << procFace.size() << endl;
+				mesh.getFaceOrders(maxLevel, mesh.points, mesh.faces, procFace, reorderFaceIds);
+				// if(rank==5) cout << procFace.size() << endl;
 				
 				vector<int> tmp_iL;
 				vector<vector<int>> tmp_ipoints;
 				// for(int j=size2-1; j>=0; --j){
 				for(int j=0; j<size2; ++j){
-					int id = reorderFaceIds[j];
-					tmp_iL.push_back(mesh.faces[id].iL);
+					int id = reorderFaceIds.at(j);
+					tmp_iL.push_back(mesh.faces.at(id).iL);
 					tmp_ipoints.push_back(vector<int>());
 					for(auto& ipoint : mesh.faces[id].ipoints){
 						tmp_ipoints.back().push_back(ipoint);
@@ -2149,8 +2549,12 @@ vector<int>& to_new_cell_id
 			
 		}
 		
+		// if(rank==50 || rank==5) cout << "BBBBB " << rank << endl;
 		
 	}
+	
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 	
 	mesh.check();
@@ -2167,7 +2571,7 @@ vector<int>& to_new_cell_id
 	
 	//************************************
 
-	
+		
 	
 	// proc 페이스 매칭 디버깅
 	vector<vector<int>> send_procNFaces(size,vector<int>(1,0));

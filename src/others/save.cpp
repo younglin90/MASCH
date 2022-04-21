@@ -1315,6 +1315,31 @@ MASCH_Control& controls, MASCH_Variables& var){
 		vec_cell_save_name.back().push_back(yGrad);
 		vec_cell_save_name.back().push_back(zGrad);
 	}
+    
+    // 평균값 데이터 네이밍 
+    for(auto& item : controls.saveMeanCellValues){
+        scal_cell_save_name.push_back("mean-"+item);
+    }
+    for(auto& item : controls.saveSMDValues){
+        scal_cell_save_name.push_back("fvm-mean-surface-area-"+item);
+        scal_cell_save_name.push_back("fvm-mean-volume-"+item);
+        
+        scal_cell_save_name.push_back("parcel-mean-surface-area-"+item);
+        scal_cell_save_name.push_back("parcel-mean-volume-"+item);
+        
+        scal_cell_save_name.push_back("fvm-sauter-mean-diameter-"+item);
+        scal_cell_save_name.push_back("parcel-sauter-mean-diameter-"+item);
+        scal_cell_save_name.push_back("sauter-mean-diameter-"+item);
+    }
+    // 평균값의 시간
+    vector<string> total_times;
+    for(auto& item : controls.saveMeanCellValues){
+        total_times.push_back("total-time-of-mean-"+item);
+    }
+    for(auto& item : controls.saveSMDValues){
+        total_times.push_back("total-time-of-fvm-mean-surface-area-"+item);
+        total_times.push_back("total-time-of-fvm-mean-volume-"+item);
+    }
 	
 	
 	
@@ -1623,6 +1648,16 @@ MASCH_Control& controls, MASCH_Variables& var){
 		writeDatasAtVTU(controls, outputFile, values);
 		outputFile << "     </DataArray>" << endl;
 	}
+    
+    // 평균값의 시간
+    for(auto& item : total_times){
+		outputFile << "     <DataArray type=\"Float64\" Name=\"" << item << "\" NumberOfTuples=\"1\" format=\"" << saveFormat << "\">" << endl;
+		vector<double> values;
+		values.push_back(var.fields[controls.getId_fieldVar(item)]);
+		writeDatasAtVTU(controls, outputFile, values);
+		outputFile << "     </DataArray>" << endl;
+	}
+    
 	outputFile << "    </FieldData>" << endl;
 	
 	outputFile << "   <Piece NumberOfPoints=\"" << 
@@ -1920,6 +1955,7 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	outputFile << "  </Piece>" << endl;
 	outputFile << " </UnstructuredGrid>" << endl;
+    
 	
 	
 	// additional informations
@@ -2006,7 +2042,7 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	
 	
-	// ==========================================
+	// ========================================== 
 	// pvtu file
 	if(rank==0){
 		string filenamePvtu = "./save/plot.";
@@ -2394,13 +2430,15 @@ MASCH_Control& controls, MASCH_Variables& var){
 		MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	}
 	
-	string saveFormat = controls.saveFormat;
+	string saveFormat = "ascii";//controls.saveFormat;
+    string org_saveFormat = controls.saveFormat;
+    controls.saveFormat = saveFormat;
 	
 	outputFile << "<?xml version=\"1.0\"?>" << endl;
-	if(controls.saveFormat == "ascii"){
+	if(saveFormat == "ascii"){
 		outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
 	}
-	else if(controls.saveFormat == "binary"){
+	else if(saveFormat == "binary"){
 		if(controls.saveCompression==0){
 			outputFile << " <VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << endl;
 		}
@@ -2457,7 +2495,7 @@ MASCH_Control& controls, MASCH_Variables& var){
 	
 	// 필수 데이터 저장
 	{
-		outputFile << "     <DataArray type=\"Int32\" Name=\"" <<
+		outputFile << "     <DataArray type=\"Int64\" Name=\"" <<
 		"id" << "\" format=\"" << saveFormat << "\">" << endl;
 		vector<int> values;
 		values.reserve(mesh.parcels.size());
@@ -2468,7 +2506,7 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile << "     </DataArray>" << endl;
 	}
 	{
-		outputFile << "     <DataArray type=\"Int32\" Name=\"" <<
+		outputFile << "     <DataArray type=\"Int64\" Name=\"" <<
 		"icell" << "\" format=\"" << saveFormat << "\">" << endl;
 		vector<int> values;
 		values.reserve(mesh.parcels.size());
@@ -2615,8 +2653,8 @@ MASCH_Control& controls, MASCH_Variables& var){
 		}
 		outputFile << "   <PPointData>" << endl;
 
-		outputFile << "    <PDataArray type=\"Int32\" Name=\"" << "id" << "\"/>" << endl;
-		outputFile << "    <PDataArray type=\"Int32\" Name=\"" << "icell" << "\"/>" << endl;
+		outputFile << "    <PDataArray type=\"Int64\" Name=\"" << "id" << "\"/>" << endl;
+		outputFile << "    <PDataArray type=\"Int64\" Name=\"" << "icell" << "\"/>" << endl;
 		for(auto& name : scal_save_name)
 		{
 			outputFile << "    <PDataArray type=\"Float64\" Name=\"" << name << "\"/>" << endl;
@@ -2639,6 +2677,9 @@ MASCH_Control& controls, MASCH_Variables& var){
 		outputFile.close();
 		
 	}
+    
+    
+    controls.saveFormat = org_saveFormat;
 	
 
 	if(rank==0){

@@ -14,6 +14,9 @@ void MASCH_Solver::setOldVFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 	
 	saveCurrValueNames.push_back("z-velocity");
 	saveOld1ValueNames.push_back("old z-velocity");
+    
+	saveCurrValueNames.push_back("temperature");
+	saveOld1ValueNames.push_back("old temperature");
 	
 	saveCurrValueNames.push_back("total-enthalpy");
 	saveOld1ValueNames.push_back("old total-enthalpy");

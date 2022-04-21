@@ -16,28 +16,31 @@ class MASCH_Math;
 class MASCH_NVD {
 private:
 public:
-	double none(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double none(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
 	
-	double minmod(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double vanLeer(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double QUICK(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double boundedCD(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double OSHER(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double SMART(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double modifiedSMART(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double STOIC(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double modifiedSTOIC(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double MUSCL(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double SUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double modifiedSUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double minmod(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double vanLeer(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double QUICK(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double boundedCD(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double OSHER(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double SMART(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double modifiedSMART(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double STOIC(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double modifiedSTOIC(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double MUSCL(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double SUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double modifiedSUPERBEE(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
 	
-	double HRIC(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double CICSAM(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double STACS(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double FBICS(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double SAISH(double phiUU, double phiU, double phiD, double coDD, double gamF);
-	double MSTACS(double phiUU, double phiU, double phiD, double coDD, double gamF);
+	double HRIC(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double CICSAM(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double STACS(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double FBICS(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double SAISH(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double MSTACS(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double MIG(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
+	double EB(double phiUU, double phiU, double phiD, double coDD, double gamF, double wsd);
 };
+
 
 class MASCH_Gradient {
 private:
@@ -210,6 +213,7 @@ public:
 	void setUpdatePrimFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setSegEqUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
+	void setMeanCellValuesFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	
 	void fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
 	void fvm_inline(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
@@ -224,6 +228,9 @@ public:
 	
 	// 아웃터 펑션
 	void updateOldValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+    
+    // 평균값 계산
+	void calcMeanValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
 	// 계산
 	void updateCellAddiValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
@@ -241,7 +248,10 @@ public:
 	void linearSystem(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
 	void updateCellPrimValues(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
 	void calcTempSteps(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);
-	
+    
+    
+    
+    
 	void eosIdeal(
 		double cv, double gam,
 		double& P, double& U, double& V, double& W, double& T,
@@ -258,6 +268,10 @@ public:
 		vector<int>& istr_CSR, vector<int>& j_CSR, vector<double>& Aval, 
 		vector<double>& Bval, vector<double>& Xval);
 	
-	
+	// patch 바운더리 관련
+    void updateTimeVaryingMappedFixedValue(
+    MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
+    void updateTimeVaryingMappedFixedValue12(
+    MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int str, int end, string phi_name, int id_phi);
 };
 

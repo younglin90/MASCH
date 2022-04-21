@@ -147,7 +147,6 @@ int main(int argc, char* argv[]) {
 		for(int iterOuter=0; iterOuter<maxIterOuter_fvm; ++iterOuter){
 			// 레지듀얼 초기화
 			var.fields[controls.getId_fieldVar("residual")] = 0.0;
-            // var.fields[controls.getId_fieldVar("residual-volume")] = 0.0;
 			for(int iSegEq=0, nSegEq=controls.nEq.size(); iSegEq<nSegEq; ++iSegEq){
 				
 				solver.fvm(mesh, controls, var, iSegEq);
@@ -165,10 +164,6 @@ int main(int argc, char* argv[]) {
 			solver.dpm(mesh, controls, var);
 			controls.show_dpm_information();
 		}
-        
-        // mean 값 계산
-        solver.calcMeanValues(mesh, controls, var);
-        
 		
 		// 시간 업데이트
 		var.fields[controls.fieldVar["time"].id] +=
@@ -183,11 +178,10 @@ int main(int argc, char* argv[]) {
 	}
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
-	// {
-		// save.fvmFiles("./save/nan/", rank, mesh, controls, var);
-	// }
-	MPI_Barrier(MPI_COMM_WORLD); 
-    if(rank==0) cout << endl << "| Program END |" << endl << endl;
+	{
+		save.fvmFiles("./save/nan/", rank, mesh, controls, var);
+	}
+	MPI_Barrier(MPI_COMM_WORLD);
 	
 	// controls.show_residual(var);
 	

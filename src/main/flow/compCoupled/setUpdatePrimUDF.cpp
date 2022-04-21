@@ -35,17 +35,43 @@ MASCH_Mesh& mesh, MASCH_Control& controls){
 		}
 		int nSpm1 = controls.spName.size()-1;
 		
-		double relaxation_factor = stod(s_iter[0]);
+		vector<double> relaxation_factor;
+        for(auto& item : s_iter){
+            relaxation_factor.push_back(stod(item));
+        }
+        
+        
+        
+        
+		int id_p_old = controls.getId_cellVar("old pressure");
+		int id_u_old = controls.getId_cellVar("old x-velocity");
+		int id_v_old = controls.getId_cellVar("old y-velocity");
+		int id_w_old = controls.getId_cellVar("old z-velocity");
+		int id_T_old = controls.getId_cellVar("old temperature");
+		vector<int> id_Y_old;
+		for(int i=0; i<controls.spName.size()-1; ++i){
+			string tmp_name = ("old mass-fraction-"+controls.spName[i]);
+			id_Y_old.push_back(controls.getId_cellVar(tmp_name));
+		}
 		
 		calcUpdatePrim.push_back(
-		[id_p,id_u,id_v,id_w,id_T,id_Y,relaxation_factor,nSpm1,
-		u_min,u_max,v_min,v_max,w_min,w_max,T_min,T_max,p_min,p_max,Y_min,Y_max](
+		[&controls,id_p,id_u,id_v,id_w,id_T,id_Y,relaxation_factor,nSpm1,
+		u_min,u_max,v_min,v_max,w_min,w_max,T_min,T_max,p_min,p_max,Y_min,Y_max,
+        id_p_old,id_u_old,id_v_old,id_w_old,id_T_old,id_Y_old](
 		double* fields, double* cells, double* Xvalues) ->int {
-			cells[id_p] += relaxation_factor*Xvalues[0];
-			cells[id_u] += relaxation_factor*Xvalues[1];
-			cells[id_v] += relaxation_factor*Xvalues[2];
-			cells[id_w] += relaxation_factor*Xvalues[3];
-			cells[id_T] += relaxation_factor*Xvalues[4];
+            int ii = controls.iterPseudo;
+            double relax = relaxation_factor[ii];
+			cells[id_p] += Xvalues[0];
+			cells[id_u] += Xvalues[1];
+			cells[id_v] += Xvalues[2];
+			cells[id_w] += Xvalues[3];
+			cells[id_T] += Xvalues[4];
+            
+            cells[id_p] = (1.0-relax)*cells[id_p_old] + relax*cells[id_p];
+            cells[id_u] = (1.0-relax)*cells[id_u_old] + relax*cells[id_u];
+            cells[id_v] = (1.0-relax)*cells[id_v_old] + relax*cells[id_v];
+            cells[id_w] = (1.0-relax)*cells[id_w_old] + relax*cells[id_w];
+            cells[id_T] = (1.0-relax)*cells[id_T_old] + relax*cells[id_T];
 			
 			cells[id_p] = max(p_min,min(p_max,cells[id_p]));
 			cells[id_u] = max(u_min,min(u_max,cells[id_u]));
@@ -54,7 +80,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls){
 			cells[id_T] = max(T_min,min(T_max,cells[id_T]));
 			
 			for(int isp=0; isp<nSpm1; ++isp){
-				cells[id_Y[isp]] += relaxation_factor*Xvalues[5+isp];
+				cells[id_Y[isp]] += Xvalues[5+isp];
+                cells[id_Y[isp]] = (1.0-relax)*cells[id_Y_old[isp]] + relax*cells[id_Y[isp]];
 				cells[id_Y[isp]] = max(Y_min,min(Y_max,cells[id_Y[isp]]));
 			}
 			

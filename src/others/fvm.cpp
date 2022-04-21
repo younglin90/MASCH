@@ -10,7 +10,7 @@ void MASCH_Solver::fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variable
 	auto& solver = (*this);
 	
 	bool debug_bool = false;
-	bool debug_AMGCL_bool = true;
+	bool debug_AMGCL_bool = false;
 	
     amgcl::profiler<> prof("fvm solver");
 	
@@ -1163,6 +1163,14 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	auto faceVar = var.faces.data();
 	auto fieldVar = var.fields.data();
 	auto procRightCellVar = var.procRightCells.data();
+    
+    
+    
+    // update time varying boundary values
+    solver.updateTimeVaryingMappedFixedValue(mesh, controls, var);
+    
+    
+    
 	
 	auto sol = solver.calcFaceAddiVal[iSegEq];
 	

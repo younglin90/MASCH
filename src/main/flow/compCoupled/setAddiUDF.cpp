@@ -87,6 +87,28 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 		
 	}
 	
+    // 평균값
+    int id_fvm_MSA=-1, id_parcel_MSA, id_MSA;
+    int id_fvm_MV, id_parcel_MV, id_MV;
+    int id_fvm_SMD, id_parcel_SMD, id_SMD;
+    if(controls.saveSMDValues.size()>0){
+        string name = controls.saveSMDValues[0];
+        
+        id_fvm_MSA = controls.getId_cellVar("fvm-mean-surface-area-"+name);
+        id_parcel_MSA = controls.getId_cellVar("parcel-mean-surface-area-"+name);
+        id_MSA = controls.getId_cellVar("mean-surface-area-"+name);
+        
+        id_fvm_MV = controls.getId_cellVar("fvm-mean-volume-"+name);
+        id_parcel_MV = controls.getId_cellVar("parcel-mean-volume-"+name);
+        id_MV = controls.getId_cellVar("mean-volume-"+name);
+        
+        id_fvm_SMD = controls.getId_cellVar("fvm-sauter-mean-diameter-"+name);
+        id_parcel_SMD = controls.getId_cellVar("parcel-sauter-mean-diameter-"+name);
+        id_SMD = controls.getId_cellVar("sauter-mean-diameter-"+name);
+    }
+    
+    
+    
 		
 	
 	{
@@ -96,7 +118,10 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 			id_pL,id_uL,id_vL,id_wL,id_TL,id_YL,id_rhoL,id_HtL,id_muL,
 			id_pR,id_uR,id_vR,id_wR,id_TR,id_YR,id_rhoR,id_HtR,id_muR,
 			id_drhodp,id_drhodT,id_dHtdp,id_dHtdT,id_drhodY,id_dHtdY,
-			eos_type] (
+			eos_type,
+            id_fvm_MSA,id_parcel_MSA,id_MSA,
+            id_fvm_MV,id_parcel_MV,id_MV,
+            id_fvm_SMD,id_parcel_SMD,id_SMD] (
 			double* cells) ->int {
 					
 				auto spInf_ptr = spInform.data();
@@ -195,6 +220,24 @@ void MASCH_Solver::setAddiFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls
 					tmp_mu += alpha[i]*spInf_ptr[i][5];
 				}
 				cells[id_mu] = tmp_mu;
+                
+                
+                // 평균값 관련
+                if(id_fvm_MSA!=-1){
+                    
+                    cells[id_MSA] = 0.5*(cells[id_fvm_MSA] + cells[id_parcel_MSA]);
+                    cells[id_MV] = 0.5*(cells[id_fvm_MV] + cells[id_parcel_MV]);
+                    
+                    cells[id_fvm_SMD] = 0.0;
+                    cells[id_parcel_SMD] = 0.0;
+                    cells[id_SMD] = 0.0;
+                    if(cells[id_fvm_MSA]>=1.e-200) cells[id_fvm_SMD] = cells[id_fvm_MV]/(cells[id_fvm_MSA]);
+                    if(cells[id_parcel_MSA]>=1.e-200) cells[id_parcel_SMD] = cells[id_parcel_MV]/(cells[id_parcel_MSA]);
+                    if(cells[id_MSA]>=1.e-200) cells[id_SMD] = cells[id_MV]/(cells[id_MSA]);
+                    
+                }
+                
+                
 				
 				return 0;
 			}

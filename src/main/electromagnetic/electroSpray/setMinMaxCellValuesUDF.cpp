@@ -1,0 +1,36 @@
+
+#include "../../../others/solvers.h"
+
+void MASCH_Solver::setMinMaxCellValuesFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls){
+	
+	minmaxInp_cell_name.resize(8);
+	maxOut_cell_name.resize(8);
+	minOut_cell_name.resize(8);
+	
+	// minmaxInp_cell_name[0].push_back("pressure");
+	// maxOut_cell_name[0].push_back("maximum pressure");
+	// minOut_cell_name[0].push_back("minimum pressure");
+	
+	// minmaxInp_cell_name[0].push_back("x-velocity");
+	// maxOut_cell_name[0].push_back("maximum x-velocity");
+	// minOut_cell_name[0].push_back("minimum x-velocity");
+	
+	// minmaxInp_cell_name[0].push_back("y-velocity");
+	// maxOut_cell_name[0].push_back("maximum y-velocity");
+	// minOut_cell_name[0].push_back("minimum y-velocity");
+	
+	// minmaxInp_cell_name[0].push_back("z-velocity");
+	// maxOut_cell_name[0].push_back("maximum z-velocity");
+	// minOut_cell_name[0].push_back("minimum z-velocity");
+	
+	// minmaxInp_cell_name[0].push_back("temperature");
+	// maxOut_cell_name[0].push_back("maximum temperature");
+	// minOut_cell_name[0].push_back("minimum temperature");
+	
+	// for(int i=0; i<controls.spName.size()-1; ++i){
+		// minmaxInp_cell_name[0].push_back("mass-fraction-"+controls.spName[i]);
+		// maxOut_cell_name[0].push_back("maximum mass-fraction-"+controls.spName[i]);
+		// minOut_cell_name[0].push_back("minimum mass-fraction-"+controls.spName[i]);
+	// }
+	
+}

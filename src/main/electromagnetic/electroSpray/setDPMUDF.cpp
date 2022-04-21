@@ -21,34 +21,12 @@ void MASCH_Solver::setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls)
 	// double x_inj = stod(xyz_inj[0]);
 	// double y_inj = stod(xyz_inj[1]);
 	// double z_inj = stod(xyz_inj[2]);
-    
-    
-    
-    
-    // 수정해야됨 지금은 한 종의 parcel밖에 안됨
-    vector<string> names = load.extractVector(controls.controlParcelsMap["name"]);
-    
-    
-    
-    
-    
-	double rho_drop = 0.0;
-    if(names.size()>0) rho_drop = stod(controls.controlParcelsMap[names[0]+".thermodynamics.rho"]);
-	double T_drop = 0.0;
-    if(names.size()>0) T_drop = stod(controls.controlParcelsMap[names[0]+".thermodynamics.T"]);
-    
-    
-    
-    
-    
-    
-    
-    
+	double rho_drop = stod(controls.controlParcelsMap["water.thermodynamics.rho"]);
+	double T_drop = stod(controls.controlParcelsMap["water.thermodynamics.T"]);
 	int id_rho_p = controls.getId_parcelVar("density");
 	int id_u_p = controls.getId_parcelVar("x-velocity");
 	int id_v_p = controls.getId_parcelVar("y-velocity");
 	int id_w_p = controls.getId_parcelVar("z-velocity");
-	int id_T_p = controls.getId_parcelVar("temperature");
 	int id_nparcel_p = controls.getId_parcelVar("number-of-parcel");
 	int id_d_p = controls.getId_parcelVar("diameter");
 	int id_x_p = controls.getId_parcelVar("x-position");
@@ -60,9 +38,7 @@ void MASCH_Solver::setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls)
 	int id_u = controls.getId_cellVar("x-velocity");
 	int id_v = controls.getId_cellVar("y-velocity");
 	int id_w = controls.getId_cellVar("z-velocity");
-	int id_T = controls.getId_cellVar("temperature");
 	int id_rho = controls.getId_cellVar("density");
-	int id_mu = controls.getId_cellVar("viscosity");
 	
 	
 	
@@ -77,7 +53,7 @@ void MASCH_Solver::setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls)
 	
 	solver.calcDPM_parcelLoop.push_back(
 		[id_u,id_v,id_w,id_u_p,id_v_p,id_w_p,id_rho_p,id_rho,id_d_p,id_dt,id_dt_p,
-		id_x_p,id_y_p,id_z_p,id_mu](
+		id_x_p,id_y_p,id_z_p](
 		double* cells, double* fields, double* parcels, double* fluxB) ->int {
 			double dt_p = fields[id_dt_p];
 			
@@ -95,26 +71,17 @@ void MASCH_Solver::setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls)
 			double urelAbs = sqrt(urel*urel+vrel*vrel+wrel*wrel);
 
 			// Reynolds Number
-			double mu = cells[id_mu];//0.001;
+			double mu = 0.001;
 			double rho = cells[id_rho];
 			double d_p = parcels[id_d_p];
 			double Red = rho * d_p * urelAbs / mu;
 
-			// // Putnam's drag model
-			// double Cd = 0.424;
-			// if(Red<1000.0) {
-				// Cd = 24.0 / (Red+1.e-16) * (1.0 + pow(Red,0.666666666)/6.0);
-			// }
-			// if(Red<1.e-5) Cd = 0.0;
-            
-            // Drag coefficient, Morrison (2010)
-            double Cd = 
-                 24.0/Red + 2.6*(Red/5.0)/(1.0+pow(Red/5.0,1.52)) + 
-                 0.411*pow(Red/263000.0,-7.94)/(1.0+pow(Red/263000.0,-8.0)) + 
-                 pow(Red,0.8)/461000.0;
-                 
-
-
+			// Putnam's drag model
+			double Cd = 0.424;
+			if(Red<1000.0) {
+				Cd = 24.0 / (Red+1.e-16) * (1.0 + pow(Red,0.666666666)/6.0);
+			}
+			if(Red<1.e-5) Cd = 0.0;
 
 			// // vaporization effect, Han et al. eq.15
 			// if(parcel(i)%BM < 0.78) then
@@ -122,49 +89,28 @@ void MASCH_Solver::setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls)
 			// else
 				// Cd = Cd / (R1 + parcel(i)%BM)**(0.75)   ! Sazhin et al. Int.Jou.of Thermal Sciences 44,610,2005
 			// end if
-            
-            
-			if(Red>1.0) {
 
-                // Drag is negative force
-                double coeff = Cd * rho * 3.141592 * d_p*d_p * urelAbs / 8.0;
-                double force_x = coeff * urel;
-                double force_y = coeff * vrel;
-                double force_z = coeff * wrel;
+			// Drag is negative force
+			double coeff = Cd * rho * 3.141592 * d_p*d_p * urelAbs / 8.0;
+			double force_x = coeff * urel;
+			double force_y = coeff * vrel;
+			double force_z = coeff * wrel;
 
-                parcels[id_x_p] += 0.5*u_p*dt_p;
-                parcels[id_y_p] += 0.5*v_p*dt_p;
-                parcels[id_z_p] += 0.5*w_p*dt_p;
-                
-                double mass = 4.0/3.0*3.141592*0.125*d_p*d_p*d_p * rho_p;
-                parcels[id_u_p] += force_x / mass *dt_p;
-                parcels[id_v_p] += force_y / mass *dt_p;
-                parcels[id_w_p] += force_z / mass *dt_p;
-                
-                // 2nd order location
-                parcels[id_x_p] += 0.5*parcels[id_u_p]*dt_p;
-                parcels[id_y_p] += 0.5*parcels[id_v_p]*dt_p;
-                parcels[id_z_p] += 0.5*parcels[id_w_p]*dt_p;
-
-                
-                // double energy = h*3.141592*d^2*(Tg-Td);
-                
-                fluxB[1] -= force_x;
-                fluxB[2] -= force_y;
-                fluxB[3] -= force_z;
-                fluxB[4] -= (force_x*parcels[id_u_p]+force_y*parcels[id_v_p]+force_z*parcels[id_w_p]);
-                // fluxB[4] -= energy;
-            }
-            else{
-                parcels[id_u_p] = u;
-                parcels[id_v_p] = v;
-                parcels[id_w_p] = w;
-                
-                parcels[id_x_p] += u*dt_p;
-                parcels[id_y_p] += v*dt_p;
-                parcels[id_z_p] += w*dt_p;
-            }
-            
+			parcels[id_x_p] += 0.5*u_p*dt_p;
+			parcels[id_y_p] += 0.5*v_p*dt_p;
+			parcels[id_z_p] += 0.5*w_p*dt_p;
+			
+			double mass = 4.0/3.0*3.141592*0.125*d_p*d_p*d_p * rho_p;
+			parcels[id_u_p] += force_x / mass *dt_p;
+			parcels[id_v_p] += force_y / mass *dt_p;
+			parcels[id_w_p] += force_z / mass *dt_p;
+			
+			// double energy = h*3.141592*d^2*(Tg-Td);
+			
+			fluxB[1] -= force_x;
+			fluxB[2] -= force_y;
+			fluxB[3] -= force_z;
+			// fluxB[4] -= energy;
 			
 
 			

@@ -48,6 +48,10 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	// controls.saveFaceValues = load.extractVector(controls.controlDictMap["saveFaceValues"]);
 	controls.saveCellValues = load.extractVector(controls.controlDictMap["saveCellValues"]);
 	controls.saveGradientValues = load.extractVector(controls.controlDictMap["saveGradientValues"]);
+    
+    
+	controls.saveSMDValues = load.extractVector(controls.controlDictMap["saveSMDValues"]);
+	controls.saveMeanCellValues = load.extractVector(controls.controlDictMap["saveMeanCellValues"]);
 
 	// 화학종 파일 읽어서 map 에 넣기
 	string speciesFile = folderName + "/species";

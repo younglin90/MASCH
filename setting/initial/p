@@ -1,5 +1,5 @@
 //type = fixedValue;
-//value = 29000.0;
+//value = 101325.0;
         type = function;
         file = ./setting/lib_initial.so;
         name = p_initial;

@@ -4,18 +4,9 @@ invwall {
 viswall {
 	type = zeroGradient;
 }
-supinlet {
-	type = fixedValue;
-	value = 300.0;
-}
-supoutlet {
+suboutlet {
 	type = zeroGradient;
 }
-gasinlet {
-	type = fixedValue;
-	value = 300.0;
-}
-liqinlet {
-	type = fixedValue;
-	value = 300.0;
+subinlet {
+	type = zeroGradient;
 }

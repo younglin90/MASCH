@@ -1,15 +1,16 @@
 // AMR
 AMR {
-	interval = 25000000;
-	intervalRepart = 25000000;
-	maxLevel = 2;
+	interval = 500;
+	intervalRepart = 500;
+	maxLevel = 4;
 	maxBufferLayer = 1;
-	indicatorCellNames = (density);
-	indicatorCellValues = (0.0);
-	indicatorGradientNames = (density);
-	indicatorGradientValues = (1.e7);
+	indicatorCellNames = (density density);
+	indicatorCellValues = (10.0 0.0);
+	indicatorGradientNames = (density pressure);
+	indicatorGradientValues = (1.e6 8.e7);
 	maxCells = 20000000;
-	maxRefineCellPerBlockAMR = 1000000;
-	maxUnrefineCellPerBlockAMR = 1000000;
-	minVolume = 5.e-16;
+	maxRefineCellPerBlockAMR = 10000;
+	maxUnrefineCellPerBlockAMR = 100000000;
+	minVolume = 0.0;
+	interpolationRefineValues = no;
 }

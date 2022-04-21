@@ -25,7 +25,12 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 		// eulerian to lagrangian 
 		if(debug_bool) controls.log.push("eulerianToLagrangian");
 		if(debug_AMGCL_bool) prof.tic("eulerianToLagrangian");
-		solver.eulerianToLagrangian(mesh, controls, var);
+		// if( (controls.iterReal+1) %
+			// stoi(controls.controlParcelsMap[name+".eulerianToLagrangian.interval"]) == 0){
+				
+			solver.eulerianToLagrangian(mesh, controls, var);
+			
+		// }
 		if(debug_bool) controls.log.pop();
 		if(debug_AMGCL_bool) prof.toc("eulerianToLagrangian");
 		

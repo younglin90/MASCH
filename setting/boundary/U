@@ -4,20 +4,9 @@ invwall {
 viswall {
 	type = noSlip;
 }
-supinlet {
-	type = function;
-	file = ./setting/lib_boundary.so;
-	name = U_boundary;
-}
-supoutlet {
+suboutlet {
 	type = zeroGradient;
 }
-gasinlet {
-	type = massFlowRatePerAreaIdealGas;
-	value = 0.0;//926.94;
-	R = 287.0;
-}
-liqinlet {
-	type = surfaceNormalFixedValue;
-	value = -0.408;
+subinlet {
+	type = zeroGradient;
 }

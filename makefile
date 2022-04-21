@@ -313,6 +313,7 @@ SOURCES_CompCoupledImplicit = \
   $(FOLDER_CompCoupled)/setUpdatePrimUDF.cpp\
   $(FOLDER_CompCoupled)/setDPMUDF.cpp\
   $(FOLDER_CompCoupled)/setMinMaxCellValuesUDF.cpp\
+  $(FOLDER_CompCoupled)/setMeanValues.cpp\
   $(FOLDER_CompCoupledImplicit)/setSegEq.cpp\
   $(FOLDER_CompCoupledImplicit)/setHOReconUDF.cpp\
   $(FOLDER_CompCoupledImplicit)/setTermsFaceLoopUDF.cpp\
@@ -334,6 +335,7 @@ SOURCES_CompCoupledExplicit = \
   $(FOLDER_CompCoupled)/setUpdatePrimUDF.cpp\
   $(FOLDER_CompCoupled)/setDPMUDF.cpp\
   $(FOLDER_CompCoupled)/setMinMaxCellValuesUDF.cpp\
+  $(FOLDER_CompCoupled)/setMeanValues.cpp\
   $(FOLDER_CompCoupledExplicit)/setSegEq.cpp\
   $(FOLDER_CompCoupledExplicit)/setHOReconUDF.cpp\
   $(FOLDER_CompCoupledExplicit)/setTermsFaceLoopUDF.cpp\
