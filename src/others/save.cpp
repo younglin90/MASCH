@@ -1339,6 +1339,8 @@ MASCH_Control& controls, MASCH_Variables& var){
     for(auto& item : controls.saveSMDValues){
         total_times.push_back("total-time-of-fvm-mean-surface-area-"+item);
         total_times.push_back("total-time-of-fvm-mean-volume-"+item);
+        total_times.push_back("total-time-of-parcel-mean-surface-area-"+item);
+        total_times.push_back("total-time-of-parcel-mean-volume-"+item);
     }
 	
 	
@@ -2107,6 +2109,25 @@ MASCH_Control& controls, MASCH_Variables& var){
 		
 	}
 	
+	
+    
+    
+    
+	// ========================================== 
+	// latest time file
+	if(rank==0){
+		string filenamePvtu = "./save/latestTime";
+		outputFile.open(filenamePvtu);
+		if(outputFile.fail()){
+			cerr << "Unable to write file for writing." << endl;
+			MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+		}
+		string stime = folder;
+		stime.erase(stime.find("./save/"),7);
+		stime.erase(stime.find("/"),1);
+		outputFile << stime;
+		outputFile.close();
+	}
 	
 	
 	

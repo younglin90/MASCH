@@ -68,6 +68,7 @@ MASCH_Mesh& mesh, MASCH_Control& controls){
 				surfTime = min(surfTime,maxCFL* sqrt(rho*vol/(2.0*3.141592*sigma)));
 			}
 			fields[id_dt] = min(fields[id_dt],min(convTime,min(surfTime,viscTime)));
+			fields[id_dt] = min(fields[id_dt],maxdt);
 			
 			return 0;
 		});

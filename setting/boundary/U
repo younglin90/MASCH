@@ -4,9 +4,49 @@ invwall {
 viswall {
 	type = noSlip;
 }
-suboutlet {
+inlet {
+//	type = fixedValue;
+//	value = (105.2 0.0 0.0);
+
+	type = SEM;
+        nEddies = 500;
+        eddySize = 0.002;
+        domainSize = 0.008;
+        startBoundaryFacePoints = (-3.0 0.0 -2.5); //(-3.0 0.0 -8.0);
+        endBoundaryFacePoints = (-3.0 5.0 2.5); //(-3.0 28.0 8.0);
+        velocities = (105.2 0.0 0.0);
+        reynoldsTensor = (5.0 0.0 0.0 0.0 5.0 0.0 0.0 0.0 5.0);
+}
+
+
+invwall {
+
+
+
+//	type = function;
+//	file = ./setting/lib_boundary.so;
+//	name = U_boundary;
+}
+outlet {
 	type = zeroGradient;
 }
-subinlet {
-	type = zeroGradient;
+mixinlet {
+//	type = fixedValue;
+//	value = (0.0 0.01 0.0);
+
+
+        type = timeVaryingMappedFixedValue;
+        file = (1 2 3 4 5);
+        time = (0.0 5.e-5 10.e-5 15.e-5 20.e-5); //(0.0 1.e-5 2.e-5 3.e-5 4.e-5); //(0.0 2.5e-5 5.e-5 7.5e-5 10.e-5);
+        timeCycle = 25.e-5; //5.e-5; //12.5e-5;
+
+}
+liqinlet {
+	type = surfaceNormalFixedValue;
+	value = -0.037;
+}
+function {
+	type = function;
+	file = ./setting/lib_boundary.so;
+	name = U_liq_boundary;
 }

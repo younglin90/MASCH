@@ -61,17 +61,24 @@ MASCH_Mesh& mesh, MASCH_Control& controls){
 		double* fields, double* cells, double* Xvalues) ->int {
             int ii = controls.iterPseudo;
             double relax = relaxation_factor[ii];
-			cells[id_p] += Xvalues[0];
-			cells[id_u] += Xvalues[1];
-			cells[id_v] += Xvalues[2];
-			cells[id_w] += Xvalues[3];
-			cells[id_T] += Xvalues[4];
             
-            cells[id_p] = (1.0-relax)*cells[id_p_old] + relax*cells[id_p];
-            cells[id_u] = (1.0-relax)*cells[id_u_old] + relax*cells[id_u];
-            cells[id_v] = (1.0-relax)*cells[id_v_old] + relax*cells[id_v];
-            cells[id_w] = (1.0-relax)*cells[id_w_old] + relax*cells[id_w];
-            cells[id_T] = (1.0-relax)*cells[id_T_old] + relax*cells[id_T];
+			// cells[id_p] += Xvalues[0];
+			// cells[id_u] += Xvalues[1];
+			// cells[id_v] += Xvalues[2];
+			// cells[id_w] += Xvalues[3];
+			// cells[id_T] += Xvalues[4];
+            
+            // cells[id_p] = (1.0-relax)*cells[id_p_old] + relax*cells[id_p];
+            // cells[id_u] = (1.0-relax)*cells[id_u_old] + relax*cells[id_u];
+            // cells[id_v] = (1.0-relax)*cells[id_v_old] + relax*cells[id_v];
+            // cells[id_w] = (1.0-relax)*cells[id_w_old] + relax*cells[id_w];
+            // cells[id_T] = (1.0-relax)*cells[id_T_old] + relax*cells[id_T];
+            
+			cells[id_p] += relax*Xvalues[0];
+			cells[id_u] += relax*Xvalues[1];
+			cells[id_v] += relax*Xvalues[2];
+			cells[id_w] += relax*Xvalues[3];
+			cells[id_T] += relax*Xvalues[4];
 			
 			cells[id_p] = max(p_min,min(p_max,cells[id_p]));
 			cells[id_u] = max(u_min,min(u_max,cells[id_u]));
@@ -80,10 +87,19 @@ MASCH_Mesh& mesh, MASCH_Control& controls){
 			cells[id_T] = max(T_min,min(T_max,cells[id_T]));
 			
 			for(int isp=0; isp<nSpm1; ++isp){
-				cells[id_Y[isp]] += Xvalues[5+isp];
-                cells[id_Y[isp]] = (1.0-relax)*cells[id_Y_old[isp]] + relax*cells[id_Y[isp]];
+				// cells[id_Y[isp]] += Xvalues[5+isp];
+                // cells[id_Y[isp]] = (1.0-relax)*cells[id_Y_old[isp]] + relax*cells[id_Y[isp]];
+                
+				cells[id_Y[isp]] += relax*Xvalues[5+isp];
+                
 				cells[id_Y[isp]] = max(Y_min,min(Y_max,cells[id_Y[isp]]));
 			}
+            
+            // if((cells[id_p])>1.e12 || (cells[id_p])<-1.e12) cout << "p " << cells[id_p] << Xvalues[0] << endl;
+            // if((cells[id_u])) cout << "u " << cells[id_u] << endl;
+            // if((cells[id_v])) cout << "v " << cells[id_v] << endl;
+            // if((cells[id_w])) cout << "w " << cells[id_w] << endl;
+            // if((cells[id_T])) cout << "T " << cells[id_T] << endl;
 			
 		}); 
 		

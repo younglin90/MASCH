@@ -71,9 +71,11 @@ void MASCH_Mesh_Load::vtuPrimitive(string folderName, int rank,
     
     // 평균값 로드 
     for(auto& item : controls.saveMeanCellValues){
+        // cout << "AA " << item << endl;
         scal_cell_save_name.push_back("mean-"+item);
     }
     for(auto& item : controls.saveSMDValues){
+        // cout << "AA " << item << endl;
         scal_cell_save_name.push_back("fvm-mean-surface-area-"+item);
         scal_cell_save_name.push_back("fvm-mean-volume-"+item);
         
@@ -92,6 +94,8 @@ void MASCH_Mesh_Load::vtuPrimitive(string folderName, int rank,
     for(auto& item : controls.saveSMDValues){
         total_times.push_back("total-time-of-fvm-mean-surface-area-"+item);
         total_times.push_back("total-time-of-fvm-mean-volume-"+item);
+        total_times.push_back("total-time-of-parcel-mean-surface-area-"+item);
+        total_times.push_back("total-time-of-parcel-mean-volume-"+item);
     }
 	// 필드값 로드
 	for(auto& name : total_times){
@@ -262,9 +266,23 @@ void MASCH_Load::dpmFiles(string folderName, int rank,
 		loadDatasAtVTU(inputFile, name, tmp_cellVars);
 		int id = controls.getId_parcelVar(name);
 		int iter = 0;
-		for(auto& parcel : var.parcels){
-			parcel[id] = tmp_cellVars[iter++];
-		}
+        if(tmp_cellVars.size()!=0){
+            for(auto& parcel : var.parcels){
+                parcel[id] = tmp_cellVars[iter++];
+            }
+        }
+        else{
+            if(name=="number-of-parcel"){
+                for(auto& parcel : var.parcels){
+                    parcel[id] = 1.0;
+                }
+            }
+            else{
+                for(auto& parcel : var.parcels){
+                    parcel[id] = 0.0;
+                }
+            }
+        }
 	}
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// if(rank==0){

@@ -26,18 +26,24 @@ void MASCH_Control::setVariablesBasic(){
 						"y distance of between left and right cell",
 						"z distance of between left and right cell"},
 						{"xLR","yLR","zLR"},{"","",""});
-	(*this).setVarible({face},"distance vector of between cell and face",
+	(*this).setVarible({face},"distance vector of between left cell and face",
 						"vLF","m","",vec3,{
 						"x distance of between left cell and face",
 						"y distance of between left cell and face",
 						"z distance of between left cell and face"},
 						{"xLF","yLF","zLF"},{"","",""});
-	(*this).setVarible({face},"distance vector of between cell and face",
+	(*this).setVarible({face},"distance vector of between right cell and face",
 						"vRF","m","",vec3,{
 						"x distance of between right cell and face",
 						"y distance of between right cell and face",
 						"z distance of between right cell and face"},
 						{"xRF","yRF","zRF"},{"","",""});
+	(*this).setVarible({face},"average vector of between left cell and right cell",
+						"aLR","m","",vec3,{
+						"x average of between left cell and right cell",
+						"y average of between left cell and right cell",
+						"z average of between left cell and right cell"},
+						{"xaLR","yaLR","zaLR"},{"","",""});
 	(*this).setVarible({face},"distance weight","Wc","","",scal);
 	(*this).setVarible({face},"distance of between left and right cell","dLR","","",scal);
 	(*this).setVarible({face},"cosine angle of between face normal and cells","alpha","","",scal);
@@ -287,6 +293,7 @@ string inp_option){
 	vector<string> tmp_name_x_grad_prim;
 	vector<string> tmp_name_y_grad_prim;
 	vector<string> tmp_name_z_grad_prim;
+    
 	for(auto& [name, tmp_var] : controls.cellVar){
 		if(tmp_var.id>=0 && tmp_var.role=="primitive"){
 			tmp_name_prim.push_back(name);
@@ -302,6 +309,13 @@ string inp_option){
 			++tmp_nPrimitive;
 		}
 	}
+    
+	vector<string> tmp_name_mean;
+    for(auto& item : controls.saveMeanCellValues){
+        tmp_name_mean.push_back("mean-"+item);
+    }
+    
+    
 	
 	bool boolInterpolRefineValues = false;
 	if(controls.dynamicMeshMap["AMR.interpolationRefineValues"]=="yes") 
@@ -319,6 +333,7 @@ string inp_option){
 		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
 		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
 		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_val_mean(tmp_name_mean.size());
 		for(int i=0; i<org_nCells; ++i){
 			for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
 				int id_prim = controls.getId_cellVar(tmp_name_prim[iprim]);
@@ -335,6 +350,11 @@ string inp_option){
 				send_y_grad_val[iprim].push_back(var.cells[i][id_y_grad_prim]);
 				send_z_grad_val[iprim].push_back(var.cells[i][id_z_grad_prim]);
 			}
+			for(int iprim=0; iprim<tmp_name_mean.size(); ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_mean[iprim]);
+				double value = var.cells[i][id_prim];
+				send_val_mean[iprim].push_back(value);
+            }
 		}
 		
 			
@@ -448,6 +468,16 @@ string inp_option){
 					// }
 				// }
 			}
+            
+			for(int iprim=0; iprim<tmp_name_mean.size(); ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_mean[iprim]);
+				for(int j=0; j<sub_size; ++j){
+					int id_cell = cellConn.at(i).at(j);
+                    double org_value = send_val_mean[iprim][i];
+					double value_interpol = org_value;
+                    var.cells.at(id_cell).at(id_prim) = value_interpol;
+                }
+            }
 		}
 		
 		
@@ -461,7 +491,8 @@ string inp_option){
 		{
 			MASCH_Math math;
 			
-			double eps = -1.e-1;
+			// double eps = -1.e-16;
+			double eps = -0.5;
 			
 			int id_par_x = controls.getId_parcelVar("x-position");
 			int id_par_y = controls.getId_parcelVar("y-position");
@@ -472,65 +503,80 @@ string inp_option){
 			for(auto& parcel : mesh.parcels){
 				int i = parcel.icell;
 				int sub_size = cellConn[i].size();
-				double pres_x = var.parcels[iter][id_par_x];
-				double pres_y = var.parcels[iter][id_par_y];
-				double pres_z = var.parcels[iter][id_par_z];
-				int pres_icell = -1;
-				for(int j=0; j<sub_size; ++j){
-					int id_cell = cellConn.at(i).at(j);
-					auto& cell = mesh.cells[id_cell];
-					bool boolInside = true;
-					for(auto& iface : cell.ifaces){
-						auto& face = mesh.faces[iface];
-						// auto faceVar_i = faceVar[iface].data();
-										
-						vector<double> Vx, Vy, Vz;
-						for(auto& ipoint : face.ipoints){
-							Vx.push_back(mesh.points[ipoint].x);
-							Vy.push_back(mesh.points[ipoint].y);
-							Vz.push_back(mesh.points[ipoint].z);
-						}
-						double VSn=0.0;
-						vector<double> cellCentroid;
-						vector<double> unitNormals(3,0.0);
-						double area;
-						math.calcUnitNormals_Area3dPolygon(
-							face.ipoints.size(), Vx,Vy,Vz,
-							unitNormals, area,
-							face.x, face.y, face.z,
-							VSn, cellCentroid);
-						
-						double x_pF = pres_x - face.x;
-						double y_pF = pres_y - face.y;
-						double z_pF = pres_z - face.z;
-						double nx = -unitNormals[0];
-						double ny = -unitNormals[1];
-						double nz = -unitNormals[2];
-						if(face.iL!=id_cell) {
-							nx = -nx; ny = -ny; nz = -nz;
-						}
-						double Lcond = x_pF*nx + y_pF*ny + z_pF*nz;
-						if(Lcond < eps){
-							boolInside = false;
-							break;
-						}
-					}
-					if(boolInside==false) continue;
-					
-					pres_icell = i;
-					break;
-				}
-				
-				if(pres_icell==-1) {
-					cout << scientific; cout.precision(2);
-					cout << "#WARNING : not find parcel location" << endl;
-					cout << pres_x << " " << pres_y << " " << pres_z << endl;
-					// cout << icells.size() << endl;
-					cout << fixed; cout.precision(0);
-				}
-				
-				parcel.icell = pres_icell;
-				mesh.cells[pres_icell].iparcels.push_back(iter);
+                
+                if(sub_size==1){
+                    int id_cell = cellConn[i][0];
+                    parcel.icell = id_cell;
+                    mesh.cells[id_cell].iparcels.push_back(iter);
+                    
+                }
+                else{
+                    double pres_x = var.parcels[iter][id_par_x];
+                    double pres_y = var.parcels[iter][id_par_y];
+                    double pres_z = var.parcels[iter][id_par_z];
+                    int pres_icell = -1;
+                    for(int j=0; j<sub_size; ++j){
+                        int id_cell = cellConn.at(i).at(j);
+                        auto& cell = mesh.cells[id_cell];
+                        bool boolInside = true;
+                        for(auto& iface : cell.ifaces){
+                            auto& face = mesh.faces[iface];
+                            // auto faceVar_i = faceVar[iface].data();
+                                            
+                            vector<double> Vx, Vy, Vz;
+                            for(auto& ipoint : face.ipoints){
+                                Vx.push_back(mesh.points[ipoint].x);
+                                Vy.push_back(mesh.points[ipoint].y);
+                                Vz.push_back(mesh.points[ipoint].z);
+                            }
+                            double VSn=0.0;
+                            vector<double> cellCentroid;
+                            vector<double> unitNormals(3,0.0);
+                            double area;
+                            math.calcUnitNormals_Area3dPolygon(
+                                face.ipoints.size(), Vx,Vy,Vz,
+                                unitNormals, area,
+                                face.x, face.y, face.z,
+                                VSn, cellCentroid);
+                            
+                            double x_pF = pres_x - face.x;
+                            double y_pF = pres_y - face.y;
+                            double z_pF = pres_z - face.z;
+                            double nx = -unitNormals[0];
+                            double ny = -unitNormals[1];
+                            double nz = -unitNormals[2];
+                            if(face.iL!=id_cell) {
+                                nx = -nx; ny = -ny; nz = -nz;
+                            }
+                            double Lcond = x_pF*nx + y_pF*ny + z_pF*nz;
+                            if(Lcond < eps){
+                                boolInside = false;
+                                break;
+                            }
+                        }
+                        if(boolInside==false) continue;
+                        
+                        pres_icell = i;
+                        break;
+                    }
+                    
+                    if(pres_icell==-1) {
+                        cout << scientific; cout.precision(2);
+                        cout << "#WARNING : not find parcel location" << endl;
+                        // cout << pres_x << " " << pres_y << " " << pres_z << endl;
+                        // cout << icells.size() << endl;
+                        cout << fixed; cout.precision(0);
+                        parcel.icell = 0;
+                        mesh.cells[0].iparcels.push_back(iter);
+                        parcel.setType(MASCH_Parcel_Types::TO_BE_DELETE);
+                        ++iter;
+                        continue;
+                    }
+                    
+                    parcel.icell = pres_icell;
+                    mesh.cells[pres_icell].iparcels.push_back(iter);
+                
+                }
 				
 				++iter;
 			}
@@ -557,6 +603,7 @@ string inp_option){
 		vector<vector<double>> send_x_grad_val(tmp_nPrimitive);
 		vector<vector<double>> send_y_grad_val(tmp_nPrimitive);
 		vector<vector<double>> send_z_grad_val(tmp_nPrimitive);
+		vector<vector<double>> send_val_mean(tmp_name_mean.size());
 		for(auto& item : cellConn){
 			for(auto& i : item){
 				for(int iprim=0; iprim<tmp_nPrimitive; ++iprim){
@@ -566,6 +613,11 @@ string inp_option){
 					int id_z_grad_prim = controls.getId_cellVar(tmp_name_z_grad_prim[iprim]);
 					double value = var.cells[i][id_prim];
 					send_val[iprim].push_back(value);
+				}
+				for(int iprim=0; iprim<tmp_name_mean.size(); ++iprim){
+					int id_prim = controls.getId_cellVar(tmp_name_mean[iprim]);
+					double value = var.cells[i][id_prim];
+					send_val_mean[iprim].push_back(value);
 				}
 			}
 		}
@@ -632,6 +684,18 @@ string inp_option){
 				
 				var.cells.at(i).at(id_prim) = new_value;
 			}
+            
+            
+			for(int iprim=0; iprim<tmp_name_mean.size(); ++iprim){
+				int id_prim = controls.getId_cellVar(tmp_name_mean[iprim]);
+				double new_value = 0.0;
+				for(int j=0; j<sub_size; ++j){
+					int sub_id = cellConn[i][j];
+					double org_value = send_val_mean.at(iprim).at(sub_id);
+					new_value += org_value/doub_sub_size;
+				}
+				var.cells.at(i).at(id_prim) = new_value;
+			}
 		}
 		
 		
@@ -642,7 +706,7 @@ string inp_option){
 			int iter=0;
 			for(auto& cell : mesh.cells){
 				for(auto& iparcel : cell.iparcels){
-					mesh.parcels[iparcel].icell = iter;
+					mesh.parcels[iparcel].icell = iter; 
 				}
 				++iter;
 			}
@@ -1912,7 +1976,7 @@ void MASCH_Control::save_pvdFile(MASCH_Mesh& mesh, MASCH_Variables& var){
 
 
 bool MASCH_Control::check_isnan(double value){
-	if(std::isnan(value) || value < -1.e2 || value > 1.e2){
+	if(std::isnan(value) || value < -1.e12 || value > 1.e12){
 		return true;
 	}
 	else{
@@ -1937,6 +2001,8 @@ void MASCH_Control::show_residual(MASCH_Variables& var){
 		", " << "dt = " << var.fields[controls.getId_fieldVar("time-step")] << 
 		", " << "resi = " << var.fields[controls.getId_fieldVar("residual")] << 
 		" |" << endl;
+		// var.fields[controls.getId_fieldVar("residual")] << 
+		// endl;
 		cout << fixed; cout.precision(0);
 		controls.log.show();
 	}

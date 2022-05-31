@@ -2,15 +2,20 @@
 AMR {
 	interval = 500;
 	intervalRepart = 500;
-	maxLevel = 4;
-	maxBufferLayer = 1;
-	indicatorCellNames = (density density);
-	indicatorCellValues = (10.0 0.0);
-	indicatorGradientNames = (density pressure);
-	indicatorGradientValues = (1.e6 8.e7);
+	maxLevel = 1; //2;
+	maxBufferLayer = 2;
+	region {
+		type = box;
+		min = (-1.e12 -1.e12 -1.e12); //(-1.e12 -0.001 -1.e12);
+		max = (1.e12 1.e12 1.e12);
+	}
+	indicatorCellNames = (pressure); //(density mass-fraction-air);
+	indicatorCellValues = (0.0); //(0.0 0.8);
+	indicatorGradientNames = (density); //(density pressure);
+	indicatorGradientValues = (5.e6); //(5.e5); //(8.e5 9.e8);
 	maxCells = 20000000;
-	maxRefineCellPerBlockAMR = 10000;
-	maxUnrefineCellPerBlockAMR = 100000000;
-	minVolume = 0.0;
+	maxRefineCellPerBlockAMR = 100000;
+	maxUnrefineCellPerBlockAMR = 1000000;
+	minVolume = 0.0; //1.e-15;
 	interpolationRefineValues = no;
 }

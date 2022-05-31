@@ -263,7 +263,10 @@ void MASCH_Mesh_Load::vtu(
 	}
 	
 	int maxBCNum = mesh.boundaries.size()-1;
-	mesh.boundaries[maxBCNum].startFace = mesh.faces.size()-mesh.boundaries[maxBCNum].nFaces;
+    // cout << folder << endl;
+	mesh.boundaries.at(maxBCNum).startFace = mesh.faces.size()-mesh.boundaries.at(maxBCNum).nFaces;
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	for(int i=maxBCNum-1; i>=0; --i){
 		mesh.boundaries[i].startFace = mesh.boundaries[i+1].startFace-mesh.boundaries[i].nFaces;
 	}

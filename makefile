@@ -1,8 +1,9 @@
 CCOMPLR = mpiicpc
 
-CFLAGS = -std=c++17 -c -O3
+# CFLAGS = -std=c++17 -c -O2
 # CFLAGS = -std=c++17 -c -O3 -fPIC -xCORE-AVX512 -ipo -no-prec-div
 # CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math -hfp4 -ipo -no-prec-div
+CFLAGS = -std=c++17 -c -O3 -fPIC -ffast-math
 
 
 SHELL = /bin/bash
@@ -364,6 +365,34 @@ SOURCES_CompCoupledExplicitDPM = \
 
 OBJECTS_CompCoupledExplicitDPM = $(SOURCES_CompCoupledExplicitDPM:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
+EXE_dpmDistribution = dpmDistribution
+SOURCES_dpmDistribution = \
+  src/main/utility/dpmDistribution.cpp\
+
+OBJECTS_dpmDistribution = $(SOURCES_dpmDistribution:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
+
+
+EXE_Advection = Advection
+FOLDER_Advection = src/main/pde/advection
+SOURCES_Advection = \
+  $(FOLDER_Advection)/main.cpp\
+  $(FOLDER_Advection)/setVarUDF.cpp\
+  $(FOLDER_Advection)/setBoundUDF.cpp\
+  $(FOLDER_Advection)/setGradUDF.cpp\
+  $(FOLDER_Advection)/setCurvatureUDF.cpp\
+  $(FOLDER_Advection)/setAddiUDF.cpp\
+  $(FOLDER_Advection)/setOldVarUDF.cpp\
+  $(FOLDER_Advection)/setTermsCellLoopUDF.cpp\
+  $(FOLDER_Advection)/setUpdatePrimUDF.cpp\
+  $(FOLDER_Advection)/setDPMUDF.cpp\
+  $(FOLDER_Advection)/setMinMaxCellValuesUDF.cpp\
+  $(FOLDER_Advection)/setMeanValues.cpp\
+  $(FOLDER_Advection)/setSegEq.cpp\
+  $(FOLDER_Advection)/setHOReconUDF.cpp\
+  $(FOLDER_Advection)/setTermsFaceLoopUDF.cpp\
+  $(FOLDER_Advection)/setTimeStepUDF.cpp\
+
+OBJECTS_Advection = $(SOURCES_Advection:.cpp=.o) $(SOURCES_SAVE:.cpp=.o) $(SOURCES_LOAD:.cpp=.o) $(SOURCES_Others:.cpp=.o)
 
 # # potential flow
 # EXE_POTENTIAL = Potential
@@ -534,8 +563,8 @@ COTEXT  = "\033[1;31m Compiling\033[0m\033[1m $< \033[0m"
 # EXE_ALL = $(EXE_REPARTITION)
 # OBJECTS_ALL = $(OBJECTS_REPARTITION)
 
-EXE_ALL = $(EXE_PARTITION) $(EXE_REPARTITION) $(EXE_CompCoupledImplicit) $(EXE_CompCoupledExplicit)
-OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_REPARTITION) $(OBJECTS_CompCoupledImplicit) $(OBJECTS_CompCoupledExplicit)
+EXE_ALL = $(EXE_PARTITION) $(EXE_REPARTITION) $(EXE_CompCoupledImplicit) $(EXE_CompCoupledExplicit) $(EXE_dpmDistribution) $(EXE_Advection)
+OBJECTS_ALL = $(OBJECTS_PARTITION) $(OBJECTS_REPARTITION) $(OBJECTS_CompCoupledImplicit) $(OBJECTS_CompCoupledExplicit) $(OBJECTS_dpmDistribution) $(OBJECTS_Advection)
 
 # EXE_ALL = $(EXE_PARTITION) $(EXE_MultiComponent) $(EXE_Potential) 
 
@@ -599,6 +628,14 @@ $(EXE_CompCoupledExplicit) : $(OBJECTS_CompCoupledExplicit)
 $(EXE_CompCoupledExplicitDPM) : $(OBJECTS_CompCoupledExplicitDPM)
 	@$(CCOMPLR) -o $@ $(OBJECTS_CompCoupledExplicitDPM) $(LIBRARIES)
 	@echo -e "\033[1;31m " $(EXE_CompCoupledExplicitDPM) " CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_dpmDistribution) : $(OBJECTS_dpmDistribution)
+	@$(CCOMPLR) -o $@ $(OBJECTS_dpmDistribution) $(LIBRARIES)
+	@echo -e "\033[1;31m " $(EXE_dpmDistribution) " CODE compile/link complete \033[0m" | tee -a make.log
+
+$(EXE_Advection) : $(OBJECTS_Advection)
+	@$(CCOMPLR) -o $@ $(OBJECTS_Advection) $(LIBRARIES)
+	@echo -e "\033[1;31m " $(EXE_Advection) " CODE compile/link complete \033[0m" | tee -a make.log
 
 ifeq ("x","y")
 $(EXE_CompDensityDual) : $(OBJECTS_CompDensityDual)

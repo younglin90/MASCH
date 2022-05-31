@@ -1774,6 +1774,7 @@ int main(int argc, char* argv[]) {
 	loadVTUfiles(controls.getLoadFolderName());
 	loadDPMFiles(controls.getLoadFolderName());
 	
+    // mesh.repartParMETIS(size, cell_ip, mesh);
 	repartParMETIS(nSizeOrg, nSizeTar); 
 	if(rank>=nSizeOrg) cell_ip_g.clear();
 	{
@@ -1799,9 +1800,15 @@ int main(int argc, char* argv[]) {
 	}
 	
 	mesh.repartitioning(cell_ip_g, maxLevel, to_new_cell_id, dummy);
+    
+	// MPI_Barrier(MPI_COMM_WORLD);
+    // if(rank==0) cout << "AA1" << endl;
 	
 	
 	resetVariableArray(to_new_cell_id);
+    
+	// MPI_Barrier(MPI_COMM_WORLD);
+    // if(rank==0) cout << "AA2" << endl;
 	
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);

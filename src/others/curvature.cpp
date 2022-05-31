@@ -10,6 +10,12 @@ vector<string>& inp_cell){
 	// cout << inp_cell.size() << endl;
 	
 	if(inp_cell.size()==0) return;
+    
+    
+    bool boolCcap = true;
+	int iterVFSmoothingMax = 8;
+    double CFL = 0.3;
+    int iterFirstSmoothingMax = 2;
 	
 	
 	// controls.log.push("test1");
@@ -141,40 +147,40 @@ vector<string>& inp_cell){
 	// cout << hmin << endl;
 	
 	
-	// 체적분율 to 레벨셋
-	// vector<vector<bool>> interfacePresentCell(inp_size,vector<bool>(mesh.cells.size(),false));
-	double Ccap = 0.99;
-	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
-		auto cellVar_i = cellVar[i].data();
-		
-		for(int j=0; j<inp_size; ++j){
-			int id_ls = id_levelSet_inp[j];
-			int id_phi = id_inp[j];
-			double phi = cellVar_i[id_phi];
-			
-			// hmin[i] = pow(cellVar_i[id_vol],0.3);
-				// cellVar_i[id_ls] = phi;
-			// if(interfaceRegion[i]==true){
-				// cellVar_i[id_ls] = hmin * phi;
-				// cellVar_i[id_ls] = phi;
-				cellVar_i[id_ls] = 1.0/(1.0-Ccap)*
-					(min(max(phi,0.5*Ccap),1.0-0.5*Ccap)-0.5*Ccap);
-				// cellVar_i[id_ls] = phi;
-			// }
-			// else{
-				// cellVar_i[id_ls] = 0.0;
-			// }
-				
-			// if(phi>1.e-8 && phi<1.0-1.e-8){
-				// interfacePresentCell[j][i] = true;
-				// // cellVar_i[id_ls] = phi;
-			// }
-		}
+    if(boolCcap==true){
+        // 체적분율 to 레벨셋
+        // vector<vector<bool>> interfacePresentCell(inp_size,vector<bool>(mesh.cells.size(),false));
+        double Ccap = 0.99;
+        for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
+            auto cellVar_i = cellVar[i].data();
+            
+            for(int j=0; j<inp_size; ++j){
+                int id_ls = id_levelSet_inp[j];
+                int id_phi = id_inp[j];
+                double phi = cellVar_i[id_phi];
+                
+                // hmin[i] = pow(cellVar_i[id_vol],0.3);
+                    // cellVar_i[id_ls] = phi;
+                // if(interfaceRegion[i]==true){
+                    // cellVar_i[id_ls] = hmin * phi;
+                    // cellVar_i[id_ls] = phi;
+                    cellVar_i[id_ls] = 1.0/(1.0-Ccap)*
+                        (min(max(phi,0.5*Ccap),1.0-0.5*Ccap)-0.5*Ccap);
+                    // cellVar_i[id_ls] = phi;
+                // }
+                // else{
+                    // cellVar_i[id_ls] = 0.0;
+                // }
+                    
+                // if(phi>1.e-8 && phi<1.0-1.e-8){
+                    // interfacePresentCell[j][i] = true;
+                    // // cellVar_i[id_ls] = phi;
+                // }
+            }
+        }
 	}
 	
-	
 	// smoothing 레벨셋
-	int iterVFSmoothingMax = 8;
 	for(int iter=0; iter<iterVFSmoothingMax; ++iter){
 		for(int j=0; j<inp_size; ++j){
 			int id_ls = id_levelSet_inp[j];
@@ -256,7 +262,6 @@ vector<string>& inp_cell){
 					// cellVar_i[id_ls] += hmin*flux_diff_ptr[i]/vol;
 				// }
 				double Dcoeff = hmin;
-				double CFL = 0.3;
 				double dt = minA/Dcoeff/6.0;
 					cellVar_i[id_ls] += CFL * dt * (Dcoeff*flux_diff_ptr[i]/vol);
 					
@@ -793,7 +798,6 @@ vector<string>& inp_cell){
 	//================================================
 	// smoothing process of Curvature (The Sharp Surface Force (SSF) Model)
 	{
-		int iterFirstSmoothingMax = 2;
 		// first smoothing
 		for(int i_id=0; i_id<inp_size; ++i_id){
 			int id_phi = id_inp[i_id];

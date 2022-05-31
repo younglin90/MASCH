@@ -1,10 +1,19 @@
-
 highOrderScheme {
         p = none;
-        U = (vanLeer vanLeer vanLeer);
+        U = (vanLeer vanLeer vanLeer); //(MUSCL MUSCL MUSCL); //(modifiedSUPERBEE modifiedSUPERBEE modifiedSUPERBEE); //(vanLeer vanLeer vanLeer);
         T = none;
-        Y = (FBICS);//(CICSAM);
+        Y = (MSTACS); //(SAISH);
+
+        MLP {
+                p = no;
+                U = (yes yes yes);
+                T = no;
+        }
+
+
 }
+
+fluxScheme = SLAU; //HLLC;
 
 
 // 실제 시간항 (real-time term)

@@ -41,6 +41,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 		// if(debug_bool) controls.log.pop();
 		// if(debug_AMGCL_bool) prof.toc("addParcelModel");
 	}
+        
+    // if(mesh.parcels.size()==0) return;
 	
 	// int nstep = solver.calcTimeStepParcel(mesh, controls, var);
 	solver.calcTimeStepParcel(mesh, controls, var);
@@ -48,7 +50,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	double resi_dt = var.fields[controls.getId_fieldVar("time-step")];
 	// double dt_p = var.fields[controls.getId_fieldVar("time-step-parcels")];
 	controls.nIterDPM = 0;
-	while(resi_dt>0.0){
+	while(resi_dt>0.0)
+    {
 		
 		resi_dt -= var.fields[controls.getId_fieldVar("time-step-parcels")];
 		
@@ -184,6 +187,7 @@ MASCH_Variables& var){
 	
 	
 	double eps = -1.e-16;
+	// double eps = -1.e-4;
 	
 	auto& solver = (*this);
 	
@@ -347,21 +351,29 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 		auto cellVar = var.cells.data();
 		
 		int nEq = controls.nEq[iSegEq];
+        double fluxA[nEq*nEq];
 		double fluxB[nEq];
 		
 		for(int ipar=0, SIZE=mesh.parcels.size(); ipar<SIZE; ++ipar){
 			auto& parcel = mesh.parcels[ipar];
 			int i = parcel.icell;
-			auto parcelVar_i = parcelVar[ipar].data();
+			// auto parcelVar_i = parcelVar[ipar].data();
+			auto parcelVar_i = var.parcels[ipar].data();
 			auto cellVar_i = cellVar[parcel.icell].data();
 			
 			for(int iEq=0; iEq<nEq; ++iEq){
+                for(int jEq=0; jEq<nEq; ++jEq){
+                    fluxA[iEq*nEq+jEq] = 0.0;
+                }
 				fluxB[iEq] = 0.0;
 			}
 			
-			sol(cellVar_i, fieldVar, parcelVar_i, fluxB);
+			sol(i, cellVar_i, fieldVar, parcelVar_i, fluxA, fluxB);
 			
 			for(int iEq=0; iEq<nEq; ++iEq){
+                for(int jEq=0; jEq<nEq; ++jEq){
+                    var.accumSparD( iSegEq, i, iEq, jEq, fluxA[iEq*nEq+jEq] );
+                }
 				var.accumB( iSegEq, i, iEq, fluxB[iEq] );
 			}
 			
@@ -380,6 +392,7 @@ MASCH_Control& controls,
 MASCH_Variables& var){
 	
 	double eps = -1.e-16;
+	// double eps = -1.e-4;
 	
 	int id_nx = controls.getId_faceVar("x unit normal");
 	int id_ny = controls.getId_faceVar("y unit normal");
@@ -485,6 +498,7 @@ MASCH_Variables& var){
 	if(size==1) return;
 	
 	double eps = -1.e-16;
+	// double eps = -1.e-4;
 	
 	int id_nx = controls.getId_faceVar("x unit normal");
 	int id_ny = controls.getId_faceVar("y unit normal");
@@ -612,6 +626,21 @@ MASCH_Variables& var){
 	auto parcelVar = var.parcels.data();
 	auto cell_i = mesh.cells.data();
 	auto parcel_i = mesh.parcels.data();
+    
+	int id_rho = controls.getId_parcelVar("density");
+	int id_u = controls.getId_parcelVar("x-velocity");
+	int id_v = controls.getId_parcelVar("y-velocity");
+	int id_w = controls.getId_parcelVar("z-velocity");
+	int id_T = controls.getId_parcelVar("temperature");
+	int id_nparcel = controls.getId_parcelVar("number-of-parcel");
+	int id_d = controls.getId_parcelVar("diameter");
+	int id_x = controls.getId_parcelVar("x-position");
+	int id_y = controls.getId_parcelVar("y-position");
+	int id_z = controls.getId_parcelVar("z-position");
+    
+    
+    double maxNParcel = stod(controls.controlParcelsMap["maxNumberOfParcel"]);
+    double minDia = stod(controls.controlParcelsMap["minDiameter"]);
 	
 	int tmp_nInsideParcels=0;
 	int tmp_nReflectParcels=0;
@@ -619,6 +648,13 @@ MASCH_Variables& var){
 	int tmp_nDeleteParcels=0;
 	for(int i=0, SIZE=mesh.parcels.size(); i<SIZE; ++i){
 		auto& parcel = parcel_i[i];
+        auto parcelVar_i = parcelVar[i];
+        
+        double N_p = parcelVar_i[id_nparcel];
+        double d_p = parcelVar_i[id_d];
+        if(N_p>maxNParcel)  parcel.setType(MASCH_Parcel_Types::TO_BE_DELETE);
+        if(d_p<minDia)  parcel.setType(MASCH_Parcel_Types::TO_BE_DELETE);
+        
 		if(parcel.getType() == MASCH_Parcel_Types::INSIDE){
 			++tmp_nInsideParcels;
 		}

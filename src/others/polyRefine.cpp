@@ -156,15 +156,20 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 			// }
 							// // boolCellRefine[i] = true;
 			
-				// // if( 
-				// // (rank==0 && distr(eng) > 0.8) ||
-				// // (rank==1 && distr(eng) > 100.0) ||
-				// // (rank==2 && distr(eng) > 100.0) ||
-				// // (rank==3 && distr(eng) > 100.0) 
-				// // ){
-					// // cout << mesh.cells[i].volume << endl;
-					// // boolCellRefine[i] = true;
-				// // }	
+				// if( 
+				// (rank==0 && distr(eng) > 0.8) ||
+				// (rank==1 && distr(eng) > 100.0) ||
+				// (rank==2 && distr(eng) > 100.0) ||
+				// (rank==3 && distr(eng) > 100.0) 
+				// ){
+					// cout << mesh.cells[i].volume << endl;
+					// boolCellRefine[i] = true;
+				// }
+
+					// boolCellRefine[i] = false;
+				// if(distr(eng) > 0.8){
+					// boolCellRefine[i] = true;
+                // }                
 			
 			// if(mesh.cells[i].volume < minVolume_AMR) {
 				// cout << mesh.cells[i].volume << " " << minVolume_AMR << endl;
@@ -1134,6 +1139,13 @@ void MASCH_Poly_AMR_Builder::polyRefine(
     if(faceResizeNum>100000000) cout << "rank = " << rank << ", face number > 1 million ";
 	mesh.faces.resize(faceResizeNum);
     
+    
+    if(faceResizeNum==0){
+        cout << "NONONONOONONON " << beforeCellSize << " " << beforeFaceSize << endl;
+    }
+    
+    
+    
 	MPI_Barrier(MPI_COMM_WORLD);
 	if(rank==0 && boolDebug) cout << "START7.3.2" << endl;
 	
@@ -1259,12 +1271,26 @@ void MASCH_Poly_AMR_Builder::polyRefine(
 
 	// boundary setting
 	for (int i=0; i<mesh.boundaries.size(); ++i) {
+        // if(mesh.boundaries.at(i).startFace>=startFaces.size()) cout << i << " " << mesh.boundaries.at(i).startFace << endl;
+        
+        // if(mesh.boundaries.at(i).startFace==0){
+            // cout << startFaces.size() << " " << mesh.faces.size() << endl;
+        // }
+        
 		mesh.boundaries.at(i).startFace = startFaces.at( mesh.boundaries.at(i).startFace );
 	}
+    
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.7.1" << endl;
+	
 	
 	for (int i=0; i<mesh.boundaries.size()-1; ++i) {;
 		mesh.boundaries.at(i).nFaces = mesh.boundaries.at(i+1).startFace-mesh.boundaries.at(i).startFace;
 	}
+    
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(rank==0 && boolDebug) cout << "START7.7.2" << endl;
+	
 	int maxBDsize = mesh.boundaries.size()-1;
 	mesh.boundaries.at(maxBDsize).nFaces = mesh.faces.size()-mesh.boundaries.at(maxBDsize).startFace;
 	

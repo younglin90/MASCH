@@ -222,6 +222,11 @@ void MASCH_Poly_AMR_Builder::polyUnrefine(
 		// // ){
 			// // boolCellUnrefine[i] = true;
 		// // }
+        
+                // boolCellUnrefine[i] = false;
+        // if(distr(eng) > 0.4){
+            // boolCellUnrefine[i] = true;
+        // }                
 		
 		// 만약 셀의 레벨이 0 이면, false
 		if(mesh.cells[i].level <= 0) boolCellUnrefine[i] = false;

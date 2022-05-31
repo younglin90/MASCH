@@ -169,6 +169,33 @@ int nSize, vector<int>& cell_ip, MASCH_Mesh &mesh){
 			cell_ip[icell] = ip_max;
 		}
 	}
+    
+    
+    
+    //======================================
+    // 특정 processor 의 셀이 아무것도!!! 없을 때!! repartitioning 하지 말 것!!
+    vector<int> debug_nIps(nSize,0);
+    for(auto& item : cell_ip){
+        ++debug_nIps[item];
+    }
+    vector<int> debug_total_nIps(nSize,0);
+    MPI_Allreduce(debug_nIps.data(), debug_total_nIps.data(), nSize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    
+    bool no_Repartitioning = false;
+    for(auto& item : debug_total_nIps){
+        if(item==0){
+            no_Repartitioning = true;
+        }
+    }
+    
+    if(no_Repartitioning==true){
+        for(auto& item : cell_ip){
+            item = rank;
+        }
+    }
+    //======================================
+    
+    
 	
 	// // 디버깅
 	// {

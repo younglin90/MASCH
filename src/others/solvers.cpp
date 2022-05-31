@@ -2,7 +2,7 @@
 #include "./solvers.h"
 
 
-void MASCH_Solver::setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls){
+void MASCH_Solver::setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	
 	auto& solver = (*this);
 	
@@ -36,7 +36,7 @@ void MASCH_Solver::setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls){
 	
 	solver.setUpdatePrimFunctionsUDF(mesh, controls);
 	
-	solver.setDPMFunctionsUDF(mesh, controls);
+	solver.setDPMFunctionsUDF(mesh, controls, var);
 	
 	solver.setMinMaxCellValuesFunctionsUDF(mesh, controls);
 	
@@ -982,9 +982,11 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
 	auto fieldVar = var.fields.data();
 	auto parcelVar = var.parcels.data();
     
-    if(controls.saveSMDValues.size()==0) return;
+    if(
+    controls.saveSMDValues.size()==0 && 
+    controls.saveMeanCellValues.size()==0) return;
     
-    string name = controls.saveSMDValues[0];
+    // string name = controls.saveSMDValues[0];
     
     
 	int id_vol = controls.getId_cellVar("volume");
@@ -997,7 +999,44 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
     gradx.resize(controls.meanSurfOut_cell_id.size(),vector<double>(mesh.cells.size(),0.0));
     grady.resize(controls.meanSurfOut_cell_id.size(),vector<double>(mesh.cells.size(),0.0));
     gradz.resize(controls.meanSurfOut_cell_id.size(),vector<double>(mesh.cells.size(),0.0));
-    for(int i=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
+    
+    vector<vector<double>> cellVar_recv(controls.meanSurfInp_cell_id.size());
+	if(size>1){
+		int proc_size = var.procRightCells.size();
+        vector<vector<double>> cellVar_send(controls.meanSurfInp_cell_id.size());
+		for(auto& boundary : mesh.boundaries){
+			if(boundary.getType()==MASCH_Face_Types::PROCESSOR){
+				int str = boundary.startFace;
+				int end = str + boundary.nFaces;
+				for(int i=str; i<end; ++i){
+                    auto& face = mesh.faces[i];
+                    int iL = face.iL;
+                    int tmp_iter = 0;
+                    for(auto& item : controls.meanSurfInp_cell_id){
+                        cellVar_send[tmp_iter].push_back(cellVar[iL][item]);
+                        
+                        ++tmp_iter;
+                    }
+				}
+			}
+		}
+        {
+            int tmp_iter = 0;
+            for(auto& item : controls.meanSurfInp_cell_id){
+                cellVar_recv[tmp_iter].resize(cellVar_send[tmp_iter].size());
+                MPI_Alltoallv( cellVar_send[tmp_iter].data(), mesh.countsSendProcFaces.data(), 
+                                mesh.displsSendProcFaces.data(), MPI_DOUBLE, 
+                                cellVar_recv[tmp_iter].data(), mesh.countsRecvProcFaces.data(), 
+                                mesh.displsRecvProcFaces.data(), MPI_DOUBLE, 
+                               MPI_COMM_WORLD);
+                
+                ++tmp_iter;
+            }
+        }
+	}
+    
+    
+    for(int i=0, ip=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
         auto& face = mesh.faces[i];
         int iL = face.iL;
         int iR = face.iR;
@@ -1019,9 +1058,9 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
                 ++tmp_iter;
             }
         }
-        else{
+        else if(face.getType()==MASCH_Face_Types::BOUNDARY){
             int tmp_iter = 0;
-            for(auto& item : controls.meanVolInp_cell_id){
+            for(auto& item : controls.meanSurfInp_cell_id){
                 double flux = cellVar[iL][item];
                 gradx[tmp_iter][iL] += flux*nvec[0]*area;
                 grady[tmp_iter][iL] += flux*nvec[1]*area;
@@ -1029,6 +1068,18 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
                 
                 ++tmp_iter;
             }
+        }
+        else if(face.getType()==MASCH_Face_Types::PROCESSOR){
+            int tmp_iter = 0;
+            for(auto& item : controls.meanSurfInp_cell_id){
+                double flux = 0.5*(cellVar[iL][item] + cellVar_recv[tmp_iter][ip]);
+                gradx[tmp_iter][iL] += flux*nvec[0]*area;
+                grady[tmp_iter][iL] += flux*nvec[1]*area;
+                gradz[tmp_iter][iL] += flux*nvec[2]*area;
+                
+                ++tmp_iter;
+            }
+            ++ip;
         }
     }
     for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
@@ -1059,22 +1110,32 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
     vector<int> id_parcel_values = controls.meanOut_parcel_id;
     vector<int> id_targets = controls.meanInp_cell_id;
     vector<int> id_parcel_targets = controls.meanInp_parcel_id;
-    vector<double> totalTimes;
-    // vector<double> parcel_totalTimes;
-    for(auto& item : controls.meanInp_cell_totalTime_id){
-        totalTimes.push_back(fieldVar[item]);
-    }
+    vector<int> id_totalTime = controls.meanInp_cell_totalTime_id;
+    // vector<double> totalTimes;
+    // // vector<double> parcel_totalTimes;
+    // for(auto& item : controls.meanInp_cell_totalTime_id){
+        // totalTimes.push_back(fieldVar[item]);
+    // }
     // for(auto& item : controls.meanInp_parcel_totalTime_id){
         // parcel_totalTimes.push_back(fieldVar[item]);
     // }
     
     double dt = fieldVar[controls.getId_fieldVar("time-step")];
-    int id_dia = controls.getId_parcelVar("diameter");
-    double& totalTime_area = fieldVar[controls.getId_fieldVar("total-time-of-parcel-mean-surface-area-"+name)];
-    double& totalTime_vol = fieldVar[controls.getId_fieldVar("total-time-of-parcel-mean-volume-"+name)];
-    int id_d_area = controls.getId_cellVar("parcel-mean-surface-area-"+name);
-    int id_d_vol = controls.getId_cellVar("parcel-mean-volume-"+name);
      
+    // // ==============================
+    // int id_rho = controls.getId_cellVar("density");
+    // int id_alpha = controls.getId_cellVar("volume-fraction-water");
+    // int id_rhoL = controls.getId_cellVar("mean-liquid-density");
+    // double& totalTime_rhoL = fieldVar[controls.getId_fieldVar("total-time-of-mean-liquid-density")];
+    // int id_u = controls.getId_cellVar("x-velocity");
+    // int id_v = controls.getId_cellVar("y-velocity");
+    // int id_w = controls.getId_cellVar("z-velocity");
+    // int id_UL = controls.getId_cellVar("mean-liquid-velocity");
+    // double& totalTime_UL = fieldVar[controls.getId_fieldVar("total-time-of-mean-liquid-velocity")];
+    // // ==============================
+
+    
+    // string name = controls.saveSMDValues[0];
     
 	auto parcels_i = mesh.parcels.data();
     for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
@@ -1084,47 +1145,97 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
         for(int j=0; j<id_values_size; ++j){
             int tmp_id1 = id_values[j];
             int tmp_id2 = id_targets[j];
-            double tmp_tTime = totalTimes[j];
+            double tmp_tTime = fieldVar[id_totalTime[j]];
             
             cellVars_i[tmp_id1] = 
-                (totalTimes[j]*cellVars_i[tmp_id1] + dt*cellVars_i[tmp_id2]) / (tmp_tTime+dt);
+                (tmp_tTime*cellVars_i[tmp_id1] + dt*cellVars_i[tmp_id2]) / (tmp_tTime+dt);
+            
         }
-        // parcel 
-        {
-            double mean_area = 0.0;
-            double mean_vol = 0.0;
-            double tmp_size = 0.0;
-			for(auto& iparcel : cell.iparcels){
-				auto& parcel = parcels_i[iparcel];
-				auto parcelVar_i = parcelVar[iparcel].data();
-				if(parcel.getType() != MASCH_Parcel_Types::INSIDE) continue;
-                double d_p = parcelVar_i[id_dia];
-                double d_vol = 4.0/3.0*3.141592*0.125*d_p*d_p*d_p;
-                double d_area = 3.141592*d_p*d_p; //3.141592*0.25*d_p*d_p;
-                mean_area += d_area;
-                mean_vol += d_vol;
-                tmp_size += 1.0;
-			}
-            if(cell.iparcels.size()>0){
-                mean_area /= tmp_size;
-                mean_vol /= tmp_size;
-            }
-            cellVars_i[id_d_area] = 
-                (totalTime_area*cellVars_i[id_d_area] + dt*mean_area) / (totalTime_area+dt);
-                // (totalTime_area*cellVars_i[id_d_area]) / (totalTime_area+dt + 1.e-200);
-            cellVars_i[id_d_vol] = 
-                (totalTime_vol*cellVars_i[id_d_vol] + dt*mean_vol) / (totalTime_vol+dt);
-                // (dt*mean_vol) / (totalTime_vol+dt + 1.e-20);
+    }
+        
+    
+    for(auto& tmp_id : id_totalTime){
+        fieldVar[tmp_id] += dt;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    if(controls.saveSMDValues.size()!=0){
+        
+        string name = controls.saveSMDValues[0];
+        
+        int id_dia = controls.getId_parcelVar("diameter");
+        int id_N = controls.getId_parcelVar("number-of-parcel");
+        int id_time_p = controls.getId_parcelVar("time");
+        double& totalTime_area = fieldVar[controls.getId_fieldVar("total-time-of-parcel-mean-surface-area-"+name)];
+        double& totalTime_vol = fieldVar[controls.getId_fieldVar("total-time-of-parcel-mean-volume-"+name)];
+        int id_d_area = controls.getId_cellVar("parcel-mean-surface-area-"+name);
+        int id_d_vol = controls.getId_cellVar("parcel-mean-volume-"+name);
                 
+        for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
+            auto& cell = mesh.cells[i];
+            auto cellVars_i = cellVar[i].data();
+            // // ==============================
+            // cellVars_i[id_rhoL] = 
+                // (totalTime_rhoL*cellVars_i[id_rhoL] + dt*cellVars_i[id_rho]*cellVars_i[id_alpha]) / (totalTime_rhoL+dt);
+            // double vel_u = cellVars_i[id_u];
+            // double vel_v = cellVars_i[id_v];
+            // double vel_w = cellVars_i[id_w];
+            // double mag_vel = sqrt(vel_u*vel_u+vel_v*vel_v+vel_w*vel_w);
+            // cellVars_i[id_UL] = 
+                // (totalTime_UL*cellVars_i[id_UL] + dt*mag_vel*cellVars_i[id_alpha]) / (totalTime_UL+dt);
+            // // ==============================
+            
+            
+            // parcel 
+            {
+                double mean_area = 0.0;
+                double mean_vol = 0.0;
+                double tmp_size = 0.0;
+                for(auto& iparcel : cell.iparcels){
+                    auto& parcel = parcels_i[iparcel];
+                    auto parcelVar_i = parcelVar[iparcel].data();
+                    if(parcel.getType() != MASCH_Parcel_Types::INSIDE) continue;
+                    double d_p = parcelVar_i[id_dia];
+                    double N_p = parcelVar_i[id_N];
+                    double d_vol = 4.0/3.0*3.141592*0.125*d_p*d_p*d_p;
+                    double d_area = 3.141592*d_p*d_p; //3.141592*0.25*d_p*d_p;
+                    mean_area += d_area * N_p;
+                    mean_vol += d_vol * N_p;
+                    tmp_size += N_p;
+                }
+                if(cell.iparcels.size()>0){
+                    mean_area /= tmp_size;
+                    mean_vol /= tmp_size;
+                }
+                cellVars_i[id_d_area] = 
+                    (totalTime_area*cellVars_i[id_d_area] + dt*mean_area) / (totalTime_area+dt);
+                    // (totalTime_area*cellVars_i[id_d_area]) / (totalTime_area+dt + 1.e-200);
+                cellVars_i[id_d_vol] = 
+                    (totalTime_vol*cellVars_i[id_d_vol] + dt*mean_vol) / (totalTime_vol+dt);
+                    // (dt*mean_vol) / (totalTime_vol+dt + 1.e-20);
+                    
+            }
         }
+        
+        totalTime_area += dt;
+        totalTime_vol += dt;
+    
+        
     }
     
+    // // ==============================
+    // totalTime_rhoL += dt;
+    // totalTime_UL += dt;
+    // // ==============================
     
-    for(auto& item : totalTimes){
-        item += dt;
-    }
-    totalTime_area += dt;
-    totalTime_vol += dt;
     // for(auto& item : parcel_totalTimes){
         // item += dt;
     // }
@@ -1133,7 +1244,249 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var){
     
     
     
+}
+
+
+
+
+
+
+
+void MASCH_SEM::initialSetting(int in0, double in1, double in2, 
+vector<double> v0, vector<double> v1, vector<double> v2, vector<double> v3) {
+    
+    int rank = MPI::COMM_WORLD.Get_rank(); 
+    int size = MPI::COMM_WORLD.Get_size();
+
+    nEddies = in0;
+    sigma = in1;
+    dR = in2;
+    //dt = in3;
+    str = v0;
+    end = v1;
+    setU = v2;
+
+    // Reynolds stress
+    Rij = v3;
+
+    U = sqrt(setU[0] * setU[0] + setU[1] * setU[1] + setU[2] * setU[2]);
+    if (U == 0.0) cout << "#WARNING : setting veloicies is ZERO at SEM" << endl;
+    n.resize(3, 0.0);
+    for(int i=0; i<3; ++i) n[i] = setU[i] / U;
+    dx.resize(3, 0.0);
+    for (int i = 0; i < 3; ++i) dx[i] = abs(str[i]-end[i]);
+
+    // xk.resize(nEddies);
+    // epsk.resize(nEddies);
+    xk.resize(nEddies*3);
+    epsk.resize(nEddies*3);
+
+    // random
+    std::random_device rd;
+    std::default_random_engine eng(rd());
+    std::uniform_real_distribution<double> distr(0.0, 1.0);
+
+    // initial random distribution
+    vector<double> tmp_xk(nEddies*3);
+    vector<double> tmp_epsk(nEddies*3);
+    for (int i = 0; i < nEddies; ++i) {
+        // xk[i].resize(3);
+
+        double tmp_Rk = (distr(eng) - 0.5) * dR;
+
+        xk[i*3+0] = str[0] + tmp_Rk * n[0] + distr(eng) * dx[0];
+        xk[i*3+1] = str[1] + tmp_Rk * n[1] + distr(eng) * dx[1];
+        xk[i*3+2] = str[2] + tmp_Rk * n[2] + distr(eng) * dx[2];
+        
+
+
+        // epsk[i].resize(3);
+        for (int j = 0; j < 3; ++j) {
+            epsk[i*3+j] = 1.0;
+            if (distr(eng) > 0.5) epsk[i*3+j] = -1.0;
+        }
+        
+        
+        // tmp_xk[i*3+0] = xk[i][0];
+        // tmp_xk[i*3+1] = xk[i][1];
+        // tmp_xk[i*3+2] = xk[i][2];
+        
+        // tmp_epsk[i*3+0] = epsk[i][0];
+        // tmp_epsk[i*3+1] = epsk[i][1];
+        // tmp_epsk[i*3+2] = epsk[i][2];
+    }
     
     
+    // 모든 프로세서에서, SEM 입자 위치 모두 동일하게 만들기
+    if(size>1){
+        
+		// 마스터의 입자 위치 뿌려주기
+		if(rank == 0){
+            MPI_Bcast(xk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Bcast(epsk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		}
+		else{
+            MPI_Bcast(xk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Bcast(epsk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		}
+            
+        // for (int i = 0; i < nEddies; ++i) {
+            // xk[i][0] = tmp_xk[i*3+0];
+            // xk[i][1] = tmp_xk[i*3+1];
+            // xk[i][2] = tmp_xk[i*3+2];
+            
+            // epsk[i][0] = tmp_epsk[i*3+0];
+            // epsk[i][1] = tmp_epsk[i*3+1];
+            // epsk[i][2] = tmp_epsk[i*3+2];
+        // }
+    }
+
+
+    double str_to_end_area = sqrt(pow(dx[0], 2.0) + pow(dx[1], 2.0) + pow(dx[2], 2.0));
+    str_to_end_area = str_to_end_area * 3.141592 * 0.25;
+
+    vol_b = abs(str_to_end_area * dR);
+    nEddy = max((int)(vol_b / (sigma * sigma * sigma)), nEddies);
+    //// eddy fluctuation velocity at a location
+    tmp_sart_15 = sqrt(1.5);
+    tmp_sigma_13 = pow(sigma, -3.0);
+    tmp_u_d_coeff = sqrt(vol_b * tmp_sigma_13 / nEddy);
+
+
+    // Cholesky decomposition
+    Aij.resize(9,0.0);
+    Aij[0] = sqrt(Rij[0]);
+    Aij[3] = Rij[3] / Aij[0];
+    Aij[4] = sqrt(Rij[4] - Aij[3] * Aij[3]);
+    if (Aij[0] != 0.0) Aij[6] = Rij[6] / Aij[0];
+    if (Aij[4] != 0.0) Aij[7] = (Rij[7] - Aij[6] * Aij[3]) / Aij[4];
+    Aij[8] = sqrt(Rij[8] - Aij[6] * Aij[6] - Aij[7] * Aij[7]);
+
+}
+
+
+
+vector<double> MASCH_SEM::calcFluctuationVelocities(
+double tmp_x, double tmp_y, double tmp_z) {
+
+    vector<double> sum_k(3, 0.0);
+    for (int i = 0; i < nEddies; ++i) {
+        double normal_dx = abs(tmp_x - xk[3*i+0]) / sigma;
+        double normal_dy = abs(tmp_y - xk[3*i+1]) / sigma;
+        double normal_dz = abs(tmp_z - xk[3*i+2]) / sigma;
+        double psi_dx = 0.0;
+        if (normal_dx < 1.0) psi_dx = tmp_sart_15 * (1.0 - normal_dx);
+        double psi_dy = 0.0;
+        if (normal_dy < 1.0) psi_dy = tmp_sart_15 * (1.0 - normal_dy);
+        double psi_dz = 0.0;
+        if (normal_dz < 1.0) psi_dz = tmp_sart_15 * (1.0 - normal_dz);
+        double fs = psi_dx * psi_dy * psi_dz;
+
+        for (int j = 0; j < 3; ++j) {
+            sum_k[j] += epsk[3*i+j] * fs;
+        }
+
+    }
     
+    // int rank = MPI::COMM_WORLD.Get_rank(); 
+    // int size = MPI::COMM_WORLD.Get_size();
+    
+    // vector<double> recv_sum_k(3);
+    // recv_sum_k = sum_k;
+    // if(size>1){
+        // MPI_Allreduce(sum_k.data(), recv_sum_k.data(), 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    // }
+    
+    
+
+    vector<double> u_fluct(3, 0.0);
+    for (int j = 0; j < 3; ++j) {
+        double tmp_matmul = 0.0;
+
+        tmp_matmul += sum_k[0] * Aij[0 + 3 * j];
+        tmp_matmul += sum_k[1] * Aij[1 + 3 * j];
+        tmp_matmul += sum_k[2] * Aij[2 + 3 * j];
+
+        // tmp_matmul += recv_sum_k[0] * Aij[0 + 3 * j];
+        // tmp_matmul += recv_sum_k[1] * Aij[1 + 3 * j];
+        // tmp_matmul += recv_sum_k[2] * Aij[2 + 3 * j];
+
+        u_fluct[j] = tmp_matmul * tmp_u_d_coeff;
+
+    }
+
+    return u_fluct;
+}
+
+
+
+
+
+void MASCH_SEM::updateEddyMotion(double inp_dt) 
+{
+        
+    int rank = MPI::COMM_WORLD.Get_rank(); 
+    int size = MPI::COMM_WORLD.Get_size();
+
+    // random
+    std::random_device rd;
+    std::default_random_engine eng(rd());
+    std::uniform_real_distribution<double> distr(0.0, 1.0);
+
+    // eddy motion update
+    // vector<double> tmp_xk(nEddies*3);
+    // vector<double> tmp_epsk(nEddies*3);
+    for (int i = 0; i < nEddies; ++i) {
+
+        xk[3*i+0] += setU[0] * inp_dt;
+        xk[3*i+1] += setU[1] * inp_dt;
+        xk[3*i+2] += setU[2] * inp_dt;
+
+        double tmp_distance =
+            abs(n[0] * (xk[3*i+0] - str[0]) + n[1] * (xk[3*i+1] - str[1]) + n[2] * (xk[3*i+2] - str[2]));
+
+        if (tmp_distance / (0.5 * dR) > 1.0) {
+            xk[3*i+0] -= dR * n[0];
+            xk[3*i+1] -= dR * n[1];
+            xk[3*i+2] -= dR * n[2];
+            for (int j = 0; j < 3; ++j) {
+                epsk[3*i+j] = 1.0;
+                if (distr(eng) > 0.5) epsk[3*i+j] = -1.0;
+            }
+        }
+        
+        
+        // tmp_xk[i*3+0] = xk[i][0];
+        // tmp_xk[i*3+1] = xk[i][1];
+        // tmp_xk[i*3+2] = xk[i][2];
+        
+        // tmp_epsk[i*3+0] = epsk[i][0];
+        // tmp_epsk[i*3+1] = epsk[i][1];
+        // tmp_epsk[i*3+2] = epsk[i][2];
+    }
+
+    // 모든 프로세서에서, SEM 입자 위치 모두 동일하게 만들기
+    if(size>1){
+        
+        // 마스터의 입자 위치 뿌려주기
+        if(rank == 0){
+            // MPI_Bcast(xk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Bcast(epsk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        }
+        else{
+            // MPI_Bcast(xk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Bcast(epsk.data(), nEddies*3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        }
+            
+        // for (int i = 0; i < nEddies; ++i) {
+            // xk[i][0] = tmp_xk[i*3+0];
+            // xk[i][1] = tmp_xk[i*3+1];
+            // xk[i][2] = tmp_xk[i*3+2];
+            
+            // epsk[i][0] = tmp_epsk[i*3+0];
+            // epsk[i][1] = tmp_epsk[i*3+1];
+            // epsk[i][2] = tmp_epsk[i*3+2];
+        // }
+    }
+
 }

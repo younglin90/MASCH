@@ -203,7 +203,12 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 	// double CN_coeff_Y = 0.5;
 	// double CN_coeff_Y = 0.0;
 	
+    if(controls.fvSchemeMap["temporalScheme"]=="Crank-Nicolson") CN_coeff_Y = 0.5;
 	
+    
+    int fluxScheme = 1;
+    if(controls.fvSchemeMap["fluxScheme"]=="HLLC") fluxScheme = 0;
+    if(controls.fvSchemeMap["fluxScheme"]=="SLAU") fluxScheme = 1;
 
 
 	{
@@ -224,7 +229,8 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 		id_lim_p,id_lim_u,id_lim_v,id_lim_w,
 		id_xLF,id_yLF,id_zLF,id_xRF,id_yRF,id_zRF,
         id_gammaYL,id_gammaYR,
-        id_dYdx,id_dYdy,id_dYdz,id_vol](
+        id_dYdx,id_dYdy,id_dYdz,id_vol,
+        fluxScheme](
 		double* fields, double* cellsL, double* cellsR, double* faces, 
 		double* fluxA_LL, double* fluxA_RR, 
 		double* fluxA_LR, double* fluxA_RL, 
@@ -371,292 +377,308 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 
             
-            // =================================================================
-            // turbulent
-            // WALE
-            double C_I = 0.007;
-            double C_eta = 0.92;
+            // // =================================================================
+            // // turbulent
+            // // WALE
+            // double C_I = 0.007;
+            // double C_eta = 0.92;
             
-            double avgLij[3][3];
-            double avgMij[3][3];
-            double avgSij[3][3];
-            double sumRho = 0.0;
-            double sumV = 0.0;
-            double sumU = 0.0;
-            double sumW = 0.0;
-            double sumSabs = 0.0;
-            double sumVol = 0.0;
-            double volL = cellsL[id_vol];
-            double volR = cellsR[id_vol];
-            double SabsL = 0.0;
-            double SabsR = 0.0;
-            {
-                // calculate strain rate tensor, Sij
-                double SijL[3][3];
-                SijL[0][0] = dudxL;
-                SijL[0][1] = 0.5*(dudyL+dvdxL);
-                SijL[0][2] = 0.5*(dudzL+dwdxL);
-                SijL[1][0] = SijL[0][1];
-                SijL[1][1] = dvdyL;
-                SijL[1][2] = 0.5*(dvdzL+dwdyL);
-                SijL[2][0] = SijL[0][2];
-                SijL[2][1] = SijL[1][2];
-                SijL[2][2] = dwdzL;
+            // double avgLij[3][3];
+            // double avgMij[3][3];
+            // double avgSij[3][3];
+            // double sumRho = 0.0;
+            // double sumV = 0.0;
+            // double sumU = 0.0;
+            // double sumW = 0.0;
+            // double sumSabs = 0.0;
+            // double sumVol = 0.0;
+            // double volL = cellsL[id_vol];
+            // double volR = cellsR[id_vol];
+            // double SabsL = 0.0;
+            // double SabsR = 0.0;
+            // {
+                // // calculate strain rate tensor, Sij
+                // double SijL[3][3];
+                // SijL[0][0] = dudxL;
+                // SijL[0][1] = 0.5*(dudyL+dvdxL);
+                // SijL[0][2] = 0.5*(dudzL+dwdxL);
+                // SijL[1][0] = SijL[0][1];
+                // SijL[1][1] = dvdyL;
+                // SijL[1][2] = 0.5*(dvdzL+dwdyL);
+                // SijL[2][0] = SijL[0][2];
+                // SijL[2][1] = SijL[1][2];
+                // SijL[2][2] = dwdzL;
 
-                // calculate S_ij * S_ij
-                double SSL = SijL[0][0]*SijL[0][0] + SijL[1][1]*SijL[1][1] + SijL[2][2]*SijL[2][2] +
-                    2.0*(SijL[0][1]*SijL[0][1] + SijL[0][2]*SijL[0][2] + SijL[1][2]*SijL[1][2]);
+                // // calculate S_ij * S_ij
+                // double SSL = SijL[0][0]*SijL[0][0] + SijL[1][1]*SijL[1][1] + SijL[2][2]*SijL[2][2] +
+                    // 2.0*(SijL[0][1]*SijL[0][1] + SijL[0][2]*SijL[0][2] + SijL[1][2]*SijL[1][2]);
                 
-                SabsL = sqrt(2.0*SSL);
+                // SabsL = sqrt(2.0*SSL);
                 
-                // filtering process f(rho*ui*uj), f(rho), f(ui)
-                // double LijL[3][3];
-                avgLij[0][0] = rhoL * uL * uL * volL;
-                avgLij[0][1] = rhoL * uL * vL * volL;
-                avgLij[0][2] = rhoL * uL * wL * volL;
-                avgLij[1][1] = rhoL * vL * vL * volL;
-                avgLij[1][2] = rhoL * vL * wL * volL;
-                avgLij[2][2] = rhoL * wL * wL * volL;
+                // // filtering process f(rho*ui*uj), f(rho), f(ui)
+                // // double LijL[3][3];
+                // avgLij[0][0] = rhoL * uL * uL * volL;
+                // avgLij[0][1] = rhoL * uL * vL * volL;
+                // avgLij[0][2] = rhoL * uL * wL * volL;
+                // avgLij[1][1] = rhoL * vL * vL * volL;
+                // avgLij[1][2] = rhoL * vL * wL * volL;
+                // avgLij[2][2] = rhoL * wL * wL * volL;
                     
-                // double MijL[3][3];
-                double tmpVol062L = pow(volL,0.66666666);
-                for(int j=0; j<3; ++j){
-                    for(int k=0; k<3; ++k){
-                        avgMij[j][k] = -tmpVol062L*SabsL*SijL[j][k]*volL;
-                        avgSij[j][k] = SijL[j][k]*volL;
-                    }
-                }
-                sumRho += rhoL * volL;
-                sumV += uL * volL;
-                sumU += vL * volL;
-                sumW += wL * volL;
-                sumSabs += SabsL * volL;
-                sumVol += volL;
-            }
-            {
-                // calculate strain rate tensor, Sij
-                double SijR[3][3];
-                SijR[0][0] = dudxR;
-                SijR[0][1] = 0.5*(dudyR+dvdxR);
-                SijR[0][2] = 0.5*(dudzR+dwdxR);
-                SijR[1][0] = SijR[0][1];
-                SijR[1][1] = dvdyR;
-                SijR[1][2] = 0.5*(dvdzR+dwdyR);
-                SijR[2][0] = SijR[0][2];
-                SijR[2][1] = SijR[1][2];
-                SijR[2][2] = dwdzR;
+                // // double MijL[3][3];
+                // double tmpVol062L = pow(volL,0.66666666);
+                // for(int j=0; j<3; ++j){
+                    // for(int k=0; k<3; ++k){
+                        // avgMij[j][k] = -tmpVol062L*SabsL*SijL[j][k]*volL;
+                        // avgSij[j][k] = SijL[j][k]*volL;
+                    // }
+                // }
+                // sumRho += rhoL * volL;
+                // sumV += uL * volL;
+                // sumU += vL * volL;
+                // sumW += wL * volL;
+                // sumSabs += SabsL * volL;
+                // sumVol += volL;
+            // }
+            // {
+                // // calculate strain rate tensor, Sij
+                // double SijR[3][3];
+                // SijR[0][0] = dudxR;
+                // SijR[0][1] = 0.5*(dudyR+dvdxR);
+                // SijR[0][2] = 0.5*(dudzR+dwdxR);
+                // SijR[1][0] = SijR[0][1];
+                // SijR[1][1] = dvdyR;
+                // SijR[1][2] = 0.5*(dvdzR+dwdyR);
+                // SijR[2][0] = SijR[0][2];
+                // SijR[2][1] = SijR[1][2];
+                // SijR[2][2] = dwdzR;
 
-                // calculate S_ij * S_ij
-                double SSR = SijR[0][0]*SijR[0][0] + SijR[1][1]*SijR[1][1] + SijR[2][2]*SijR[2][2] +
-                    2.0*(SijR[0][1]*SijR[0][1] + SijR[0][2]*SijR[0][2] + SijR[1][2]*SijR[1][2]);
+                // // calculate S_ij * S_ij
+                // double SSR = SijR[0][0]*SijR[0][0] + SijR[1][1]*SijR[1][1] + SijR[2][2]*SijR[2][2] +
+                    // 2.0*(SijR[0][1]*SijR[0][1] + SijR[0][2]*SijR[0][2] + SijR[1][2]*SijR[1][2]);
                 
-                SabsR = sqrt(2.0*SSR);
+                // SabsR = sqrt(2.0*SSR);
                 
-                // filtering process f(rho*ui*uj), f(rho), f(ui)
-                // double LijR[3][3];
-                avgLij[0][0] += rhoR * uR * uR * volR;
-                avgLij[0][1] += rhoR * uR * vR * volR;
-                avgLij[0][2] += rhoR * uR * wR * volR;
-                avgLij[1][1] += rhoR * vR * vR * volR;
-                avgLij[1][2] += rhoR * vR * wR * volR;
-                avgLij[2][2] += rhoR * wR * wR * volR;
+                // // filtering process f(rho*ui*uj), f(rho), f(ui)
+                // // double LijR[3][3];
+                // avgLij[0][0] += rhoR * uR * uR * volR;
+                // avgLij[0][1] += rhoR * uR * vR * volR;
+                // avgLij[0][2] += rhoR * uR * wR * volR;
+                // avgLij[1][1] += rhoR * vR * vR * volR;
+                // avgLij[1][2] += rhoR * vR * wR * volR;
+                // avgLij[2][2] += rhoR * wR * wR * volR;
                     
-                // double MijR[3][3];
-                double tmpVol062R = pow(volR,0.66666666);
-                for(int j=0; j<3; ++j){
-                    for(int k=0; k<3; ++k){
-                        avgMij[j][k] += (-tmpVol062R*SabsR*SijR[j][k]*volR);
-                        avgSij[j][k] += SijR[j][k]*volR;
-                    }
-                }
-                sumRho += rhoR * volR;
-                sumV += uR * volR;
-                sumU += vR * volR;
-                sumW += wR * volR;
-                sumSabs += SabsR * volR;
-                sumVol += volR;
-            }
+                // // double MijR[3][3];
+                // double tmpVol062R = pow(volR,0.66666666);
+                // for(int j=0; j<3; ++j){
+                    // for(int k=0; k<3; ++k){
+                        // avgMij[j][k] += (-tmpVol062R*SabsR*SijR[j][k]*volR);
+                        // avgSij[j][k] += SijR[j][k]*volR;
+                    // }
+                // }
+                // sumRho += rhoR * volR;
+                // sumV += uR * volR;
+                // sumU += vR * volR;
+                // sumW += wR * volR;
+                // sumSabs += SabsR * volR;
+                // sumVol += volR;
+            // }
                     
 
-            for(int j=0; j<3; ++j){
-                for(int k=0; k<3; ++k){
-                    avgSij[j][k] /= sumVol;
-                    avgLij[j][k] /= sumVol;
-                    avgMij[j][k] /= sumVol;
-                }
-            }
-            sumRho /= sumVol;
-            sumV /= sumVol;
-            sumU /= sumVol;
-            sumW /= sumVol;
-            sumSabs /= sumVol;
+            // for(int j=0; j<3; ++j){
+                // for(int k=0; k<3; ++k){
+                    // avgSij[j][k] /= sumVol;
+                    // avgLij[j][k] /= sumVol;
+                    // avgMij[j][k] /= sumVol;
+                // }
+            // }
+            // sumRho /= sumVol;
+            // sumV /= sumVol;
+            // sumU /= sumVol;
+            // sumW /= sumVol;
+            // sumSabs /= sumVol;
 		
             
-            avgLij[0][0] -= sumRho * sumU * sumU;
-            avgLij[0][1] -= sumRho * sumU * sumV;
-            avgLij[0][2] -= sumRho * sumU * sumW;
-            avgLij[1][1] -= sumRho * sumV * sumV;
-            avgLij[1][2] -= sumRho * sumV * sumW;
-            avgLij[2][2] -= sumRho * sumW * sumW;
-            avgLij[1][0] = avgLij[0][1];
-            avgLij[2][0] = avgLij[0][2];
-            avgLij[2][1] = avgLij[1][2];
+            // avgLij[0][0] -= sumRho * sumU * sumU;
+            // avgLij[0][1] -= sumRho * sumU * sumV;
+            // avgLij[0][2] -= sumRho * sumU * sumW;
+            // avgLij[1][1] -= sumRho * sumV * sumV;
+            // avgLij[1][2] -= sumRho * sumV * sumW;
+            // avgLij[2][2] -= sumRho * sumW * sumW;
+            // avgLij[1][0] = avgLij[0][1];
+            // avgLij[2][0] = avgLij[0][2];
+            // avgLij[2][1] = avgLij[1][2];
 
-            double sumDelta = pow(sumVol,0.66666666666);
-            for(int j=0; j<3; ++j){
-                for(int k=0; k<3; ++k){
-                    avgMij[j][k] = sumDelta * sumSabs * avgSij[j][k] - avgMij[j][k];
-                }
-            }
-            
-            // ensemble average for numerator and denominator
-            double sum1 = 0.0;
-            double sum2 = 0.0;
-            for(int j=0; j<3; ++j){
-                for(int k=0; k<3; ++k){
-                    sum1 += avgLij[j][k] * avgMij[j][k];
-                    sum2 += avgMij[j][k] * avgMij[j][k];
-                }
-            }
-            sum1 /= 9.0;
-            sum2 /= 9.0;
-            
-            // calculate parameter C_R
-            double C_R = 0.0;
-            if(sum2 != 0.0){
-                C_R = -0.5 * sum1 / sum2;
-            }
-            
-            // calculate Delta_bar
-            double DeltaBar2 = pow(0.5*(volL+volR),0.666666666);
-            
-            // calculate muT & kSGS
-            double SabsF = 0.5*(SabsL+SabsR);
-            double muT_F = C_R * 0.5*(rhoL+rhoR)*DeltaBar2*SabsF;
-            double kSGS_F = C_I * DeltaBar2 * (0.5*SabsF*SabsF);
-            
-            // muT_F = max(-4.0*muF,min(2.0*muF,muT_F));
-            muT_F = max(-muF,min(muF,muT_F));
-            
-            if(muF>1.e-200) muF += muT_F;
-            // =================================================================
-            
-            
-            
-            
-            
-            
-            
-            
-            // // =================================================================
-			// // AUSM-like expression of HLLC and its all-speed extension
-            // // Keiichi Kitamura
-			// double UnFL = uFL*nvec[0] + vFL*nvec[1] + wFL*nvec[2];
-			// double UnFR = uFR*nvec[0] + vFR*nvec[1] + wFR*nvec[2];
-            // double RT = sqrt(rhoFR/rhoFL); 
-			// double chat = 0.5*(cFL+cFR);
-			// double rhohat = sqrt(rhoFL*rhoFR);
-			// double Unhat = (UnFL+RT*UnFR)/(1.0+RT); 
-			// double uhat = (uFL+RT*uFR)/(1.0+RT); 
-			// double vhat = (vFL+RT*vFR)/(1.0+RT); 
-			// double what = (wFL+RT*wFR)/(1.0+RT); 
-			// double Yhat[nSp];
-			// for(int i=0; i<nSp-1; ++i){
-                // Yhat[i] = (YFL[i]+RT*YFR[i])/(1.0+RT);
+            // double sumDelta = pow(sumVol,0.66666666666);
+            // for(int j=0; j<3; ++j){
+                // for(int k=0; k<3; ++k){
+                    // avgMij[j][k] = sumDelta * sumSabs * avgSij[j][k] - avgMij[j][k];
+                // }
             // }
             
-            // double preLs = abs(pL) + 0.1 * rhoFL*cFL*cFL;
-            // double preRs = abs(pR) + 0.1 * rhoFR*cFR*cFR;
-            // double fp = 0.0;
-            // fp = min(preLs/preRs,preRs/preLs);
-            // fp = fp*fp*fp;
+            // // ensemble average for numerator and denominator
+            // double sum1 = 0.0;
+            // double sum2 = 0.0;
+            // for(int j=0; j<3; ++j){
+                // for(int k=0; k<3; ++k){
+                    // sum1 += avgLij[j][k] * avgMij[j][k];
+                    // sum2 += avgMij[j][k] * avgMij[j][k];
+                // }
+            // }
+            // sum1 /= 9.0;
+            // sum2 /= 9.0;
             
-            // double U2L = uFL*uFL+vFL*vFL+wFL*wFL;
-            // double U2R = uFR*uFR+vFR*vFR+wFR*wFR;
-            // double KLR = sqrt(0.5*(U2L+U2R));
-            // double Mcy = min(1.0,KLR/chat);
-            // double phi_c = (1.0-Mcy)*(1.0-Mcy);
-            // double ML = UnFL/chat;
-            // double MR = UnFR/chat;
+            // // calculate parameter C_R
+            // double C_R = 0.0;
+            // if(sum2 != 0.0){
+                // C_R = -0.5 * sum1 / sum2;
+            // }
             
-            // double SL = min(0.0,min(UnFL-cFL,Unhat-chat));
-            // double SR = max(0.0,max(UnFR+cFR,Unhat+chat));
+            // // calculate Delta_bar
+            // double DeltaBar2 = pow(0.5*(volL+volR),0.666666666);
             
-			// double weiL; double weiR;
-			
-			// double rhoF;
-			// double uF;
-			// double vF;
-			// double wF;
-			// double HtF;
-			// double YF[nSp];
+            // // calculate muT & kSGS
+            // double SabsF = 0.5*(SabsL+SabsR);
+            // double muT_F = C_R * 0.5*(rhoL+rhoR)*DeltaBar2*SabsF;
+            // double kSGS_F = C_I * DeltaBar2 * (0.5*SabsF*SabsF);
             
-			// double mdot_pL,mdot_pR,mdot_UnL,mdot_UnR,mdot_TL,mdot_TR;
-			// double mdot_YL[nSp];
-			// double mdot_YR[nSp];
-			// double pF_pL,pF_pR,pF_UnL,pF_UnR,pF_TL,pF_TR;
-			// double pF_YL[nSp];
-			// double pF_YR[nSp];
-			// double dissEg_pL,dissEg_pR,dissEg_UnL,dissEg_UnR,dissEg_TL,dissEg_TR;
-			// double dissEg_YL[nSp];
-			// double dissEg_YR[nSp];
+            // // muT_F = max(-4.0*muF,min(2.0*muF,muT_F));
+            // muT_F = max(-muF,min(muF,muT_F));
+            
+            // if(muF>1.e-200) muF += muT_F;
+            // // =================================================================
+            
+            
+            
+            
+        
+            double weiL; double weiR;
+            
+            double rhoF;
+            double uF;
+            double vF;
+            double wF;
+            double HtF;
+            double YF[nSp];
+            
+            double mdot_pL,mdot_pR,mdot_UnL,mdot_UnR,mdot_TL,mdot_TR;
+            double mdot_YL[nSp];
+            double mdot_YR[nSp];
+            double pF_pL,pF_pR,pF_UnL,pF_UnR,pF_TL,pF_TR;
+            double pF_YL[nSp];
+            double pF_YR[nSp];
+            double dissEg_pL,dissEg_pR,dissEg_UnL,dissEg_UnR,dissEg_TL,dissEg_TR;
+            double dissEg_YL[nSp];
+            double dissEg_YR[nSp];
 
-			// double fluxB[nEq];
-            // double mdot = 0.0;
-            // {
-                // // HLLCL
-                // // double SL0 = min(UnL-cFL,UnR-cFR);
-                // // double SR0 = max(UnR+cFR,UnL+cFL);
-                // // double theta = (rhoFL*(UnL-SL)+rhoFR*(SR-UnR))/ (rhoFL*(UnL-SL0)+rhoFR*(SR0-UnR));
-                // double theta = 1.0;
-                // double SM = (rhoFL*(UnFL-SL)*UnFL + rhoFR*(SR-UnR)*UnR - theta*(pR-pL))/(rhoFL*(UnFL-SL)+rhoFR*(SR-UnR));
-                // double pStar = 0.5*(pL+pR+rhoFL*(UnFL-SL)*(UnFL-SM)+rhoFR*(UnR-SR)*(UnR-SM));
-                
-                // double mdot = 0.0;
-                // double pF = pStar;
-                // if(SM>0.0){
-                    // // mdot = rhoFL*(UnL + SL*((SL-UnL)/(SL-SM)-1.0));
-                    // mdot = rhoFL*(UnFL + SL*(SM-UnFL)/(SL-SM));
-                    
-                    // pF += SM/(SM-SL)*(pL-pStar);
-                // }
-                // else{
-                    // // mdot = rhoFR*(UnFR + SR*((SR-UnFR)/(SR-SM)-1.0));
-                    // mdot = rhoFR*(UnFR + SR*(SM-UnFR)/(SR-SM));
-                    
-                    // pF += SM/(SM-SR)*(pR-pStar);
+            double fluxB[nEq];
+            double mdot = 0.0;
+            
+            
+            
+            if(fluxScheme==0){
+            // =================================================================
+			// AUSM-like expression of HLLC and its all-speed extension
+            // Keiichi Kitamura
+                double UnFL = uFL*nvec[0] + vFL*nvec[1] + wFL*nvec[2];
+                double UnFR = uFR*nvec[0] + vFR*nvec[1] + wFR*nvec[2];
+                double RT = sqrt(rhoFR/rhoFL); 
+                double chat = 0.5*(cFL+cFR);
+                // double rhohat = sqrt(rhoFL*rhoFR);
+                double Unhat = (UnFL+RT*UnFR)/(1.0+RT); 
+                // double uhat = (uFL+RT*uFR)/(1.0+RT); 
+                // double vhat = (vFL+RT*vFR)/(1.0+RT); 
+                // double what = (wFL+RT*wFR)/(1.0+RT); 
+                // double Yhat[nSp];
+                // for(int i=0; i<nSp-1; ++i){
+                    // Yhat[i] = (YFL[i]+RT*YFR[i])/(1.0+RT);
                 // }
                 
-                // // // double absMhat = abs(Unhat)/chat;
-                // // // mdot += (fp-1.0)*SL*SR/(SR-SL)/(1.0+absMhat)*(pR-pL)/chat/chat;
-                // // // mdot -= (1.0-fp)*phi_c*SL*SR/(SR-SL)*(pR-pL)/chat/chat;
-                // // mdot -= 0.5*(1.0-fp)*phi_c/chat*(pR-pL);
-                // // // mdot -= 0.5*phi_c/chat*(pR-pL);
+                // double preLs = abs(pL) + 0.1 * rhoFL*cFL*cFL;
+                // double preRs = abs(pR) + 0.1 * rhoFR*cFR*cFR;
+                // double fp = 0.0;
+                // fp = min(preLs/preRs,preRs/preLs);
+                // fp = fp*fp*fp;
+                
+                double U2L = uFL*uFL+vFL*vFL+wFL*wFL;
+                double U2R = uFR*uFR+vFR*vFR+wFR*wFR;
+                double KLR = sqrt(0.5*(U2L+U2R));
+                double Mcy = min(1.0,KLR/chat);
+                double phi_c = (1.0-Mcy)*(1.0-Mcy);
+                double ML = UnFL/chat;
+                double MR = UnFR/chat;
+                
+                double SL = min(0.0,min(UnFL-cFL,Unhat-chat));
+                double SR = max(0.0,max(UnFR+cFR,Unhat+chat));
+                
+                // HLLCL
+                // double SL0 = min(UnL-cFL,UnR-cFR);
+                // double SR0 = max(UnR+cFR,UnL+cFL);
+                // double theta = (rhoFL*(UnL-SL)+rhoFR*(SR-UnR))/ (rhoFL*(UnL-SL0)+rhoFR*(SR0-UnR));
+                double theta = 1.0;
+                double SM_up = (rhoFL*(UnFL-SL)*UnFL + rhoFR*(SR-UnFR)*UnFR - theta*(pR-pL));
+                double SM_down = (rhoFL*(UnFL-SL)+rhoFR*(SR-UnFR));
+                double SM = SM_up/SM_down;
+                double pStar = 0.5*(pL+pR+rhoFL*(UnFL-SL)*(UnFL-SM)+rhoFR*(UnFR-SR)*(UnFR-SM));
+                
+                double pF = pStar;
+                if(SM>0.0){
+                    // mdot = rhoFL*(UnL + SL*((SL-UnL)/(SL-SM)-1.0));
+                    mdot = rhoFL*(UnFL + SL*(SM-UnFL)/(SL-SM));
+                    
+                    pF += SM/(SM-SL)*(pL-pStar);
+                }
+                else{
+                    // mdot = rhoFR*(UnFR + SR*((SR-UnFR)/(SR-SM)-1.0));
+                    mdot = rhoFR*(UnFR + SR*(SM-UnFR)/(SR-SM));
+                    
+                    pF += SM/(SM-SR)*(pR-pStar);
+                }
                 
                 
+                double p_cc = Mcy;
+                double PLP = 0.5*(1.0 + ( ML>0.0 ? 1.0 : -1.0 ) );
+                if( abs(ML) < 1.0 ) PLP = 0.25*(ML+1.0)*(ML+1.0)*(2.0-ML);
+                double PRM = 0.5*(1.0 - ( MR>0.0 ? 1.0 : -1.0 ) );
+                if( abs(MR) < 1.0 ) PRM = 0.25*(MR-1.0)*(MR-1.0)*(2.0+MR);
+                // pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + KLR*(PLP+PRM-1.0)*rhohat*chat;
+                pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + p_cc*(PLP+PRM-1.0)*0.5*(pL+pR);
                 
-                // // // in pressure-based
-                // // mdot -= dAlpha * dt/dLR*(pR-pL);
-                // // mdot += dt*0.5*(dpdxL+dpdxR)*dAlpha*nLR[0];
-                // // mdot += dt*0.5*(dpdyL+dpdyR)*dAlpha*nLR[1];
-                // // mdot += dt*0.5*(dpdzL+dpdzR)*dAlpha*nLR[2];
                 
+                // in pressure-based
+                double m_cc = 1.0;//1.0;// (1.0-Mcy)*(1.0-Mcy);
+                mdot -= m_cc * dAlpha * dt/dLR*(pR-pL);
+                mdot += m_cc * dt*0.5*(dpdxL+dpdxR)*dAlpha*nLR[0];
+                mdot += m_cc * dt*0.5*(dpdyL+dpdyR)*dAlpha*nLR[1];
+                mdot += m_cc * dt*0.5*(dpdzL+dpdzR)*dAlpha*nLR[2];
                 
+                weiL = (mdot>=0.0 ? 1.0 : 0.0); weiR = 1.0-weiL;
                 
-                // double PLP = 0.5*(1.0 + ( ML>0.0 ? 1.0 : -1.0 ) );
-                // if( abs(ML) < 1.0 ) PLP = 0.25*(ML+1.0)*(ML+1.0)*(2.0-ML);
-                // double PRM = 0.5*(1.0 - ( MR>0.0 ? 1.0 : -1.0 ) );
-                // if( abs(MR) < 1.0 ) PRM = 0.25*(MR-1.0)*(MR-1.0)*(2.0+MR);
-                // // pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + KLR*(PLP+PRM-1.0)*rhohat*chat;
-                // pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + Mcy*(PLP+PRM-1.0)*0.5*(pL+pR);
+                rhoF = weiL*rhoFL + weiR*rhoFR;
+                uF = weiL*uFL + weiR*uFR;
+                vF = weiL*vFL + weiR*vFR;
+                wF = weiL*wFL + weiR*wFR;
+                HtF = weiL*HtFL + weiR*HtFR;
+                for(int i=0; i<nSp-1; ++i){
+                    YF[i] = weiL*YFL[i] + weiR*YFR[i];
+                }
+                
+                // 컨벡티브 B
+                fluxB[0] = -( mdot )*area;
+                fluxB[1] = -( mdot*uF + pF*nvec[0] )*area;
+                fluxB[2] = -( mdot*vF + pF*nvec[1] )*area;
+                fluxB[3] = -( mdot*wF + pF*nvec[2] )*area;
+                fluxB[4] = -( mdot*HtF )*area;
+                for(int i=0; i<nSp-1; ++i){
+                    fluxB[5+i] = -( mdot*YF[i] )*area;
+                }
                 
                 // if(mdot>=0.0){
                     // fluxB[0] = -( mdot )*area;
                     // fluxB[1] = -( mdot*uFL + pF*nvec[0] )*area;
                     // fluxB[2] = -( mdot*vFL + pF*nvec[1] )*area;
                     // fluxB[3] = -( mdot*wFL + pF*nvec[2] )*area;
-                    // fluxB[4] = -( mdot*HtFL  + SL*(pStar-pL)/(SL-UnFL) )*area;
-                    // // fluxB[4] = -( mdot*HtFL )*area;
+                    // // fluxB[4] = -( mdot*HtFL  + SL*(pStar-pL)/(SL-UnFL) )*area;
+                    // fluxB[4] = -( mdot*HtFL )*area;
                     // for(int i=0; i<nSp-1; ++i){
                         // fluxB[5+i] = -( mdot*YFL[i] )*area;
                     // }
@@ -666,235 +688,214 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
                     // fluxB[1] = -( mdot*uFR + pF*nvec[0] )*area;
                     // fluxB[2] = -( mdot*vFR + pF*nvec[1] )*area;
                     // fluxB[3] = -( mdot*wFR + pF*nvec[2] )*area;
-                    // fluxB[4] = -( mdot*HtFR  + SR*(pStar-pR)/(SR-UnFR) )*area;
-                    // // fluxB[4] = -( mdot*HtFR )*area;
+                    // // fluxB[4] = -( mdot*HtFR  + SR*(pStar-pR)/(SR-UnFR) )*area;
+                    // fluxB[4] = -( mdot*HtFR )*area;
                     // for(int i=0; i<nSp-1; ++i){
                         // fluxB[5+i] = -( mdot*YFR[i] )*area;
                     // }
                 // }
                 
-                // // // K. Kitamura, E. Shima / Computers and Fluids 163 (2018) 86–96
-                // // double UnF = 0.5*(mdot+abs(mdot))/rhoFL + 0.5*(mdot-abs(mdot))/rhoFR;
-                // // // in pressure-based
-                // // UnF -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*(pR-pL);
-                // // UnF += dt*0.5*(dpdxL/rhoL+dpdxR/rhoR)*dAlpha*nLR[0];
-                // // UnF += dt*0.5*(dpdyL/rhoL+dpdyR/rhoR)*dAlpha*nLR[1];
-                // // UnF += dt*0.5*(dpdzL/rhoL+dpdzR/rhoR)*dAlpha*nLR[2];
-                // // if(UnF>=0.0) { mdot = rhoFL*UnF; }
-                // // else { mdot = rhoFR*UnF; }
                 
                 
+                // A matrix
+                
+                // double weiYLL = gamYL[0];
+                // double weiYLR = 1.0-weiYLL;
+                // double weiYRR = gamYR[0];
+                // double weiYRL = 1.0-weiYRR;
+                // double new_drhodpL = weiYLL*drhodpL + weiYLR*drhodpR;
+                // double new_drhodpR = weiYRR*drhodpR + weiYRL*drhodpL;
+                // double new_drhodTL = weiYLL*drhodTL + weiYLR*drhodTR;
+                // double new_drhodTR = weiYRR*drhodTR + weiYRL*drhodTL;
                 
                 
+                double coeff1_L = ((UnFL-SL)*UnFL)/SM_down - SM_up/SM_down/SM_down*((UnFL-SL));
+                double coeff1_R = ((SR-UnFR)*UnFR)/SM_down - SM_up/SM_down/SM_down*((SR-UnFR));
                 
+                // double dSMdpL = (drhodpL*(UnFL-SL)*UnFL+theta)/SM_down - SM_up/SM_down/SM_down*(drhodpL*(UnFL-SL));
+                // double dSMdpR = (drhodpR*(SR-UnFR)*UnFR-theta)/SM_down - SM_up/SM_down/SM_down*(drhodpR*(SR-UnFR));
+                double dSMdpL = drhodpL*coeff1_L + theta/SM_down;
+                double dSMdpR = drhodpR*coeff1_R - theta/SM_down;
+                // double dSMdpL = (new_drhodpL*(UnFL-SL)*UnFL+theta)/SM_down - SM_up/SM_down/SM_down*(new_drhodpL*(UnFL-SL));
+                // double dSMdpR = (new_drhodpR*(SR-UnFR)*UnFR-theta)/SM_down - SM_up/SM_down/SM_down*(new_drhodpR*(SR-UnFR));
                 
-                // weiL = (mdot>=0.0 ? 1.0 : 0.0); weiR = 1.0-weiL;
+                double dSMdUnL = (rhoFL*(UnFL-SL) + rhoFL*UnFL*(+1.0))/SM_down - SM_up/SM_down/SM_down*(rhoFL*(+1.0));
+                double dSMdUnR = (rhoFR*(SR-UnFR) + rhoFR*UnFR*(-1.0))/SM_down - SM_up/SM_down/SM_down*(rhoFR*(-1.0));
                 
-                // rhoF = weiL*rhoFL + weiR*rhoFR;
-                // uF = weiL*uFL + weiR*uFR;
-                // vF = weiL*vFL + weiR*vFR;
-                // wF = weiL*wFL + weiR*wFR;
-                // HtF = weiL*HtFL + weiR*HtFR;
-                // for(int i=0; i<nSp-1; ++i){
-                    // YF[i] = weiL*YFL[i] + weiR*YFR[i];
-                // }
+                // double dSMdTL = (drhodTL*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(drhodTL*(UnFL-SL));
+                // double dSMdTR = (drhodTR*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(drhodTR*(SR-UnFR));
+                double dSMdTL = drhodTL*coeff1_L;
+                double dSMdTR = drhodTR*coeff1_R;
+                // double dSMdTL = (new_drhodTL*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(new_drhodTL*(UnFL-SL));
+                // double dSMdTR = (new_drhodTR*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(new_drhodTR*(SR-UnFR));
                 
-                
-                
-                // // A matrix
-                
-                // // double weiYLL = gamYL[0];
-                // // double weiYLR = 1.0-weiYLL;
-                // // double weiYRR = gamYR[0];
-                // // double weiYRL = 1.0-weiYRR;
-                // // double new_drhodpL = weiYLL*drhodpL + weiYLR*drhodpR;
-                // // double new_drhodpR = weiYRR*drhodpR + weiYRL*drhodpL;
-                // // double new_drhodTL = weiYLL*drhodTL + weiYLR*drhodTR;
-                // // double new_drhodTR = weiYRR*drhodTR + weiYRL*drhodTL;
-                
-				// double SM_up = (rhoFL*(UnFL-SL)*UnFL + rhoFR*(SR-UnFR)*UnFR - theta*(pR-pL));
-				// double SM_down = (rhoFL*(UnFL-SL)+rhoFR*(SR-UnFR));
-                
-				// double dSMdpL = (drhodpL*(UnFL-SL)*UnFL+theta)/SM_down - SM_up/SM_down/SM_down*(drhodpL*(UnFL-SL));
-				// double dSMdpR = (drhodpR*(SR-UnFR)*UnFR-theta)/SM_down - SM_up/SM_down/SM_down*(drhodpR*(SR-UnFR));
-				// // double dSMdpL = (new_drhodpL*(UnFL-SL)*UnFL+theta)/SM_down - SM_up/SM_down/SM_down*(new_drhodpL*(UnFL-SL));
-				// // double dSMdpR = (new_drhodpR*(SR-UnFR)*UnFR-theta)/SM_down - SM_up/SM_down/SM_down*(new_drhodpR*(SR-UnFR));
-                
-				// double dSMdUnL = (rhoFL*(UnFL-SL) + rhoFL*UnFL*(+1.0))/SM_down - SM_up/SM_down/SM_down*(rhoFL*(+1.0));
-				// double dSMdUnR = (rhoFR*(SR-UnFR) + rhoFR*UnFR*(-1.0))/SM_down - SM_up/SM_down/SM_down*(rhoFR*(-1.0));
-                
-				// double dSMdTL = (drhodTL*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(drhodTL*(UnFL-SL));
-				// double dSMdTR = (drhodTR*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(drhodTR*(SR-UnFR));
-				// // double dSMdTL = (new_drhodTL*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(new_drhodTL*(UnFL-SL));
-				// // double dSMdTR = (new_drhodTR*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(new_drhodTR*(SR-UnFR));
-                
-                // double dSMdYL[nSp], dSMdYR[nSp];
-                // for(int i=0; i<nSp-1; ++i){
-                    // // double new_drhodYL = weiYLL*drhodYL[i] + weiYLR*drhodYR[i];
-                    // // double new_drhodYR = weiYRR*drhodYR[i] + weiYRL*drhodYL[i];
+                double dSMdYL[nSp], dSMdYR[nSp];
+                for(int i=0; i<nSp-1; ++i){
+                    // double new_drhodYL = weiYLL*drhodYL[i] + weiYLR*drhodYR[i];
+                    // double new_drhodYR = weiYRR*drhodYR[i] + weiYRL*drhodYL[i];
                     
                     // dSMdYL[i] = (drhodYL[i]*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(drhodYL[i]*(UnFL-SL));
                     // dSMdYR[i] = (drhodYR[i]*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(drhodYR[i]*(SR-UnFR));
-                    // // dSMdYL[i] = (new_drhodYL*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(new_drhodYL*(UnFL-SL));
-                    // // dSMdYR[i] = (new_drhodYR*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(new_drhodYR*(SR-UnFR));
-                // }
+                    dSMdYL[i] = drhodYL[i]*coeff1_L;
+                    dSMdYR[i] = drhodYR[i]*coeff1_R;
+                    // dSMdYL[i] = (new_drhodYL*UnFL*(UnFL-SL))/SM_down - SM_up/SM_down/SM_down*(new_drhodYL*(UnFL-SL));
+                    // dSMdYR[i] = (new_drhodYR*UnFR*(SR-UnFR))/SM_down - SM_up/SM_down/SM_down*(new_drhodYR*(SR-UnFR));
+                }
                 
-                // // double tnahCoeff = 2.0;
-                // // double tanhSM = tanh(tnahCoeff*SM);
-                // // double weiSML = 0.5*(1.0+tanhSM);
-                // // double weiSMR = 1.0-weiSML;
-                // // double weidSML = 0.5*tnahCoeff*(1.0-tanhSM*tanhSM);
-                // // double weidSMR = -weidSML;
+                // double tnahCoeff = 2.0;
+                // double tanhSM = tanh(tnahCoeff*SM);
+                // double weiSML = 0.5*(1.0+tanhSM);
+                // double weiSMR = 1.0-weiSML;
+                // double weidSML = 0.5*tnahCoeff*(1.0-tanhSM*tanhSM);
+                // double weidSMR = -weidSML;
                 
                      
-                // // { 
-                    // // double mdot_L = rhoFL*(UnFL + SL*(SM-UnFL)/(SL-SM));
-                    // // double mdot_R = rhoFR*(UnFR + SR*(SM-UnFR)/(SR-SM));
-                    // // double mdot_pL_L = drhodpL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdpL/(SL-SM)/(SL-SM);
-                    // // double mdot_pL_R = rhoFR*SR*(SR-UnFR)*dSMdpL/(SR-SM)/(SR-SM);
-                    // // double mdot_pR_L = rhoFL*SL*(SL-UnFL)*dSMdpR/(SL-SM)/(SL-SM);
-                    // // double mdot_pR_R = drhodpR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdpR/(SR-SM)/(SR-SM);
-                    // // mdot_pL = weiSML*mdot_pL_L + weiSMR*mdot_pL_R + dSMdpL*(weidSML*mdot_L + weidSMR*mdot_R);
-                    // // mdot_pR = weiSML*mdot_pR_L + weiSMR*mdot_pR_R + dSMdpR*(weidSML*mdot_L + weidSMR*mdot_R);
+                // { 
+                    // double mdot_L = rhoFL*(UnFL + SL*(SM-UnFL)/(SL-SM));
+                    // double mdot_R = rhoFR*(UnFR + SR*(SM-UnFR)/(SR-SM));
+                    // double mdot_pL_L = drhodpL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdpL/(SL-SM)/(SL-SM);
+                    // double mdot_pL_R = rhoFR*SR*(SR-UnFR)*dSMdpL/(SR-SM)/(SR-SM);
+                    // double mdot_pR_L = rhoFL*SL*(SL-UnFL)*dSMdpR/(SL-SM)/(SL-SM);
+                    // double mdot_pR_R = drhodpR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdpR/(SR-SM)/(SR-SM);
+                    // mdot_pL = weiSML*mdot_pL_L + weiSMR*mdot_pL_R + dSMdpL*(weidSML*mdot_L + weidSMR*mdot_R);
+                    // mdot_pR = weiSML*mdot_pR_L + weiSMR*mdot_pR_R + dSMdpR*(weidSML*mdot_L + weidSMR*mdot_R);
                     
-                    // // double mdot_UnL_L = rhoFL*(1.0 + SL*(dSMdUnL*(SL-UnFL)+(-1.0)*(SL-SM))/(SL-SM)/(SL-SM));
-                    // // double mdot_UnL_R = rhoFR*SL*dSMdUnL*(SR-UnFR)/(SR-SM)/(SR-SM);
-                    // // double mdot_UnR_L = rhoFL*SL*dSMdUnR*(SL-UnFL)/(SL-SM)/(SL-SM);
-                    // // double mdot_UnR_R = rhoFR*(1.0 + SR*(dSMdUnR*(SR-UnFR)+(-1.0)*(SR-SM))/(SR-SM)/(SR-SM));
-                    // // mdot_UnL = weiSML*mdot_UnL_L + weiSMR*mdot_UnL_R + dSMdUnL*(weidSML*mdot_L + weidSMR*mdot_R);
-                    // // mdot_UnR = weiSML*mdot_UnR_L + weiSMR*mdot_UnR_R + dSMdUnR*(weidSML*mdot_L + weidSMR*mdot_R);
+                    // double mdot_UnL_L = rhoFL*(1.0 + SL*(dSMdUnL*(SL-UnFL)+(-1.0)*(SL-SM))/(SL-SM)/(SL-SM));
+                    // double mdot_UnL_R = rhoFR*SL*dSMdUnL*(SR-UnFR)/(SR-SM)/(SR-SM);
+                    // double mdot_UnR_L = rhoFL*SL*dSMdUnR*(SL-UnFL)/(SL-SM)/(SL-SM);
+                    // double mdot_UnR_R = rhoFR*(1.0 + SR*(dSMdUnR*(SR-UnFR)+(-1.0)*(SR-SM))/(SR-SM)/(SR-SM));
+                    // mdot_UnL = weiSML*mdot_UnL_L + weiSMR*mdot_UnL_R + dSMdUnL*(weidSML*mdot_L + weidSMR*mdot_R);
+                    // mdot_UnR = weiSML*mdot_UnR_L + weiSMR*mdot_UnR_R + dSMdUnR*(weidSML*mdot_L + weidSMR*mdot_R);
                     
-                    // // double mdot_TL_L = drhodTL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdTL/(SL-SM)/(SL-SM);
-                    // // double mdot_TL_R = rhoFR*SR*(SR-UnFR)*dSMdTL/(SR-SM)/(SR-SM);
-                    // // double mdot_TR_L = rhoFL*SL*(SL-UnFL)*dSMdTR/(SL-SM)/(SL-SM);
-                    // // double mdot_TR_R = drhodTR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdTR/(SR-SM)/(SR-SM);
-                    // // mdot_TL = weiSML*mdot_TL_L + weiSMR*mdot_TL_R + dSMdTL*(weidSML*mdot_L + weidSMR*mdot_R);
-                    // // mdot_TR = weiSML*mdot_TR_L + weiSMR*mdot_TR_R + dSMdTR*(weidSML*mdot_L + weidSMR*mdot_R);
+                    // double mdot_TL_L = drhodTL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdTL/(SL-SM)/(SL-SM);
+                    // double mdot_TL_R = rhoFR*SR*(SR-UnFR)*dSMdTL/(SR-SM)/(SR-SM);
+                    // double mdot_TR_L = rhoFL*SL*(SL-UnFL)*dSMdTR/(SL-SM)/(SL-SM);
+                    // double mdot_TR_R = drhodTR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdTR/(SR-SM)/(SR-SM);
+                    // mdot_TL = weiSML*mdot_TL_L + weiSMR*mdot_TL_R + dSMdTL*(weidSML*mdot_L + weidSMR*mdot_R);
+                    // mdot_TR = weiSML*mdot_TR_L + weiSMR*mdot_TR_R + dSMdTR*(weidSML*mdot_L + weidSMR*mdot_R);
                     
-                    // // for(int i=0; i<nSp-1; ++i){
-                        // // double mdot_YL_L = drhodYL[i]*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdYL[i]/(SL-SM)/(SL-SM);
-                        // // double mdot_YL_R = rhoFR*SR*(SR-UnFR)*dSMdYL[i]/(SR-SM)/(SR-SM);
-                        // // double mdot_YR_L = rhoFL*SL*(SL-UnFL)*dSMdYR[i]/(SL-SM)/(SL-SM);
-                        // // double mdot_YR_R = drhodYR[i]*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdYR[i]/(SR-SM)/(SR-SM);
-                        // // mdot_YL[i] = weiSML*mdot_YL_L + weiSMR*mdot_YL_R + dSMdYL[i]*(weidSML*mdot_L + weidSMR*mdot_R);
-                        // // mdot_YR[i] = weiSML*mdot_YR_L + weiSMR*mdot_YR_R + dSMdYR[i]*(weidSML*mdot_L + weidSMR*mdot_R);
-                    // // }
-                // // }
+                    // for(int i=0; i<nSp-1; ++i){
+                        // double mdot_YL_L = drhodYL[i]*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdYL[i]/(SL-SM)/(SL-SM);
+                        // double mdot_YL_R = rhoFR*SR*(SR-UnFR)*dSMdYL[i]/(SR-SM)/(SR-SM);
+                        // double mdot_YR_L = rhoFL*SL*(SL-UnFL)*dSMdYR[i]/(SL-SM)/(SL-SM);
+                        // double mdot_YR_R = drhodYR[i]*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdYR[i]/(SR-SM)/(SR-SM);
+                        // mdot_YL[i] = weiSML*mdot_YL_L + weiSMR*mdot_YL_R + dSMdYL[i]*(weidSML*mdot_L + weidSMR*mdot_R);
+                        // mdot_YR[i] = weiSML*mdot_YR_L + weiSMR*mdot_YR_R + dSMdYR[i]*(weidSML*mdot_L + weidSMR*mdot_R);
+                    // }
+                // }
                             
-                // if(SM>0.0){ 
-                    // // mdot_pL = drhodpL*UnFL + SL*drhodpL*((SL-UnFL)/(SL-SM)-1.0) - SL*rhoFL*((SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdpL));
-                    // // mdot_pR = rhoFL*SL*(SL-UnFL)/(SL-SM)/(SL-SM)*(dSMdpR);
-                    // mdot_pL = drhodpL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdpL/(SL-SM)/(SL-SM);
-                    // mdot_pR = rhoFL*SL*(SL-UnFL)*dSMdpR/(SL-SM)/(SL-SM);
+                if(SM>0.0){ 
+                    // mdot_pL = drhodpL*UnFL + SL*drhodpL*((SL-UnFL)/(SL-SM)-1.0) - SL*rhoFL*((SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdpL));
+                    // mdot_pR = rhoFL*SL*(SL-UnFL)/(SL-SM)/(SL-SM)*(dSMdpR);
+                    mdot_pL = drhodpL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdpL/(SL-SM)/(SL-SM);
+                    mdot_pR = rhoFL*SL*(SL-UnFL)*dSMdpR/(SL-SM)/(SL-SM);
                     
-                    // // mdot_UnFL = rhoFL*(1.0 + SL*(-1.0/(SL-SM) - (SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdUnFL)));
-                    // // mdot_UnFR = rhoFL*SL*(- (SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdUnFR));
-                    // mdot_UnL = rhoFL*(1.0 + SL*(dSMdUnL*(SL-UnFL)+(-1.0)*(SL-SM))/(SL-SM)/(SL-SM));
-                    // mdot_UnR = rhoFL*SL*dSMdUnR*(SL-UnFL)/(SL-SM)/(SL-SM);
+                    // mdot_UnFL = rhoFL*(1.0 + SL*(-1.0/(SL-SM) - (SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdUnFL)));
+                    // mdot_UnFR = rhoFL*SL*(- (SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdUnFR));
+                    mdot_UnL = rhoFL*(1.0 + SL*(dSMdUnL*(SL-UnFL)+(-1.0)*(SL-SM))/(SL-SM)/(SL-SM));
+                    mdot_UnR = rhoFL*SL*dSMdUnR*(SL-UnFL)/(SL-SM)/(SL-SM);
                     
-                    // // mdot_TL = drhodTL*UnFL + SL*drhodTL*((SL-UnFL)/(SL-SM)-1.0) - SL*rhoFL*((SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdTL));
-                    // // mdot_TR = rhoFL*SL*(SL-UnFL)/(SL-SM)/(SL-SM)*(dSMdTR);
-                    // mdot_TL = drhodTL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdTL/(SL-SM)/(SL-SM);
-                    // mdot_TR = rhoFL*SL*(SL-UnFL)*dSMdTR/(SL-SM)/(SL-SM);
+                    // mdot_TL = drhodTL*UnFL + SL*drhodTL*((SL-UnFL)/(SL-SM)-1.0) - SL*rhoFL*((SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdTL));
+                    // mdot_TR = rhoFL*SL*(SL-UnFL)/(SL-SM)/(SL-SM)*(dSMdTR);
+                    mdot_TL = drhodTL*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdTL/(SL-SM)/(SL-SM);
+                    mdot_TR = rhoFL*SL*(SL-UnFL)*dSMdTR/(SL-SM)/(SL-SM);
                     
-                    // for(int i=0; i<nSp-1; ++i){
-                        // // mdot_YL[i] = drhodYL[i]*UnFL + SL*drhodYL[i]*((SL-UnFL)/(SL-SM)-1.0) - 
-                                     // // SL*rhoFL*((SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdYL[i]));
-                        // // mdot_YR[i] = rhoFL*SL*(SL-UnFL)/(SL-SM)/(SL-SM)*(dSMdYR[i]);
-                        // mdot_YL[i] = drhodYL[i]*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdYL[i]/(SL-SM)/(SL-SM);
-                        // mdot_YR[i] = rhoFL*SL*(SL-UnFL)*dSMdYR[i]/(SL-SM)/(SL-SM);
-                    // }
+                    for(int i=0; i<nSp-1; ++i){
+                        // mdot_YL[i] = drhodYL[i]*UnFL + SL*drhodYL[i]*((SL-UnFL)/(SL-SM)-1.0) - 
+                                     // SL*rhoFL*((SL-UnFL)/(SL-SM)/(SL-SM)*(-dSMdYL[i]));
+                        // mdot_YR[i] = rhoFL*SL*(SL-UnFL)/(SL-SM)/(SL-SM)*(dSMdYR[i]);
+                        mdot_YL[i] = drhodYL[i]*(UnFL+SL*(SM-UnFL)/(SL-SM)) + rhoFL*SL*(SL-UnFL)*dSMdYL[i]/(SL-SM)/(SL-SM);
+                        mdot_YR[i] = rhoFL*SL*(SL-UnFL)*dSMdYR[i]/(SL-SM)/(SL-SM);
+                    }
                     
                     
-                    // // mdot_pL += dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFL;
-                    // // mdot_pR -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFL;
+                    // mdot_pL += dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFL;
+                    // mdot_pR -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFL;
                     
+                    
+                }
+                else{
+                    // mdot_pL = rhoFR*SR*(SR-UnFR)/(SR-SM)/(SR-SM)*(dSMdpL);
+                    // mdot_pR = drhodpR*UnFR + SR*drhodpR*((SR-UnFR)/(SR-SM)-1.0) - SR*rhoFR*((SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdpR));
+                    mdot_pL = rhoFR*SR*(SR-UnFR)*dSMdpL/(SR-SM)/(SR-SM);
+                    mdot_pR = drhodpR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdpR/(SR-SM)/(SR-SM);
+                    
+                    // mdot_UnFL = rhoFR*SR*(- (SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdUnFL));
+                    // mdot_UnFR = rhoFR*(1.0 + SR*(-1.0/(SR-SM) - (SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdUnFR)));
+                    mdot_UnL = rhoFR*SL*dSMdUnL*(SR-UnFR)/(SR-SM)/(SR-SM);
+                    mdot_UnR = rhoFR*(1.0 + SR*(dSMdUnR*(SR-UnFR)+(-1.0)*(SR-SM))/(SR-SM)/(SR-SM));
+                    
+                    // mdot_TL = rhoFR*SR*(SR-UnFR)/(SR-SM)/(SR-SM)*(dSMdTL);
+                    // mdot_TR = drhodTR*UnFR + SR*drhodTR*((SR-UnFR)/(SR-SM)-1.0) - SR*rhoFR*((SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdTR));
+                    mdot_TL = rhoFR*SR*(SR-UnFR)*dSMdTL/(SR-SM)/(SR-SM);
+                    mdot_TR = drhodTR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdTR/(SR-SM)/(SR-SM);
+                    
+                    for(int i=0; i<nSp-1; ++i){
+                        // mdot_YL[i] = rhoFR*SR*(SR-UnFR)/(SR-SM)/(SR-SM)*(dSMdYL[i]);
+                        // mdot_YR[i] = drhodYR[i]*UnFR + SR*drhodYR[i]*((SR-UnFR)/(SR-SM)-1.0) - 
+                                     // SR*rhoFR*((SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdYR[i]));
+                        mdot_YL[i] = rhoFR*SR*(SR-UnFR)*dSMdYL[i]/(SR-SM)/(SR-SM);
+                        mdot_YR[i] = drhodYR[i]*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdYR[i]/(SR-SM)/(SR-SM);
+                    }
+                    
+                    
+                    
+                    // mdot_pL += dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFR;
+                    // mdot_pR -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFR;
+                    
+                    
+                }
+                // // mdot_pL += 0.5*(1.0-fp)*phi_c/chat;
+                // // mdot_pR -= 0.5*(1.0-fp)*phi_c/chat;
+                
+                mdot_pL += m_cc * dAlpha * dt/dLR; 
+                mdot_pR -= m_cc * dAlpha * dt/dLR;
+                
+                
+                
+                
+                // dissEg_pL = 0.0; dissEg_pR = 0.0;
+                // dissEg_TL = 0.0; dissEg_TR = 0.0;
+                // for(int i=0; i<nSp-1; ++i){
+                    // dissEg_YL[i] = 0.0; dissEg_YR[i] = 0.0;
                     
                 // }
-                // else{
-                    // // mdot_pL = rhoFR*SR*(SR-UnFR)/(SR-SM)/(SR-SM)*(dSMdpL);
-                    // // mdot_pR = drhodpR*UnFR + SR*drhodpR*((SR-UnFR)/(SR-SM)-1.0) - SR*rhoFR*((SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdpR));
-                    // mdot_pL = rhoFR*SR*(SR-UnFR)*dSMdpL/(SR-SM)/(SR-SM);
-                    // mdot_pR = drhodpR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdpR/(SR-SM)/(SR-SM);
-                    
-                    // // mdot_UnFL = rhoFR*SR*(- (SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdUnFL));
-                    // // mdot_UnFR = rhoFR*(1.0 + SR*(-1.0/(SR-SM) - (SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdUnFR)));
-                    // mdot_UnL = rhoFR*SL*dSMdUnL*(SR-UnFR)/(SR-SM)/(SR-SM);
-                    // mdot_UnR = rhoFR*(1.0 + SR*(dSMdUnR*(SR-UnFR)+(-1.0)*(SR-SM))/(SR-SM)/(SR-SM));
-                    
-                    // // mdot_TL = rhoFR*SR*(SR-UnFR)/(SR-SM)/(SR-SM)*(dSMdTL);
-                    // // mdot_TR = drhodTR*UnFR + SR*drhodTR*((SR-UnFR)/(SR-SM)-1.0) - SR*rhoFR*((SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdTR));
-                    // mdot_TL = rhoFR*SR*(SR-UnFR)*dSMdTL/(SR-SM)/(SR-SM);
-                    // mdot_TR = drhodTR*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdTR/(SR-SM)/(SR-SM);
-                    
-                    // for(int i=0; i<nSp-1; ++i){
-                        // // mdot_YL[i] = rhoFR*SR*(SR-UnFR)/(SR-SM)/(SR-SM)*(dSMdYL[i]);
-                        // // mdot_YR[i] = drhodYR[i]*UnFR + SR*drhodYR[i]*((SR-UnFR)/(SR-SM)-1.0) - 
-                                     // // SR*rhoFR*((SR-UnFR)/(SR-SM)/(SR-SM)*(-dSMdYR[i]));
-                        // mdot_YL[i] = rhoFR*SR*(SR-UnFR)*dSMdYL[i]/(SR-SM)/(SR-SM);
-                        // mdot_YR[i] = drhodYR[i]*(UnFR+SR*(SM-UnFR)/(SR-SM)) + rhoFR*SR*(SR-UnFR)*dSMdYR[i]/(SR-SM)/(SR-SM);
-                    // }
-                    
-                    
-                    
-                    // // mdot_pL += dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFR;
-                    // // mdot_pR -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*rhoFR;
-                    
-                    
+                // dissEg_UnFL = 0.0; dissEg_UnFR = 0.0;
+            
+            
+                // double pStar_pL = 0.5*( 1.0 + drhodpL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdpL) +
+                                  // rhoFR*(UnFR-SR)*(-dSMdpL) );
+                // double pStar_pR = 0.5*( 1.0 + rhoFL*(UnFL-SL)*(-dSMdpR) + drhodpR*(UnFR-SR)*(UnFR-SM) +
+                                  // rhoFR*(UnFR-SR)*(-dSMdpR) );
+                // double pStar_UnFL = 0.5*(rhoFL*(1.0)*(UnFL-SM)+rhoFL*(UnFL-SL)*(1.0-dSMdUnFL)+rhoFR*(UnFR-SR)*(-dSMdUnFL));
+                // double pStar_UnFR = 0.5*(rhoFR*(1.0)*(UnFR-SM)+rhoFR*(UnFR-SR)*(1.0-dSMdUnFR)+rhoFL*(UnFL-SL)*(-dSMdUnFR));
+                // double pStar_TL = 0.5*(drhodTL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdTL) +
+                                  // rhoFR*(UnFR-SR)*(-dSMdTL) );
+                // double pStar_TR = 0.5*(rhoFL*(UnFL-SL)*(-dSMdTR) + drhodTR*(UnFR-SR)*(UnFR-SM) +
+                                  // rhoFR*(UnFR-SR)*(-dSMdTR) );
+                // double pStar_YL[nSp];
+                // double pStar_YR[nSp];
+                // for(int i=0; i<nSp-1; ++i){
+                    // pStar_YL[i] = 0.5*(drhodYL[i]*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdYL[i]) +
+                                      // rhoFR*(UnFR-SR)*(-dSMdYL[i]) );
+                    // pStar_YR[i] = 0.5*(rhoFL*(UnFL-SL)*(-dSMdYR[i]) + drhodYR[i]*(UnFR-SR)*(UnFR-SM) +
+                                      // rhoFR*(UnFR-SR)*(-dSMdYR[i]) );
                 // }
-                // // // mdot_pL += 0.5*(1.0-fp)*phi_c/chat;
-                // // // mdot_pR -= 0.5*(1.0-fp)*phi_c/chat;
-                
-                // mdot_pL += dAlpha * dt/dLR;
-                // mdot_pR -= dAlpha * dt/dLR;
-                
-                
-                
-                
-                
-                
-                // // dissEg_pL = 0.0; dissEg_pR = 0.0;
-                // // dissEg_TL = 0.0; dissEg_TR = 0.0;
-                // // for(int i=0; i<nSp-1; ++i){
-                    // // dissEg_YL[i] = 0.0; dissEg_YR[i] = 0.0;
-                    
-                // // }
-                // // dissEg_UnFL = 0.0; dissEg_UnFR = 0.0;
             
-            
-				// // double pStar_pL = 0.5*( 1.0 + drhodpL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdpL) +
-								  // // rhoFR*(UnFR-SR)*(-dSMdpL) );
-				// // double pStar_pR = 0.5*( 1.0 + rhoFL*(UnFL-SL)*(-dSMdpR) + drhodpR*(UnFR-SR)*(UnFR-SM) +
-								  // // rhoFR*(UnFR-SR)*(-dSMdpR) );
-				// // double pStar_UnFL = 0.5*(rhoFL*(1.0)*(UnFL-SM)+rhoFL*(UnFL-SL)*(1.0-dSMdUnFL)+rhoFR*(UnFR-SR)*(-dSMdUnFL));
-				// // double pStar_UnFR = 0.5*(rhoFR*(1.0)*(UnFR-SM)+rhoFR*(UnFR-SR)*(1.0-dSMdUnFR)+rhoFL*(UnFL-SL)*(-dSMdUnFR));
-				// // double pStar_TL = 0.5*(drhodTL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdTL) +
-								  // // rhoFR*(UnFR-SR)*(-dSMdTL) );
-				// // double pStar_TR = 0.5*(rhoFL*(UnFL-SL)*(-dSMdTR) + drhodTR*(UnFR-SR)*(UnFR-SM) +
-								  // // rhoFR*(UnFR-SR)*(-dSMdTR) );
-				// // double pStar_YL[nSp];
-				// // double pStar_YR[nSp];
-				// // for(int i=0; i<nSp-1; ++i){
-					// // pStar_YL[i] = 0.5*(drhodYL[i]*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdYL[i]) +
-									  // // rhoFR*(UnFR-SR)*(-dSMdYL[i]) );
-					// // pStar_YR[i] = 0.5*(rhoFL*(UnFL-SL)*(-dSMdYR[i]) + drhodYR[i]*(UnFR-SR)*(UnFR-SM) +
-									  // // rhoFR*(UnFR-SR)*(-dSMdYR[i]) );
-				// // }
-            
-				// double pStar_pL = 0.5*( 1.0 + drhodpL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdpL) + rhoFR*(UnFR-SR)*(-dSMdpL) );
-				// double pStar_pR = 0.5*( 1.0 + rhoFL*(UnFL-SL)*(-dSMdpR) + drhodpR*(UnFR-SR)*(UnFR-SM) + rhoFR*(UnFR-SR)*(-dSMdpR) );
-				// double pStar_UnL = 0.5*(rhoFL*(1.0)*(UnFL-SM)+rhoFL*(UnFL-SL)*(1.0-dSMdUnL)+rhoFR*(UnFR-SR)*(-dSMdUnL));
-				// double pStar_UnR = 0.5*(rhoFR*(1.0)*(UnFR-SM)+rhoFR*(UnFR-SR)*(1.0-dSMdUnR)+rhoFL*(UnFL-SL)*(-dSMdUnR));
-				// double pStar_TL = 0.5*(drhodTL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdTL) + rhoFR*(UnFR-SR)*(-dSMdTL) );
-				// double pStar_TR = 0.5*(rhoFL*(UnFL-SL)*(-dSMdTR) + drhodTR*(UnFR-SR)*(UnFR-SM) + rhoFR*(UnFR-SR)*(-dSMdTR) );
-				// double pStar_YL[nSp];
-				// double pStar_YR[nSp];
-				// for(int i=0; i<nSp-1; ++i){
-					// pStar_YL[i] = 0.5*(drhodYL[i]*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdYL[i]) + rhoFR*(UnFR-SR)*(-dSMdYL[i]) );
-					// pStar_YR[i] = 0.5*(rhoFL*(UnFL-SL)*(-dSMdYR[i]) + drhodYR[i]*(UnFR-SR)*(UnFR-SM) + rhoFR*(UnFR-SR)*(-dSMdYR[i]) );
-				// }
-				
-								  
+                // double pStar_pL = 0.5*( 1.0 + drhodpL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdpL) + rhoFR*(UnFR-SR)*(-dSMdpL) );
+                // double pStar_pR = 0.5*( 1.0 + rhoFL*(UnFL-SL)*(-dSMdpR) + drhodpR*(UnFR-SR)*(UnFR-SM) + rhoFR*(UnFR-SR)*(-dSMdpR) );
+                // double pStar_UnL = 0.5*(rhoFL*(1.0)*(UnFL-SM)+rhoFL*(UnFL-SL)*(1.0-dSMdUnL)+rhoFR*(UnFR-SR)*(-dSMdUnL));
+                // double pStar_UnR = 0.5*(rhoFR*(1.0)*(UnFR-SM)+rhoFR*(UnFR-SR)*(1.0-dSMdUnR)+rhoFL*(UnFL-SL)*(-dSMdUnR));
+                // double pStar_TL = 0.5*(drhodTL*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdTL) + rhoFR*(UnFR-SR)*(-dSMdTL) );
+                // double pStar_TR = 0.5*(rhoFL*(UnFL-SL)*(-dSMdTR) + drhodTR*(UnFR-SR)*(UnFR-SM) + rhoFR*(UnFR-SR)*(-dSMdTR) );
+                // double pStar_YL[nSp];
+                // double pStar_YR[nSp];
+                // for(int i=0; i<nSp-1; ++i){
+                    // pStar_YL[i] = 0.5*(drhodYL[i]*(UnFL-SL)*(UnFL-SM) + rhoFL*(UnFL-SL)*(-dSMdYL[i]) + rhoFR*(UnFR-SR)*(-dSMdYL[i]) );
+                    // pStar_YR[i] = 0.5*(rhoFL*(UnFL-SL)*(-dSMdYR[i]) + drhodYR[i]*(UnFR-SR)*(UnFR-SM) + rhoFR*(UnFR-SR)*(-dSMdYR[i]) );
+                // }
+                
+                                  
                 // dissEg_pL = weiL*SL*(pStar_pL-1.0)/(SL-UnFL) + weiR*SR*(pStar_pL)/(SR-UnFR);
                 // dissEg_pR = weiL*SL*(pStar_pR)/(SL-UnFL) + weiR*SR*(pStar_pR-1.0)/(SR-UnFR);
                 // dissEg_TL = weiL*SL*(pStar_TL)/(SL-UnFL) + weiR*SR*(pStar_TL)/(SR-UnFR);
@@ -908,359 +909,205 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
                 // dissEg_UnR = weiL*SL*(pStar_UnR)/(SL-UnFL) - weiR*SR*(pStar-pR)/(SR-UnFR)/(SR-UnFR)*(-1.0) + 
                              // weiR*SR*(pStar_UnR)/(SR-UnFR);
                 
+                    
+                dissEg_pL = 0.0; dissEg_pR = 0.0;
+                dissEg_UnL = 0.0; dissEg_UnR = 0.0;
+                dissEg_TL = 0.0; dissEg_TR = 0.0;
+                for(int i=0; i<nSp-1; ++i){
+                    dissEg_YL[i] = 0.0;
+                    dissEg_YR[i] = 0.0;
+                }
                 
                 
                 
+                // pressure term
+                pF_pL = 0.5 - 0.5*(PLP-PRM)*(-1.0) + p_cc*(PLP+PRM-1.0)*0.5;
+                pF_pR = 0.5 - 0.5*(PLP-PRM)*(+1.0) + p_cc*(PLP+PRM-1.0)*0.5;
                 
-                // // pressure term
-                // pF_pL = 0.5 - 0.5*(PLP-PRM)*(-1.0) + Mcy*(PLP+PRM-1.0)*0.5;
-                // pF_pR = 0.5 - 0.5*(PLP-PRM)*(+1.0) + Mcy*(PLP+PRM-1.0)*0.5;
-                
-                // // double PLP_UnFL = 0.0;
-                // // if( abs(ML) < 1.0 ) {
-                    // // PLP_UnFL = 0.25*(1.0/chat)*(ML+1.0)*(2.0-ML) + 
-                                // // 0.25*(ML+1.0)*(1.0/chat)*(2.0-ML) + 
-                                // // 0.25*(ML+1.0)*(ML+1.0)*(-1.0/chat);
-                // // }
-                // // double PRM_UnFR = 0.0;
-                // // if( abs(MR) < 1.0 ) {
-                    // // PRM_UnFR = 0.25*(1.0/chat)*(MR-1.0)*(2.0+MR) + 
-                                // // 0.25*(MR-1.0)*(1.0/chat)*(2.0+MR) + 
-                                // // 0.25*(MR-1.0)*(MR-1.0)*(1.0/chat);
-                // // }
-                // // pF_UnL = -0.5*(+PLP_UnFL)*(pR-pL) + Mcy*(PLP_UnFL)*0.5*(pL+pR);
-                // // pF_UnR = -0.5*(-PRM_UnFR)*(pR-pL) + Mcy*(PRM_UnFR)*0.5*(pL+pR);
+                double PLP_UnL = 0.0;
+                if( abs(ML) < 1.0 ) {
+                    PLP_UnL = 0.25*(1.0/chat)*(ML+1.0)*(2.0-ML) + 
+                                0.25*(ML+1.0)*(1.0/chat)*(2.0-ML) + 
+                                0.25*(ML+1.0)*(ML+1.0)*(-1.0/chat);
+                }
+                double PRM_UnR = 0.0;
+                if( abs(MR) < 1.0 ) {
+                    PRM_UnR = 0.25*(1.0/chat)*(MR-1.0)*(2.0+MR) + 
+                                0.25*(MR-1.0)*(1.0/chat)*(2.0+MR) + 
+                                0.25*(MR-1.0)*(MR-1.0)*(1.0/chat);
+                }
+                // double pF_UnL = -0.5*(PLP_UnL)*(pR-pL) + KLR*(PLP_UnL)*rhohat*chat;
+                // double pF_UnR = -0.5*(PLP_UnR)*(pR-pL) + KLR*(PLP_UnR)*rhohat*chat;
+                pF_UnL = -0.5*(+PLP_UnL)*(pR-pL) + p_cc*(PLP_UnL)*0.5*(pL+pR);
+                pF_UnR = -0.5*(-PRM_UnR)*(pR-pL) + p_cc*(PRM_UnR)*0.5*(pL+pR);
                 // pF_UnL = 0.0;
                 // pF_UnR = 0.0;
                 
-                // pF_TL = 0.0;
-                // pF_TR = 0.0;
+                pF_TL = 0.0;
+                pF_TR = 0.0;
                 
-                // for(int i=0; i<nSp-1; ++i){
-                    // pF_YL[i] = 0.0;
-                    // pF_YR[i] = 0.0;
-                // }
+                for(int i=0; i<nSp-1; ++i){
+                    pF_YL[i] = 0.0;
+                    pF_YR[i] = 0.0;
+                }
                 
                 
-            // }
-            // // =================================================================
-            
-            
-            
-            
-            
-            
-            
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
+            }
+            else if(fluxScheme==1){
             // =================================================================
-			// SLAU2
-			double UnFL = uFL*nvec[0] + vFL*nvec[1] + wFL*nvec[2];
-			double UnFR = uFR*nvec[0] + vFR*nvec[1] + wFR*nvec[2];
-			double chat = 0.5*(cFL+cFR);
-			double rhohat = 0.5*(rhoFL+rhoFR);    
-            double U2L = uFL*uFL+vFL*vFL+wFL*wFL;
-            double U2R = uFR*uFR+vFR*vFR+wFR*wFR;
-            double Ubar = ( rhoFL*abs(UnFL)+rhoFR*abs(UnFR) ) / ( rhoFL + rhoFR );
-            
-			double Unhat = 0.5*(UnFL+UnFR);        
-            double KLR = sqrt(0.5*(U2L+U2R));
-			double Mcy = min(1.0,KLR/chat);
-			double phi_c = (1.0-Mcy)*(1.0-Mcy);
-			double ML = UnFL/chat;
-			double MR = UnFR/chat;			
-			double g_c = 1.0 + max( min(ML,0.0), -1.0 )*min( max(MR,0.0), 1.0 );
-			double D_L = UnFL+(1.0-g_c)*abs(UnFL);
-			double D_R = UnFR-(1.0-g_c)*abs(UnFR);
-			double D_rho = Ubar*g_c;
-			double UPL = D_L+D_rho;
-			double UMR = D_R-D_rho;
-			double mdot = 0.5*rhoFL*UPL + 0.5*rhoFR*UMR - 0.5*phi_c/chat*(pR-pL);
-            // UPL = (0.5*(UnL+UnR)+abs(0.5*(UnL+UnR)));
-            // UMR = (0.5*(UnL+UnR)-abs(0.5*(UnL+UnR)));
-			// double mdot = 0.5*rhoFL*UPL + 0.5*rhoFR*UMR;
-			
-			// in pressure-based
-			mdot -= dAlpha * dt/dLR*(pR-pL);
-			mdot += dt*0.5*(dpdxL+dpdxR)*dAlpha*nLR[0];
-			mdot += dt*0.5*(dpdyL+dpdyR)*dAlpha*nLR[1];
-			mdot += dt*0.5*(dpdzL+dpdzR)*dAlpha*nLR[2];
-			
-			// K. Kitamura, E. Shima / Computers and Fluids 163 (2018) 86–96
-			// double UnF = 0.5*(mdot+abs(mdot))/rhoL + 0.5*(mdot-abs(mdot))/rhoR;
-			// double UnF = 0.5*(UnL+UnR);
-			// // in pressure-based
-			// UnF -= dAlpha * dt*(1.0/rhoL+1.0/rhoR)*(pR-pL)/dLR;
-			// UnF += dt*0.5*(dpdxL/rhoL+dpdxR/rhoR)*dAlpha*nLR[0];
-			// UnF += dt*0.5*(dpdyL/rhoL+dpdyR/rhoR)*dAlpha*nLR[1];
-			// UnF += dt*0.5*(dpdzL/rhoL+dpdzR/rhoR)*dAlpha*nLR[2];
-            // mdot = 0.5*(UnF+abs(UnF))*rhoFL + 0.5*(UnF-abs(UnF))*rhoFR;
-            
-            double PLP = ( ML>0.0 ? 1.0 : 0.0 );
-			double PRM = ( MR<0.0 ? 1.0 : 0.0 );
-			if( abs(ML) < 1.0 ) PLP = 0.25*(ML+1.0)*(ML+1.0)*(2.0-ML);
-			if( abs(MR) < 1.0 ) PRM = 0.25*(MR-1.0)*(MR-1.0)*(2.0+MR);
-            
-			// double pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + KLR*(PLP+PRM-1.0)*rhohat*chat;
-			double pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + Mcy*Mcy*(PLP+PRM-1.0)*0.5*(pL+pR);
-			// double pF = 0.5*(pL+pR);
-			// double pF = PLP*pL+PRM*pR;
-			
-			
-			double weiL = (mdot>=0.0 ? 1.0 : 0.0); double weiR = 1.0-weiL;
-			
-			double rhoF = weiL*rhoFL + weiR*rhoFR;
-			double uF = weiL*uFL + weiR*uFR;
-			double vF = weiL*vFL + weiR*vFR;
-			double wF = weiL*wFL + weiR*wFR;
-			double HtF = weiL*HtFL + weiR*HtFR;
-			double YF[nSp];
-			for(int i=0; i<nSp-1; ++i){
-				YF[i] = weiL*YFL[i] + weiR*YFR[i];
-			}
-			
-			
-			double fluxB[nEq];
-			// 컨벡티브 B
-			fluxB[0] = -( mdot )*area;
-			fluxB[1] = -( mdot*uF + pF*nvec[0] )*area;
-			fluxB[2] = -( mdot*vF + pF*nvec[1] )*area;
-			fluxB[3] = -( mdot*wF + pF*nvec[2] )*area;
-			fluxB[4] = -( mdot*HtF )*area;
-			for(int i=0; i<nSp-1; ++i){
-				fluxB[5+i] = -( mdot*YF[i] )*area;
-			}
-			
-			
-			
-			double sign_UnL = (UnFL>=0.0 ? 1.0 : -1.0);
-			double sign_UnR = (UnFR>=0.0 ? 1.0 : -1.0);
-			double D_rho_dL = g_c*(abs(UnFL)-Ubar)/(rhoFL+rhoFR);
-			double D_rho_dR = g_c*(abs(UnFR)-Ubar)/(rhoFL+rhoFR);
-			// double D_rho_dL = g_c*(abs(UnL)-Ubar)/(rhoL+rhoR);
-			// double D_rho_dR = g_c*(abs(UnR)-Ubar)/(rhoL+rhoR);
-			
-			// double mdot_pL = 0.5*( drhodpL*UPL + rhoFL*(+drhodpL*D_rho_dL) + rhoFR*(-drhodpL*D_rho_dL) + phi_c/chat );
-			// double mdot_pR = 0.5*( drhodpR*UMR + rhoFR*(-drhodpR*D_rho_dR) + rhoFL*(+drhodpR*D_rho_dR) - phi_c/chat );
-			// double mdot_pL = 0.5*( drhodpL*UPL + rhoFL*(+drhodpL*D_rho_dL) + phi_c/chat );
-			// double mdot_pR = 0.5*( drhodpR*UMR + rhoFR*(-drhodpR*D_rho_dR) - phi_c/chat );
-			// double mdot_pL = 0.5*( drhodpL*UPL + phi_c/chat );
-			// double mdot_pR = 0.5*( drhodpR*UMR - phi_c/chat );
-			double mdot_pL = 0.5*( drhodpL*UPL );
-			double mdot_pR = 0.5*( drhodpR*UMR );
-            mdot_pL += phi_c/chat; mdot_pR -= phi_c/chat;
-            mdot_pL += dAlpha * dt/dLR; mdot_pR -= dAlpha * dt/dLR;
-            // if(mdot>=0.0){
-                // mdot_pL += dAlpha * dt*rhoFL*(1.0/rhoL+1.0/rhoR)/dLR;
-                // mdot_pR -= dAlpha * dt*rhoFL*(1.0/rhoL+1.0/rhoR)/dLR;
-            // }
-            // else{
-                // mdot_pL += dAlpha * dt*rhoFR*(1.0/rhoL+1.0/rhoR)/dLR;
-                // mdot_pR -= dAlpha * dt*rhoFR*(1.0/rhoL+1.0/rhoR)/dLR;
-            // }
-            
-			// double UnF_pL = mdot_pL*(weiL/rhoL+weiR/rhoR) + mdot*drhodpL*(-weiL/rhoL/rhoL);
-			// double UnF_pR = mdot_pR*(weiL/rhoL+weiR/rhoR) + mdot*drhodpR*(-weiR/rhoR/rhoR);
-			// mdot_pL = weiL*drhodpL*UnF + rhoF*UnF_pL;
-			// mdot_pR = weiR*drhodpR*UnF + rhoF*UnF_pR;
-            
-            
-			
-			// double mdot_UnL = 0.5*( rhoFL*(1.0+(1.0-g_c)*sign_UnL+g_c*rhoFL/(rhoL+rhoR)*sign_UnL) + 
-                                    // rhoFR*(-rhoFR*sign_UnR/(rhoL+rhoR)*g_c) );
-			// double mdot_UnR = 0.5*( rhoFR*(1.0-(1.0-g_c)*sign_UnR-g_c*rhoFR/(rhoL+rhoR)*sign_UnR) +
-                                    // rhoFL*(+rhoFL*sign_UnL/(rhoL+rhoR)*g_c) );
-			// double mdot_UnL = 0.5*( rhoFL*(1.0+(1.0-g_c)*sign_UnL+g_c*rhoFL/(rhoFL+rhoFR)*sign_UnL) );
-			// double mdot_UnR = 0.5*( rhoFR*(1.0-(1.0-g_c)*sign_UnR-g_c*rhoFR/(rhoFL+rhoFR)*sign_UnR) );
-			// double mdot_UnL = 0.5*( rhoFL*(1.0+(1.0-g_c)*sign_UnL+g_c*rhoL/(rhoL+rhoR)*sign_UnL) );
-			// double mdot_UnR = 0.5*( rhoFR*(1.0-(1.0-g_c)*sign_UnR-g_c*rhoR/(rhoL+rhoR)*sign_UnR) );
-			double mdot_UnL = 0.5*( rhoFL );
-			double mdot_UnR = 0.5*( rhoFR );
-			// double UnF_UnL = mdot_UnL*(weiL/rhoL+weiR/rhoR);
-			// double UnF_UnR = mdot_UnR*(weiL/rhoL+weiR/rhoR);
-			// mdot_UnL = rhoF*UnF_UnL;
-			// mdot_UnR = rhoF*UnF_UnR;
-            
-			
-			// double mdot_TL = 0.5*( drhodTL*UPL + rhoFL*(+drhodTL*D_rho_dL) + rhoFR*(-drhodTL*D_rho_dL) );
-			// double mdot_TR = 0.5*( drhodTR*UMR + rhoFR*(-drhodTR*D_rho_dR) + rhoFL*(+drhodTR*D_rho_dR) );
-			// double mdot_TL = 0.5*( drhodTL*UPL + rhoFL*(+drhodTL*D_rho_dL) );
-			// double mdot_TR = 0.5*( drhodTR*UMR + rhoFR*(-drhodTR*D_rho_dR) );
-			double mdot_TL = 0.5*( drhodTL*UPL );
-			double mdot_TR = 0.5*( drhodTR*UMR );
-			// double UnF_TL = mdot_TL*(weiL/rhoL+weiR/rhoR) + mdot*drhodTL*(-weiL/rhoL/rhoL);
-			// double UnF_TR = mdot_TR*(weiL/rhoL+weiR/rhoR) + mdot*drhodTR*(-weiR/rhoR/rhoR);
-			// mdot_TL = weiL*drhodTL*UnF + rhoF*UnF_TL;
-			// mdot_TR = weiR*drhodTR*UnF + rhoF*UnF_TR;
-			
-			double mdot_YL[nSp];
-			double mdot_YR[nSp];
-			// double UnF_YL[nSp];
-			// double UnF_YR[nSp];
-			for(int i=0; i<nSp-1; ++i){
+            // SLAU2
+                double UnFL = uFL*nvec[0] + vFL*nvec[1] + wFL*nvec[2];
+                double UnFR = uFR*nvec[0] + vFR*nvec[1] + wFR*nvec[2];
+                double chat = 0.5*(cFL+cFR);
+                double rhohat = 0.5*(rhoFL+rhoFR);    
+                double U2L = uFL*uFL+vFL*vFL+wFL*wFL;
+                double U2R = uFR*uFR+vFR*vFR+wFR*wFR;
+                double Ubar = ( rhoFL*abs(UnFL)+rhoFR*abs(UnFR) ) / ( rhoFL + rhoFR );
                 
-                // mdot_YL[i] = 0.5*( drhodYL[i]*UPL + rhoFL*(+drhodYL[i]*D_rho_dL) + rhoFR*(-drhodYL[i]*D_rho_dL) );
-                // mdot_YR[i] = 0.5*( drhodYR[i]*UMR + rhoFR*(-drhodYR[i]*D_rho_dR) + rhoFL*(+drhodYR[i]*D_rho_dR) );
-                // mdot_YL[i] = 0.5*( drhodYL[i]*UPL + rhoFL*(+drhodYL[i]*D_rho_dL) );
-                // mdot_YR[i] = 0.5*( drhodYR[i]*UMR + rhoFR*(-drhodYR[i]*D_rho_dR) );
-                mdot_YL[i] = 0.5*( drhodYL[i]*UPL );
-                mdot_YR[i] = 0.5*( drhodYR[i]*UMR );
-				// mdot_YL[i] = 0.5*drhodYL[i]*(UPL + D_rho_dL);
-				// mdot_YR[i] = 0.5*drhodYR[i]*(UMR - D_rho_dR);
-				// UnF_YL[i] = mdot_YL[i]*(weiL/rhoL+weiR/rhoR) + mdot*drhodYL[i]*(-weiL/rhoL/rhoL);
-				// UnF_YR[i] = mdot_YR[i]*(weiL/rhoL+weiR/rhoR) + mdot*drhodYR[i]*(-weiR/rhoR/rhoR);
-				// mdot_YL[i] = weiL*drhodYL[i]*UnF + rhoF*UnF_YL[i];
-				// mdot_YR[i] = weiR*drhodYR[i]*UnF + rhoF*UnF_YR[i];
-				
-				
-				// //=========================
-				// double tmp_weiL = 1.0; double tmp_weiR = 0.0;
-				// if(YF[i] < YL[i]+1.e-50 && YF[i] > YL[i]-1.e-50){
-					// tmp_weiL = 1.0; tmp_weiR = 0.0;
-				// }
-				// else{
-					// tmp_weiL = 0.0; tmp_weiR = 1.0;
-				// }
-				// mdot_YL[i] = 0.5*drhodYL[i]*(UPL + D_rho_dL);
-				// mdot_YR[i] = 0.5*drhodYR[i]*(UMR - D_rho_dR);
-				// UnF_YL[i] = mdot_YL[i]*(tmp_weiL/rhoL+tmp_weiR/rhoR) + mdot*drhodYL[i]*(-tmp_weiL/rhoL/rhoL);
-				// UnF_YR[i] = mdot_YR[i]*(tmp_weiL/rhoL+tmp_weiR/rhoR) + mdot*drhodYR[i]*(-tmp_weiR/rhoR/rhoR);
-				// mdot_YL[i] = tmp_weiL*drhodYL[i]*UnF + rhoF*UnF_YL[i];
-				// mdot_YR[i] = tmp_weiR*drhodYR[i]*UnF + rhoF*UnF_YR[i];
-				// //=========================
-				
-				
-				
-			}
-			
-			// double mdot_UnL = 0.5*rhoL*(1.0+(1.0-g_c)*sign_UnL+g_c*rhoL/(rhoL+rhoR)*sign_UnL);
-			// double mdot_UnR = 0.5*rhoR*(1.0+(1.0-g_c)*sign_UnR-g_c*rhoR/(rhoL+rhoR)*sign_UnR);
-			// double UnF_UnL = mdot_UnL*(weiL/rhoL+weiR/rhoR);
-			// double UnF_UnR = mdot_UnR*(weiL/rhoL+weiR/rhoR);
-			// mdot_UnL = rhoF*UnF_UnL;
-			// mdot_UnR = rhoF*UnF_UnR;
-			
-			// double mdot_TL = 0.5*drhodTL*(UPL + D_rho_dL);
-			// double mdot_TR = 0.5*drhodTR*(UMR - D_rho_dR);
-			// double UnF_TL = mdot_TL*(weiL/rhoL+weiR/rhoR) + mdot*drhodTL*(-weiL/rhoL/rhoL);
-			// double UnF_TR = mdot_TR*(weiL/rhoL+weiR/rhoR) + mdot*drhodTR*(-weiR/rhoR/rhoR);
-			// mdot_TL = weiL*drhodTL*UnF + rhoF*UnF_TL;
-			// mdot_TR = weiR*drhodTR*UnF + rhoF*UnF_TR;
-			
-			// double mdot_YL[nSp];
-			// double mdot_YR[nSp];
-			// double UnF_YL[nSp];
-			// double UnF_YR[nSp];
-			// for(int i=0; i<nSp-1; ++i){
-				
-				// mdot_YL[i] = 0.5*drhodYL[i]*(UPL + D_rho_dL);
-				// mdot_YR[i] = 0.5*drhodYR[i]*(UMR - D_rho_dR);
-				// UnF_YL[i] = mdot_YL[i]*(weiL/rhoL+weiR/rhoR) + mdot*drhodYL[i]*(-weiL/rhoL/rhoL);
-				// UnF_YR[i] = mdot_YR[i]*(weiL/rhoL+weiR/rhoR) + mdot*drhodYR[i]*(-weiR/rhoR/rhoR);
-				// mdot_YL[i] = weiL*drhodYL[i]*UnF + rhoF*UnF_YL[i];
-				// mdot_YR[i] = weiR*drhodYR[i]*UnF + rhoF*UnF_YR[i];
-			// }
-            
-            
-            
-            
-            // pressure term
-			// double dcdphi_coeffL = (cL/2.0/rhoL*(1.0-cL*cL*(drhodpL-drhodTL*dHtdpL/dHtdTL)));
-			// double dcdphi_coeffR = (cR/2.0/rhoR*(1.0-cR*cR*(drhodpR-drhodTR*dHtdpR/dHtdTR)));
-			
-			// double pF_pL = 0.5 - 0.5*(PLP-PRM)*(-1.0) + KLR*(PLP+PRM-1.0)*0.5*drhodpL*chat;
-			// double pF_pR = 0.5 - 0.5*(PLP-PRM)*(+1.0) + KLR*(PLP+PRM-1.0)*0.5*drhodpR*chat;
-			// double pF_pL = 0.5 - 0.5*(PLP-PRM)*(-1.0) + Mcy*(PLP+PRM-1.0)*0.5;
-			// double pF_pR = 0.5 - 0.5*(PLP-PRM)*(+1.0) + Mcy*(PLP+PRM-1.0)*0.5;
-			double pF_pL = 0.5 - 0.5*(PLP-PRM)*(-1.0) + Mcy*Mcy*(PLP+PRM-1.0)*0.5;
-			double pF_pR = 0.5 - 0.5*(PLP-PRM)*(+1.0) + Mcy*Mcy*(PLP+PRM-1.0)*0.5;
-			// double pF_pL = 0.5;
-			// double pF_pR = 0.5;
-			// double pF_pL = PLP;
-			// double pF_pR = PRM;
-			// double dcdpL = drhodpL*dcdphi_coeffL;
-			// double PLP_pL = (-0.75*ML*ML+0.75)*(-UnL/chat/chat*0.5*dcdpL);
-			// pF_pL -= 0.5*(pR-pL)*PLP_pL;
-			// pF_pL += KLR*rhohat*chat*PLP_pL;
-			// pF_pL += KLR*(PLP+PRM-1.0)*rhohat*0.5*dcdpL;
-			// double dcdpR = drhodpR*dcdphi_coeffR;
-			// double PRM_pR = (-0.75*MR*MR+0.75)*(-UnR/chat/chat*0.5*dcdpR);
-			// pF_pR -= 0.5*(pR-pL)*PRM_pR;
-			// pF_pR += KLR*rhohat*chat*PRM_pR;
-			// pF_pR += KLR*(PLP+PRM-1.0)*rhohat*0.5*dcdpR;
-			
-			// double PLP_UnL = 0.0;
-            // if( abs(ML) < 1.0 ) {
-                // PLP_UnL = 0.25*(1.0/chat)*(ML+1.0)*(2.0-ML) + 
-                            // 0.25*(ML+1.0)*(1.0/chat)*(2.0-ML) + 
-                            // 0.25*(ML+1.0)*(ML+1.0)*(-1.0/chat);
-            // }
-			// double PRM_UnR = 0.0;
-            // if( abs(MR) < 1.0 ) {
-                // PRM_UnR = 0.25*(1.0/chat)*(MR-1.0)*(2.0+MR) + 
-                            // 0.25*(MR-1.0)*(1.0/chat)*(2.0+MR) + 
-                            // 0.25*(MR-1.0)*(MR-1.0)*(1.0/chat);
-            // }
-			// // double pF_UnL = -0.5*(PLP_UnL)*(pR-pL) + KLR*(PLP_UnL)*rhohat*chat;
-			// // double pF_UnR = -0.5*(PLP_UnR)*(pR-pL) + KLR*(PLP_UnR)*rhohat*chat;
-			// double pF_UnL = -0.5*(+PLP_UnL)*(pR-pL) + Mcy*(PLP_UnL)*0.5*(pL+pR);
-			// double pF_UnR = -0.5*(-PRM_UnR)*(pR-pL) + Mcy*(PRM_UnR)*0.5*(pL+pR);
-			double pF_UnL = 0.0;
-			double pF_UnR = 0.0;
-			
-			// double pF_TL = KLR*(PLP+PRM-1.0)*0.5*drhodTL*chat;
-			// double pF_TR = KLR*(PLP+PRM-1.0)*0.5*drhodTR*chat; 
-			double pF_TL = 0.0;
-			double pF_TR = 0.0;
-			// double dcdTL = drhodTL*dcdphi_coeffL;
-			// double PLP_TL = (-0.75*ML*ML+0.75)*(-UnL/chat/chat*0.5*dcdTL);
-			// pF_TL -= 0.5*(pR-pL)*PLP_TL;
-			// pF_TL += KLR*rhohat*chat*PLP_TL;
-			// pF_TL += KLR*(PLP+PRM-1.0)*rhohat*0.5*dcdTL;
-			// double dcdTR = drhodTR*dcdphi_coeffR;
-			// double PRM_TR = (-0.75*MR*MR+0.75)*(-UnR/chat/chat*0.5*dcdTR);
-			// pF_TR -= 0.5*(pR-pL)*PRM_TR;
-			// pF_TR += KLR*rhohat*chat*PRM_TR;
-			// pF_TR += KLR*(PLP+PRM-1.0)*rhohat*0.5*dcdTR;
-			
-			double pF_YL[nSp];
-			double pF_YR[nSp];
-			for(int i=0; i<nSp-1; ++i){
-				// pF_YL[i] = KLR*(PLP+PRM-1.0)*0.5*drhodYL[i]*chat;
-				// pF_YR[i] = KLR*(PLP+PRM-1.0)*0.5*drhodYR[i]*chat;
-				pF_YL[i] = 0.0;
-				pF_YR[i] = 0.0;
-				// double dcdYL = drhodYL[i]*dcdphi_coeffL;
-				// double PLP_YL = (-0.75*ML*ML+0.75)*(-UnL/chat/chat*0.5*dcdYL);
-				// pF_YL[i] -= 0.5*(pR-pL)*PLP_YL;
-				// pF_YL[i] += KLR*rhohat*chat*PLP_YL;
-				// pF_YL[i] += KLR*(PLP+PRM-1.0)*rhohat*0.5*dcdYL;
-				// double dcdYR = drhodYR[i]*dcdphi_coeffR;
-				// double PRM_YR = (-0.75*MR*MR+0.75)*(-UnR/chat/chat*0.5*dcdYR);
-				// pF_YR[i] -= 0.5*(pR-pL)*PRM_YR;
-				// pF_YR[i] += KLR*rhohat*chat*PRM_YR;
-				// pF_YR[i] += KLR*(PLP+PRM-1.0)*rhohat*0.5*dcdYR;
-			}
-			
-            
-			double dissEg_pL,dissEg_pR,dissEg_UnL,dissEg_UnR,dissEg_TL,dissEg_TR;
-			double dissEg_YL[nSp];
-			double dissEg_YR[nSp];
-			dissEg_pL = 0.0; dissEg_pR = 0.0;
-			dissEg_UnL = 0.0; dissEg_UnR = 0.0;
-			dissEg_TL = 0.0; dissEg_TR = 0.0;
-			for(int i=0; i<nSp-1; ++i){
-				dissEg_YL[i] = 0.0;
-				dissEg_YR[i] = 0.0;
-			}
+                double Unhat = 0.5*(UnFL+UnFR);        
+                double KLR = sqrt(0.5*(U2L+U2R));
+                double Mcy = min(1.0,KLR/chat);
+                double phi_c = (1.0-Mcy)*(1.0-Mcy);
+                double ML = UnFL/chat;
+                double MR = UnFR/chat;			
+                double g_c = 1.0 + max( min(ML,0.0), -1.0 )*min( max(MR,0.0), 1.0 );
+                double D_L = UnFL+(1.0-g_c)*abs(UnFL);
+                double D_R = UnFR-(1.0-g_c)*abs(UnFR);
+                double D_rho = Ubar*g_c;
+                double UPL = D_L+D_rho;
+                double UMR = D_R-D_rho;
+                mdot = 0.5*rhoFL*UPL + 0.5*rhoFR*UMR - 0.5*phi_c/chat*(pR-pL);
+                // UPL = (0.5*(UnL+UnR)+abs(0.5*(UnL+UnR)));
+                // UMR = (0.5*(UnL+UnR)-abs(0.5*(UnL+UnR)));
+                // double mdot = 0.5*rhoFL*UPL + 0.5*rhoFR*UMR;
+                
+                double m_cc = 1.0;// (1.0-Mcy)*(1.0-Mcy);
+                // in pressure-based
+                mdot -= m_cc * dAlpha * dt/dLR*(pR-pL);
+                mdot += m_cc * dt*0.5*(dpdxL+dpdxR)*dAlpha*nLR[0];
+                mdot += m_cc * dt*0.5*(dpdyL+dpdyR)*dAlpha*nLR[1];
+                mdot += m_cc * dt*0.5*(dpdzL+dpdzR)*dAlpha*nLR[2];
+                // // // K. Kitamura, E. Shima / Computers and Fluids 163 (2018) 86–96
+                // double UnF = 0.5*(mdot+abs(mdot))/rhoFL + 0.5*(mdot-abs(mdot))/rhoFR;
+                // UnF -= dAlpha * dt*(1.0/rhoL+1.0/rhoR)*(pR-pL)/dLR;
+                // UnF += dt*0.5*(dpdxL/rhoL+dpdxR/rhoR)*dAlpha*nLR[0];
+                // UnF += dt*0.5*(dpdyL/rhoL+dpdyR/rhoR)*dAlpha*nLR[1];
+                // UnF += dt*0.5*(dpdzL/rhoL+dpdzR/rhoR)*dAlpha*nLR[2];
+                // mdot = 0.5*(UnF+abs(UnF))*rhoFL + 0.5*(UnF-abs(UnF))*rhoFR;
+                
+                double p_cc = Mcy;//(1.0 - (1.0-Mcy)*(1.0-Mcy)*(1.0-Mcy));
+                double PLP = ( ML>0.0 ? 1.0 : 0.0 );
+                double PRM = ( MR<0.0 ? 1.0 : 0.0 );
+                if( abs(ML) < 1.0 ) PLP = 0.25*(ML+1.0)*(ML+1.0)*(2.0-ML);
+                if( abs(MR) < 1.0 ) PRM = 0.25*(MR-1.0)*(MR-1.0)*(2.0+MR);
+                
+                // double pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + KLR*(PLP+PRM-1.0)*rhohat*chat;
+                double pF = 0.5*(pL+pR) - 0.5*(PLP-PRM)*(pR-pL) + p_cc * (PLP+PRM-1.0)*0.5*(pL+pR);
+                // double pF = 0.5*(pL+pR);
+                // double pF = PLP*pL+PRM*pR;
+                
+                
+                weiL = (mdot>=0.0 ? 1.0 : 0.0); weiR = 1.0-weiL;
+                
+                rhoF = weiL*rhoFL + weiR*rhoFR;
+                uF = weiL*uFL + weiR*uFR;
+                vF = weiL*vFL + weiR*vFR;
+                wF = weiL*wFL + weiR*wFR;
+                HtF = weiL*HtFL + weiR*HtFR;
+                for(int i=0; i<nSp-1; ++i){
+                    YF[i] = weiL*YFL[i] + weiR*YFR[i];
+                }
+                
+                // 컨벡티브 B
+                fluxB[0] = -( mdot )*area;
+                fluxB[1] = -( mdot*uF + pF*nvec[0] )*area;
+                fluxB[2] = -( mdot*vF + pF*nvec[1] )*area;
+                fluxB[3] = -( mdot*wF + pF*nvec[2] )*area;
+                fluxB[4] = -( mdot*HtF )*area;
+                for(int i=0; i<nSp-1; ++i){
+                    fluxB[5+i] = -( mdot*YF[i] )*area;
+                }
+                
+                
+                
+                double sign_UnL = (UnFL>=0.0 ? 1.0 : -1.0);
+                double sign_UnR = (UnFR>=0.0 ? 1.0 : -1.0);
+                double D_rho_dL = g_c*(abs(UnFL)-Ubar)/(rhoFL+rhoFR);
+                double D_rho_dR = g_c*(abs(UnFR)-Ubar)/(rhoFL+rhoFR);
+                // double D_rho_dL = g_c*(abs(UnL)-Ubar)/(rhoL+rhoR);
+                // double D_rho_dR = g_c*(abs(UnR)-Ubar)/(rhoL+rhoR);
+                double D_rho_dL2 = rhoFR*(abs(UnFR)-abs(UnFL))/(rhoFL+rhoFR)/(rhoFL+rhoFR)*g_c;
+                double D_rho_dR2 = rhoFL*(abs(UnFL)-abs(UnFR))/(rhoFL+rhoFR)/(rhoFL+rhoFR)*g_c;
+                
+                
+                mdot_pL = 0.5*drhodpL*( UPL + (rhoFL-rhoFR)*D_rho_dL2 );
+                mdot_pR = 0.5*drhodpR*( UMR + (rhoFL-rhoFR)*D_rho_dR2 );
+                
+                // mdot_pL += 0.5*phi_c/chat/chat*(pR-pL)*dcbarpL; 
+                // mdot_pR += 0.5*phi_c/chat/chat*(pR-pL)*dcbarpR; 
+                
+                mdot_pL += 0.5*phi_c/chat; 
+                mdot_pR -= 0.5*phi_c/chat;
+                
+                mdot_pL += m_cc * dAlpha * dt/dLR; 
+                mdot_pR -= m_cc * dAlpha * dt/dLR;
+                
+                
+                // mdot_UnL = 0.5*( rhoFL*(1.0+(1.0-g_c)*sign_UnL+g_c*rhoFL/(rhoFL+rhoFR)*sign_UnL) + 
+                                        // rhoFR*(-rhoFR*sign_UnR/(rhoFL+rhoFR)*g_c) );
+                // mdot_UnR = 0.5*( rhoFR*(1.0-(1.0-g_c)*sign_UnR-g_c*rhoFR/(rhoFL+rhoFR)*sign_UnR) +
+                                        // rhoFL*(+rhoFL*sign_UnL/(rhoFL+rhoFR)*g_c) );
+                // mdot_UnL = 0.5*( rhoFL*(1.0+(1.0-g_c)*sign_UnL+g_c*rhoFL/(rhoFL+rhoFR)*sign_UnL) );
+                // mdot_UnR = 0.5*( rhoFR*(1.0-(1.0-g_c)*sign_UnR-g_c*rhoFR/(rhoFL+rhoFR)*sign_UnR) );
+                mdot_UnL = 0.5*( rhoFL );
+                mdot_UnR = 0.5*( rhoFR );
+                
+                
+                mdot_TL = 0.5*drhodTL*( UPL + (rhoFL-rhoFR)*D_rho_dL2 );
+                mdot_TR = 0.5*drhodTR*( UMR + (rhoFL-rhoFR)*D_rho_dR2 );
+                
+                for(int i=0; i<nSp-1; ++i){
+                    
+                    mdot_YL[i] = 0.5*drhodYL[i]*( UPL + (rhoFL-rhoFR)*D_rho_dL2 );
+                    mdot_YR[i] = 0.5*drhodYR[i]*( UMR + (rhoFL-rhoFR)*D_rho_dR2 );
+                    
+                }
+                
+                // pressure term
+                pF_pL = 0.5 - 0.5*(PLP-PRM)*(-1.0) + p_cc * (PLP+PRM-1.0)*0.5;
+                pF_pR = 0.5 - 0.5*(PLP-PRM)*(+1.0) + p_cc * (PLP+PRM-1.0)*0.5;
+                
+                double PLP_UnL = 0.0;
+                if( abs(ML) < 1.0 ) {
+                    PLP_UnL = 0.25*(1.0/chat)*(ML+1.0)*(2.0-ML) + 
+                                0.25*(ML+1.0)*(1.0/chat)*(2.0-ML) + 
+                                0.25*(ML+1.0)*(ML+1.0)*(-1.0/chat);
+                }
+                double PRM_UnR = 0.0;
+                if( abs(MR) < 1.0 ) {
+                    PRM_UnR = 0.25*(1.0/chat)*(MR-1.0)*(2.0+MR) + 
+                                0.25*(MR-1.0)*(1.0/chat)*(2.0+MR) + 
+                                0.25*(MR-1.0)*(MR-1.0)*(1.0/chat);
+                }
+                pF_UnL = -0.5*(+PLP_UnL)*(pR-pL) + p_cc*(PLP_UnL)*0.5*(pL+pR);
+                pF_UnR = -0.5*(-PRM_UnR)*(pR-pL) + p_cc*(PRM_UnR)*0.5*(pL+pR);
+                // pF_UnL = 0.0;
+                // pF_UnR = 0.0;
+                
+                pF_TL = 0.0;
+                pF_TR = 0.0;
+                for(int i=0; i<nSp-1; ++i){
+                    pF_YL[i] = 0.0;
+                    pF_YR[i] = 0.0;
+                }
+                dissEg_pL = 0.0; dissEg_pR = 0.0;
+                dissEg_UnL = 0.0; dissEg_UnR = 0.0;
+                dissEg_TL = 0.0; dissEg_TR = 0.0;
+                for(int i=0; i<nSp-1; ++i){
+                    dissEg_YL[i] = 0.0;
+                    dissEg_YR[i] = 0.0;
+                }
+            }
             // =================================================================
 			
 			
@@ -1269,112 +1116,112 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
             
             
 
-            // // // =================================================================
-			// // // Upwind
-            // // double Unhat = 0.5*(UnL+UnR);
+            // // =================================================================
+			// // Upwind
+            // double Unhat = 0.5*(UnL+UnR);
             
-            // // Unhat -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*(pR-pL);
-			// // Unhat += dt*0.5*(dpdxL/rhoL+dpdxR/rhoR)*dAlpha*nLR[0];
-			// // Unhat += dt*0.5*(dpdyL/rhoL+dpdyR/rhoR)*dAlpha*nLR[1];
-			// // Unhat += dt*0.5*(dpdzL/rhoL+dpdzR/rhoR)*dAlpha*nLR[2];
+            // Unhat -= dAlpha * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR)*(pR-pL);
+			// Unhat += dt*0.5*(dpdxL/rhoL+dpdxR/rhoR)*dAlpha*nLR[0];
+			// Unhat += dt*0.5*(dpdyL/rhoL+dpdyR/rhoR)*dAlpha*nLR[1];
+			// Unhat += dt*0.5*(dpdzL/rhoL+dpdzR/rhoR)*dAlpha*nLR[2];
             
-			// // double mdot = 0.0;
-            // // if(Unhat>=0.0){
-                // // mdot = rhoFL*Unhat;
-            // // }
-            // // else{
-                // // mdot = rhoFR*Unhat;
-            // // }
+			// double mdot = 0.0;
+            // if(Unhat>=0.0){
+                // mdot = rhoFL*Unhat;
+            // }
+            // else{
+                // mdot = rhoFR*Unhat;
+            // }
             
             
 			
-			// // // // in pressure-based
-			// // // mdot -= dAlpha * dt/dLR*(pR-pL);
-			// // // mdot += dt*0.5*(dpdxL+dpdxR)*dAlpha*nLR[0];
-			// // // mdot += dt*0.5*(dpdyL+dpdyR)*dAlpha*nLR[1];
-			// // // mdot += dt*0.5*(dpdzL+dpdzR)*dAlpha*nLR[2];
+			// // // in pressure-based
+			// // mdot -= dAlpha * dt/dLR*(pR-pL);
+			// // mdot += dt*0.5*(dpdxL+dpdxR)*dAlpha*nLR[0];
+			// // mdot += dt*0.5*(dpdyL+dpdyR)*dAlpha*nLR[1];
+			// // mdot += dt*0.5*(dpdzL+dpdzR)*dAlpha*nLR[2];
             
-			// // double pF = 0.5*(pL+pR);
+			// double pF = 0.5*(pL+pR);
 			
 			
-			// // double weiL = (mdot>=0.0 ? 1.0 : 0.0); double weiR = 1.0-weiL;
+			// double weiL = (mdot>=0.0 ? 1.0 : 0.0); double weiR = 1.0-weiL;
 			
-			// // double rhoF = weiL*rhoFL + weiR*rhoFR;
-			// // double uF = weiL*uFL + weiR*uFR;
-			// // double vF = weiL*vFL + weiR*vFR;
-			// // double wF = weiL*wFL + weiR*wFR;
-			// // double HtF = weiL*HtFL + weiR*HtFR;
-			// // double YF[nSp];
-			// // for(int i=0; i<nSp-1; ++i){
-				// // YF[i] = weiL*YFL[i] + weiR*YFR[i];
-			// // }
-			
-			
-			// // double fluxB[nEq];
-			// // // 컨벡티브 B
-			// // fluxB[0] = -( mdot )*area;
-			// // fluxB[1] = -( mdot*uF + pF*nvec[0] )*area;
-			// // fluxB[2] = -( mdot*vF + pF*nvec[1] )*area;
-			// // fluxB[3] = -( mdot*wF + pF*nvec[2] )*area;
-			// // fluxB[4] = -( mdot*HtF )*area;
-			// // for(int i=0; i<nSp-1; ++i){
-				// // fluxB[5+i] = -( mdot*YF[i] )*area;
-			// // }
+			// double rhoF = weiL*rhoFL + weiR*rhoFR;
+			// double uF = weiL*uFL + weiR*uFR;
+			// double vF = weiL*vFL + weiR*vFR;
+			// double wF = weiL*wFL + weiR*wFR;
+			// double HtF = weiL*HtFL + weiR*HtFR;
+			// double YF[nSp];
+			// for(int i=0; i<nSp-1; ++i){
+				// YF[i] = weiL*YFL[i] + weiR*YFR[i];
+			// }
 			
 			
-			// // double mdot_pL = drhodpL*Unhat;
-			// // double mdot_pR = drhodpR*Unhat;
+			// double fluxB[nEq];
+			// // 컨벡티브 B
+			// fluxB[0] = -( mdot )*area;
+			// fluxB[1] = -( mdot*uF + pF*nvec[0] )*area;
+			// fluxB[2] = -( mdot*vF + pF*nvec[1] )*area;
+			// fluxB[3] = -( mdot*wF + pF*nvec[2] )*area;
+			// fluxB[4] = -( mdot*HtF )*area;
+			// for(int i=0; i<nSp-1; ++i){
+				// fluxB[5+i] = -( mdot*YF[i] )*area;
+			// }
+			
+			
+			// double mdot_pL = drhodpL*Unhat;
+			// double mdot_pR = drhodpR*Unhat;
             
-            // // // mdot_pL += dAlpha * dt/dLR;
-            // // // mdot_pR -= dAlpha * dt/dLR;
-            // // if(mdot>=0.0){
-                // // mdot_pL += rhoFL * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
-                // // mdot_pR -= rhoFL * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
-            // // }
-            // // else{
-                // // mdot_pL += rhoFR * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
-                // // mdot_pR -= rhoFR * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
-            // // }
+            // // mdot_pL += dAlpha * dt/dLR;
+            // // mdot_pR -= dAlpha * dt/dLR;
+            // if(mdot>=0.0){
+                // mdot_pL += rhoFL * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
+                // mdot_pR -= rhoFL * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
+            // }
+            // else{
+                // mdot_pL += rhoFR * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
+                // mdot_pR -= rhoFR * dt/dLR*0.5*(1.0/rhoL+1.0/rhoR);
+            // }
             
-			// // double mdot_UnL = rhoF*0.5;
-			// // double mdot_UnR = rhoF*0.5;
+			// double mdot_UnL = rhoF*0.5;
+			// double mdot_UnR = rhoF*0.5;
             
-			// // double mdot_TL = drhodTL*Unhat;
-			// // double mdot_TR = drhodTR*Unhat;
+			// double mdot_TL = drhodTL*Unhat;
+			// double mdot_TR = drhodTR*Unhat;
 			
-			// // double mdot_YL[nSp];
-			// // double mdot_YR[nSp];
-			// // for(int i=0; i<nSp-1; ++i){
-                // // mdot_YL[i] = drhodYL[i]*Unhat;
-                // // mdot_YR[i] = drhodYR[i]*Unhat;
-			// // }
+			// double mdot_YL[nSp];
+			// double mdot_YR[nSp];
+			// for(int i=0; i<nSp-1; ++i){
+                // mdot_YL[i] = drhodYL[i]*Unhat;
+                // mdot_YR[i] = drhodYR[i]*Unhat;
+			// }
 			
-			// // double pF_pL = 0.5;
-			// // double pF_pR = 0.5;
+			// double pF_pL = 0.5;
+			// double pF_pR = 0.5;
 			
-			// // double pF_UnL = 0.0;
-			// // double pF_UnR = 0.0;
-			// // double pF_TL = 0.0;
-			// // double pF_TR = 0.0;
-			// // double pF_YL[nSp];
-			// // double pF_YR[nSp];
-			// // for(int i=0; i<nSp-1; ++i){
-				// // pF_YL[i] = 0.0;
-				// // pF_YR[i] = 0.0;
-			// // }
+			// double pF_UnL = 0.0;
+			// double pF_UnR = 0.0;
+			// double pF_TL = 0.0;
+			// double pF_TR = 0.0;
+			// double pF_YL[nSp];
+			// double pF_YR[nSp];
+			// for(int i=0; i<nSp-1; ++i){
+				// pF_YL[i] = 0.0;
+				// pF_YR[i] = 0.0;
+			// }
 			
             
-			// // double dissEg_pL,dissEg_pR,dissEg_UnL,dissEg_UnR,dissEg_TL,dissEg_TR;
-			// // double dissEg_YL[nSp];
-			// // double dissEg_YR[nSp];
-			// // dissEg_pL = 0.0; dissEg_pR = 0.0;
-			// // dissEg_UnL = 0.0; dissEg_UnR = 0.0;
-			// // dissEg_TL = 0.0; dissEg_TR = 0.0;
-			// // for(int i=0; i<nSp-1; ++i){
-				// // dissEg_YL[i] = 0.0;
-				// // dissEg_YR[i] = 0.0;
-			// // }
-            // // // =================================================================
+			// double dissEg_pL,dissEg_pR,dissEg_UnL,dissEg_UnR,dissEg_TL,dissEg_TR;
+			// double dissEg_YL[nSp];
+			// double dissEg_YR[nSp];
+			// dissEg_pL = 0.0; dissEg_pR = 0.0;
+			// dissEg_UnL = 0.0; dissEg_UnR = 0.0;
+			// dissEg_TL = 0.0; dissEg_TR = 0.0;
+			// for(int i=0; i<nSp-1; ++i){
+				// dissEg_YL[i] = 0.0;
+				// dissEg_YR[i] = 0.0;
+			// }
+            // // =================================================================
 			
 			
             
@@ -1468,6 +1315,27 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
             double weiwR = weiL*(1.0-gamPhiL[3]) + weiR*gamPhiR[3];
             double weiTL = weiL*gamPhiL[4] + weiR*(1.0-gamPhiR[4]);
             double weiTR = weiL*(1.0-gamPhiL[4]) + weiR*gamPhiR[4];
+            double weiYL[nSp], weiYR[nSp];
+			for(int i=0; i<nSp-1; ++i){
+                weiYL[i] = weiL*gamPhiL[5+i] + weiR*(1.0-gamPhiR[5+i]);
+                weiYR[i] = weiL*(1.0-gamPhiL[5+i]) + weiR*gamPhiR[5+i];
+            }
+            
+            // double weipL = weiL;
+            // double weipR = weiR;
+            // double weiuL = weiL;
+            // double weiuR = weiR;
+            // double weivL = weiL;
+            // double weivR = weiR;
+            // double weiwL = weiL;
+            // double weiwR = weiR;
+            // double weiTL = weiL;
+            // double weiTR = weiR;
+            // double weiYL[nSp], weiYR[nSp];
+			// for(int i=0; i<nSp-1; ++i){
+                // weiYL[i] = weiL;
+                // weiYR[i] = weiR;
+            // }
             
             
 			
@@ -1725,36 +1593,14 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
                         // double gamYL = faces[id_gammaYL[j]];
                         // double gamYR = faces[id_gammaYR[j]];
                         
-                        double weiYL = weiL*gamPhiL[5+i] + weiR*(1.0-gamPhiR[5+i]);
-                        double weiYR = weiL*(1.0-gamPhiL[5+i]) + weiR*gamPhiR[5+i];
+                        // double weiYL = weiL*gamPhiL[5+i] + weiR*(1.0-gamPhiR[5+i]);
+                        // double weiYR = weiL*(1.0-gamPhiL[5+i]) + weiR*gamPhiR[5+i];
                         
-						fluxA_LL[iter] += CN_coeff_Y * (mdot*weiYL)*area; 
-						fluxA_LR[iter] += CN_coeff_Y * (mdot*weiYR)*area;
-						fluxA_RR[iter] -= CN_coeff_Y * (mdot*weiYR)*area; 
-						fluxA_RL[iter] -= CN_coeff_Y * (mdot*weiYL)*area;
+						fluxA_LL[iter] += CN_coeff_Y * (mdot*weiYL[i])*area; 
+						fluxA_LR[iter] += CN_coeff_Y * (mdot*weiYR[i])*area;
+						fluxA_RR[iter] -= CN_coeff_Y * (mdot*weiYR[i])*area; 
+						fluxA_RL[iter] -= CN_coeff_Y * (mdot*weiYL[i])*area;
 					}
-					
-					
-					// //=========================
-					// double tmp_weiL = 1.0; double tmp_weiR = 0.0;
-					// if(YF[i] < YL[i]+1.e-50 && YF[i] > YL[i]-1.e-50){
-						// tmp_weiL = 1.0; tmp_weiR = 0.0;
-					// }
-					// else{
-						// tmp_weiL = 0.0; tmp_weiR = 1.0;
-					// }
-					// fluxA_LL[iter] += CN_coeff_Y * (mdot_YL[i]*YF[i])*area; 
-					// fluxA_LR[iter] += CN_coeff_Y * (mdot_YR[i]*YF[i])*area;
-					// fluxA_RR[iter] -= CN_coeff_Y * (mdot_YR[i]*YF[i])*area; 
-					// fluxA_RL[iter] -= CN_coeff_Y * (mdot_YL[i]*YF[i])*area;
-					// if(i==j){
-						// fluxA_LL[iter] += CN_coeff_Y * (mdot*tmp_weiL)*area; 
-						// fluxA_LR[iter] += CN_coeff_Y * (mdot*tmp_weiR)*area;
-						// fluxA_RR[iter] -= CN_coeff_Y * (mdot*tmp_weiR)*area; 
-						// fluxA_RL[iter] -= CN_coeff_Y * (mdot*tmp_weiL)*area;
-					// }
-					// //=========================
-					
 					
 					
 					++iter;
@@ -1906,9 +1752,11 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			
 			vector<bool> bool_zeroGradient(nEq,false);
 			vector<bool> bool_inletOutlet(nEq,false);
+			vector<bool> bool_fixedMean(nEq,false);
 			
 			if(controls.boundaryMap["pressure"][bcName+".type"]=="zeroGradient") bool_zeroGradient[0] = true;
 			if(controls.boundaryMap["pressure"][bcName+".type"]=="inletOutlet") bool_inletOutlet[0] = true;
+			if(controls.boundaryMap["pressure"][bcName+".type"]=="fixedMean") bool_fixedMean[0] = true;
 			
 			if(controls.boundaryMap["velocity"][bcName+".type"]=="zeroGradient") bool_zeroGradient[1] = true;
 			
@@ -1933,7 +1781,7 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 			id_dudx,id_dudy,id_dudz,id_dvdx,id_dvdy,id_dvdz,id_dwdx,id_dwdy,id_dwdz,
 			id_alpha,id_nLRx,id_nLRy,id_nLRz,
 			id_curvature,id_alpha_VF,nCurv,surf_sigma,
-			bool_zeroGradient,bool_inletOutlet,
+			bool_zeroGradient,bool_inletOutlet,bool_fixedMean,
             id_dYdx,id_dYdy,id_dYdz](
 			double* fields, double* cellsL, double* faces, 
 			double* fluxA_LL, double* fluxB_LL) ->int {
@@ -1945,7 +1793,7 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				double dLR = faces[id_dLR]; 
 				double dAlpha = faces[id_alpha];
 				
-				dAlpha = 1.0;
+				// dAlpha = 1.0;
 				
 				
 				double nLR[3];
@@ -1955,7 +1803,11 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				double uL = cellsL[id_u];
 				double vL = cellsL[id_v];
 				double wL = cellsL[id_w];
+				double pL = cellsL[id_p];
 				double rhoL = cellsL[id_rho];
+				double dpdxL = cellsL[id_dpdx];
+				double dpdyL = cellsL[id_dpdy];
+				double dpdzL = cellsL[id_dpdz];
 				double dudxL = cellsL[id_dudx];
 				double dudyL = cellsL[id_dudy];
 				double dudzL = cellsL[id_dudz];
@@ -1986,6 +1838,8 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				double uR = uF;
 				double vR = vF;
 				double wR = wF;
+                
+				double UnL = uL*nvec[0]+vL*nvec[1]+wL*nvec[2];
 				
 				double UnF = uF*nvec[0]+vF*nvec[1]+wF*nvec[2];
 				// double weiL = 1.0; double weiR = 0.0;
@@ -2031,44 +1885,86 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
                 
                 
                 
-				double dp_coeff_Un = dAlpha * dtrho/dLR;
                 
-				// double dp_coeff_thm = 0.5*chi/rhohat/chat;
-				double dp_coeff_thm = 0.0;
+                // {
+                    // UnF -= dAlpha * dt/rhoF/dLR*(pF-pL);
+                    // UnF += dt/rhoF*(dpdxL)*dAlpha*nLR[0];
+                    // UnF += dt/rhoF*(dpdyL)*dAlpha*nLR[1];
+                    // UnF += dt/rhoF*(dpdzL)*dAlpha*nLR[2];
+                    
+                    // double dp_coeff_Un = dAlpha * dt/dLR;
+                    
+                    // fluxA_LL[nEq*0+0] += CN_coeff * (dp_coeff_Un)*area;
+                    // fluxA_LL[nEq*1+0] += CN_coeff * (dp_coeff_Un)*uF*area; 
+                    // fluxA_LL[nEq*2+0] += CN_coeff * (dp_coeff_Un)*vF*area; 
+                    // fluxA_LL[nEq*3+0] += CN_coeff * (dp_coeff_Un)*wF*area; 
+                    // fluxA_LL[nEq*4+0] += CN_coeff * (dp_coeff_Un)*HtF*area; 
+                    // for(int i=0; i<nSp-1; ++i){
+                        // fluxA_LL[nEq*(5+i)+0] += CN_coeff_Y * (dp_coeff_Un)*YF[i]*area; 
+                    // }
+                // }
 				
 				
-				
-			
+                // if(UnF>UnL){
+                    // pF += 0.5*rhoF*(UnF-UnL)*(UnF-UnL);
+                // }
+                // else{
+                    // pF += 0.5*rhoF*(UnF-UnL)*(UnF-UnL);
+                // }
+                // pF -= 0.5*rhoF*(UnF-UnL)*(UnF-UnL);
+            
+            
 				
 				
 				if(
 				bool_zeroGradient[0]==true ||
-				(bool_inletOutlet[0]==true && (uF*nvec[0]+vF*nvec[1]+wF*nvec[2]<0.0))
+				(bool_inletOutlet[0]==true && (uL*nvec[0]+vL*nvec[1]+wL*nvec[2]<0.0))
 				){
-					fluxA_LL[nEq*0+0] += CN_coeff * (drhodpL*UnF)*area; 
-					fluxA_LL[nEq*1+0] += CN_coeff * (drhodpL*UnF*uF + nvec[0])*area; 
-					fluxA_LL[nEq*2+0] += CN_coeff * (drhodpL*UnF*vF + nvec[1])*area; 
-					fluxA_LL[nEq*3+0] += CN_coeff * (drhodpL*UnF*wF + nvec[2])*area; 
-					fluxA_LL[nEq*4+0] += CN_coeff * (drhodpL*UnF*HtF+rhoF*UnF*dHtdpL)*area; 
+                    double tmp_coeff1 = 1.0;
+                    if(bool_fixedMean[0]==true) tmp_coeff1 = 0.5;
+                    
+					fluxA_LL[nEq*0+0] += CN_coeff * tmp_coeff1*(drhodpL*UnF)*area; 
+					fluxA_LL[nEq*1+0] += CN_coeff * tmp_coeff1*(drhodpL*UnF*uF + nvec[0])*area; 
+					fluxA_LL[nEq*2+0] += CN_coeff * tmp_coeff1*(drhodpL*UnF*vF + nvec[1])*area; 
+					fluxA_LL[nEq*3+0] += CN_coeff * tmp_coeff1*(drhodpL*UnF*wF + nvec[2])*area; 
+					fluxA_LL[nEq*4+0] += CN_coeff * tmp_coeff1*(drhodpL*UnF*HtF+rhoF*UnF*dHtdpL)*area; 
 					for(int i=0; i<nSp-1; ++i){
-						fluxA_LL[nEq*(5+i)+0] += CN_coeff_Y * (drhodpL*UnF*YF[i])*area; 
+						fluxA_LL[nEq*(5+i)+0] += CN_coeff_Y * tmp_coeff1*(drhodpL*UnF*YF[i])*area; 
 					}
 					
 				}
 				else{
-					fluxA_LL[nEq*0+0] += CN_coeff * (rhoF*dp_coeff_Un +rhoF*dp_coeff_thm)*area;
-					fluxA_LL[nEq*1+0] += CN_coeff * (rhoF*dp_coeff_Un*uF +rhoF*dp_coeff_thm*uF)*area; 
-					fluxA_LL[nEq*2+0] += CN_coeff * (rhoF*dp_coeff_Un*vF +rhoF*dp_coeff_thm*vF)*area; 
-					fluxA_LL[nEq*3+0] += CN_coeff * (rhoF*dp_coeff_Un*wF +rhoF*dp_coeff_thm*wF)*area; 
-					fluxA_LL[nEq*4+0] += CN_coeff * (rhoF*dp_coeff_Un*HtF +rhoF*dp_coeff_thm*HtF)*area; 
-					for(int i=0; i<nSp-1; ++i){
-						fluxA_LL[nEq*(5+i)+0] += CN_coeff_Y * (rhoF*dp_coeff_Un*YF[i] +rhoF*dp_coeff_thm*YF[i])*area; 
-					}
+                    
+                    // double tmp_coeff1 = 1.0;
+                    // if(bool_fixedMean[0]==true) tmp_coeff1 = 0.5;
+                    
+                    // // pF = 29000.0 - 0.5*rhoF*UnL*UnL;
+                    
+                    // UnF -= dAlpha * dt/rhoF/dLR*(pF-pL);
+                    // UnF += dt/rhoF*(dpdxL)*dAlpha*nLR[0];
+                    // UnF += dt/rhoF*(dpdyL)*dAlpha*nLR[1];
+                    // UnF += dt/rhoF*(dpdzL)*dAlpha*nLR[2];
+                    
+                    // double dp_coeff_Un = dAlpha * dt/dLR;
+                    // double dp_coeff_thm = 0.0;//0.5*chi/chat;
+                    
+					// fluxA_LL[nEq*0+0] += CN_coeff * (dp_coeff_Un + dp_coeff_thm)*area;
+					// fluxA_LL[nEq*1+0] += CN_coeff * (dp_coeff_Un + dp_coeff_thm)*uF*area; 
+					// fluxA_LL[nEq*2+0] += CN_coeff * (dp_coeff_Un + dp_coeff_thm)*vF*area; 
+					// fluxA_LL[nEq*3+0] += CN_coeff * (dp_coeff_Un + dp_coeff_thm)*wF*area; 
+					// fluxA_LL[nEq*4+0] += CN_coeff * (dp_coeff_Un + dp_coeff_thm)*HtF*area; 
+					// for(int i=0; i<nSp-1; ++i){
+						// fluxA_LL[nEq*(5+i)+0] += CN_coeff_Y * (dp_coeff_Un + dp_coeff_thm)*YF[i]*area; 
+					// }
 				}
+                
+                
+                
+                
 				
 				if(
 				bool_zeroGradient[1]==true ||
-				(bool_inletOutlet[1]==true && (uF*nvec[0]+vF*nvec[1]+wF*nvec[2]<0.0))
+				(bool_inletOutlet[1]==true && (uL*nvec[0]+vL*nvec[1]+wL*nvec[2]<0.0))
 				){
 					fluxA_LL[nEq*0+1] += CN_coeff * (rhoF*(nvec[0]))*area; 
 					fluxA_LL[nEq*1+1] += CN_coeff * (rhoF*(nvec[0])*uF+rhoF*UnF)*area; 
@@ -2111,7 +2007,7 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				
 				if(
 				bool_zeroGradient[2]==true ||
-				(bool_inletOutlet[2]==true && (uF*nvec[0]+vF*nvec[1]+wF*nvec[2]<0.0))
+				(bool_inletOutlet[2]==true && (uL*nvec[0]+vL*nvec[1]+wL*nvec[2]<0.0))
 				){
 					fluxA_LL[nEq*0+4] += CN_coeff * (drhodTL*UnF)*area; 
 					fluxA_LL[nEq*1+4] += CN_coeff * (drhodTL*UnF*uF)*area; 
@@ -2126,7 +2022,7 @@ void MASCH_Solver::setTermsFaceLoopFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control&
 				for(int i=0; i<nSp-1; ++i){
 					if(
 					bool_zeroGradient[3+i]==true ||
-					(bool_inletOutlet[3+i]==true && (uF*nvec[0]+vF*nvec[1]+wF*nvec[2]<0.0))
+					(bool_inletOutlet[3+i]==true && (uL*nvec[0]+vL*nvec[1]+wL*nvec[2]<0.0))
 					){
 						fluxA_LL[nEq*0+5+i] += CN_coeff * (drhodYL[i]*UnF)*area; 
 						fluxA_LL[nEq*1+5+i] += CN_coeff * (drhodYL[i]*UnF*uF)*area; 

@@ -98,6 +98,17 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 		string tmp_name = ("mass-fraction-"+species[i]);
 		(*this).setVarible({"cell"},"old "+tmp_name,"","","","scalar");
 	}
+    
+	(*this).setVarible({"cell"},"old2 pressure","","","","scalar");
+	(*this).setVarible({"cell"},"old2 velocity","","","","vector3",
+						{"old2 x-velocity","old2 y-velocity","old2 z-velocity"},{"","",""},{"","",""});
+	(*this).setVarible({"cell"},"old2 temperature","","","","scalar");
+	(*this).setVarible({"cell"},"old2 density","","","","scalar");
+	(*this).setVarible({"cell"},"old2 total-enthalpy","","","","scalar");
+	for(int i=0; i<species.size()-1; ++i){
+		string tmp_name = ("mass-fraction-"+species[i]);
+		(*this).setVarible({"cell"},"old2 "+tmp_name,"","","","scalar");
+	}
 	
 	// 페이스 값 정의
 	(*this).setVarible({"face"},"left pressure","","","","scalar");
@@ -175,16 +186,32 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 	
 	
 	// 셀 평균 플랏팅 관련
-	// (*this).setVarible({"cell"},"mean-pressure","","","","scalar");
-	// (*this).setVarible({"cell"},"mean-x-velocity","","","","scalar");
-	// (*this).setVarible({"cell"},"mean-y-velocity","","","","scalar");
-	// (*this).setVarible({"cell"},"mean-z-velocity","","","","scalar");
-	// (*this).setVarible({"cell"},"mean-temperature","","","","scalar");
+	(*this).setVarible({"cell"},"mean-pressure","","","","scalar");
+	(*this).setVarible({"field"},"total-time-of-mean-pressure","","","","scalar");
+	(*this).setVarible({"cell"},"mean-x-velocity","","","","scalar");
+	(*this).setVarible({"field"},"total-time-of-mean-x-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"mean-y-velocity","","","","scalar");
+	(*this).setVarible({"field"},"total-time-of-mean-y-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"mean-z-velocity","","","","scalar");
+	(*this).setVarible({"field"},"total-time-of-mean-z-velocity","","","","scalar");
+	(*this).setVarible({"cell"},"mean-temperature","","","","scalar");
+	(*this).setVarible({"field"},"total-time-of-mean-temperature","","","","scalar");
 	(*this).setVarible({"cell"},"mean-density","","","","scalar");
 	(*this).setVarible({"field"},"total-time-of-mean-density","","","","scalar");
     
+	// (*this).setVarible({"cell"},"mean-liquid-density","","","","scalar");
+	// (*this).setVarible({"field"},"total-time-of-mean-liquid-density","","","","scalar");
+	// (*this).setVarible({"cell"},"mean-liquid-velocity","","","","scalar");
+	// (*this).setVarible({"field"},"total-time-of-mean-liquid-velocity","","","","scalar");
+    
     
 	for(int i=0; i<species.size()-1; ++i){
+        
+        (*this).setVarible({"cell"},"mean-mass-fraction-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-mean-mass-fraction-"+species[i],"","","","scalar");
+        (*this).setVarible({"cell"},"mean-volume-fraction-"+species[i],"","","","scalar");
+        (*this).setVarible({"field"},"total-time-of-mean-volume-fraction-"+species[i],"","","","scalar");
+        
         (*this).setVarible({"cell"},"fvm-surface-area-"+species[i],"","","","scalar");
         (*this).setVarible({"cell"},"fvm-volume-"+species[i],"","","","scalar");
         
@@ -231,9 +258,29 @@ void MASCH_Control::setVariablesUDF(vector<string>& species){
 						{"","",""});
 	(*this).setVarible({"parcel"},"temperature","","","","scalar");
 	(*this).setVarible({"parcel"},"number-of-parcel","","","","scalar");
+	(*this).setVarible({"parcel"},"time","","","","scalar");
 	(*this).setVarible({"field"},"parcel-injection-accum-time","","","","scalar");
 	(*this).setVarible({"field"},"time-step-parcels","","","","scalar");
 	
+    
+    
+    
+    // 포인트 min max
+	(*this).setVarible({"point"},"maximum x-velocity","","","","scalar");
+	(*this).setVarible({"point"},"minimum x-velocity","","","","scalar");
+	(*this).setVarible({"point"},"maximum y-velocity","","","","scalar");
+	(*this).setVarible({"point"},"minimum y-velocity","","","","scalar");
+	(*this).setVarible({"point"},"maximum z-velocity","","","","scalar");
+	(*this).setVarible({"point"},"minimum z-velocity","","","","scalar");
+    
+	(*this).setVarible({"point"},"maximum temperature","","","","scalar");
+	(*this).setVarible({"point"},"minimum temperature","","","","scalar");
+    
+	for(int i=0; i<species.size()-1; ++i){
+        (*this).setVarible({"point"},"maximum mass-fraction-"+species[i],"","","","scalar");
+        (*this).setVarible({"point"},"minimum mass-fraction-"+species[i],"","","","scalar");
+        
+    }
 	
 	
 	

@@ -270,8 +270,8 @@ public:
 	vector<string> nameParcels;
 	vector<int> calcDPM_iSeg;
 	vector<pair<int,int>> idSetLagrangianEulerian;
-	int nChangeParcelsE2L, nToProcsRishtParcels, nInsideParcels;
-	int nReflectParcels, nEscapeParcels, nDeleteParcels;
+	int nChangeParcelsE2L=0, nToProcsRishtParcels=0, nInsideParcels=0;
+	int nReflectParcels=0, nEscapeParcels=0, nDeleteParcels=0;
 	void show_dpm_information();
 	
 	// 리미터 관련
@@ -279,14 +279,16 @@ public:
     
     
     // patch 바운더리 관련
-    vector<double> timeVaryingMappedFixedValueNCycle;
+    // vector<double> timeVaryingMappedFixedValueNCycle;
     vector<double> timeVaryingMappedFixedValueTimeCycle;
-    vector<double> timeVaryingMappedFixedValueTime1;
-    vector<double> timeVaryingMappedFixedValueTime2;
-    vector<int> timeVaryingMappedFixedValueTimeOrder;
+    // vector<double> timeVaryingMappedFixedValueTime1;
+    // vector<double> timeVaryingMappedFixedValueTime2;
+    // vector<int> timeVaryingMappedFixedValueTimeOrder;
+    vector<int> timeVaryingMappedFixedValueTimeOrder1;
+    // vector<int> timeVaryingMappedFixedValueTimeOrder2;
     vector<vector<double>> timeVaryingMappedFixedValueTime;
-    vector<vector<double>> timeVaryingMappedFixedValueValue1;
-    vector<vector<double>> timeVaryingMappedFixedValueValue2;
+    // vector<vector<double>> timeVaryingMappedFixedValueValue1;
+    // vector<vector<double>> timeVaryingMappedFixedValueValue2;
     vector<int> timeVaryingMappedFixedValueValueIter;
     vector<vector<string>> timeVaryingMappedFixedValueFileName;
     

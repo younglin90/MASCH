@@ -24,6 +24,8 @@ vector<bool>& boolCellRefine,
 vector<bool>& boolCellUnrefine,
 vector<bool>& boolCellPreserved
 ){
+    
+	MASCH_Load load;
 	
 	int rank = MPI::COMM_WORLD.Get_rank();
 	int size = MPI::COMM_WORLD.Get_size();
@@ -35,6 +37,26 @@ vector<bool>& boolCellPreserved
 		maxUnrefineCellPerBlockAMR = 1000000;
 		if(rank==0) cout << "#WARNING : no seraching, AMR.maxUnrefineCellPerBlockAMR" << endl;
 	}
+    
+    
+    string sRegionType;
+    vector<double> boxMin(3,-1.e12), boxMax(3,1.e12);
+    if(controls.dynamicMeshMap.find("AMR.region.type")==controls.dynamicMeshMap.end()){
+        sRegionType = "box";
+        if(rank==0) cout << "#WARNING : no seraching, AMR.region.type" << endl;
+    }
+    else{
+        if(controls.dynamicMeshMap["AMR.region.type"]=="box"){
+            vector<string> sboxMin = load.extractVector(controls.dynamicMeshMap["AMR.region.min"]);
+            vector<string> sboxMax = load.extractVector(controls.dynamicMeshMap["AMR.region.max"]);
+            boxMin.clear(); boxMax.clear();
+            for(auto& item : sboxMin) boxMin.push_back(stod(item));
+            for(auto& item : sboxMax) boxMax.push_back(stod(item));
+        }
+        else{
+            if(rank==0) cout << "#WARNING : no seraching, AMR.region.type" << endl;
+        }
+    }
 	
 	// 인디케이터 값 초기화
 	int nIndi = indicatorAMR_id.size();
@@ -62,7 +84,10 @@ vector<bool>& boolCellPreserved
 	}
 	
 	
-	// int nRefineCellPerBlockAMR = 0;
+	// // int nRefineCellPerBlockAMR = 0;
+    // std::random_device rd;
+    // std::default_random_engine eng(rd());
+    // std::uniform_real_distribution<double> distr(0.0, 1.0);
 
 	for(int i=0; i<mesh.cells.size(); ++i){
 		auto& cell = mesh.cells[i];
@@ -91,6 +116,26 @@ vector<bool>& boolCellPreserved
 		if(var.cells[i][id_vol] < minVolume_AMR) boolCellRefine[i] = false;
 		if(cell.level >= maxLevel) boolCellRefine[i] = false;
 		if(cell.level < 0) boolCellRefine[i] = false;
+        
+        if(cell.x<boxMin[0] || cell.x>boxMax[0]) boolCellRefine[i] = false;
+        if(cell.y<boxMin[1] || cell.y>boxMax[1]) boolCellRefine[i] = false;
+        if(cell.z<boxMin[2] || cell.z>boxMax[2]) boolCellRefine[i] = false;
+        
+        
+        // boolCellPreserved[i] = false;
+        // boolCellRefine[i] = false;
+        // if(distr(eng) > 0.9){
+            // boolCellRefine[i] = true;
+            // boolCellUnrefine[i] = false;
+            // boolCellPreserved[i] = true;
+        // }
+        
+        // boolCellUnrefine[i] = false;
+        // if(distr(eng) > 0.4){
+            // boolCellRefine[i] = false;
+            // boolCellUnrefine[i] = true;
+            // boolCellPreserved[i] = true;
+        // }
 		
 		// if(nRefineCellPerBlockAMR > maxRefineCellPerBlockAMR) {
 			// boolCellRefine[i] = false;
@@ -409,6 +454,7 @@ vector<bool>& boolCellPreserved
 	int nRefineCellPerBlockAMR = 0;
 	int nUnrefineCellPerBlockAMR = 0;
 	for(int i=0; i<mesh.cells.size(); ++i){
+        auto& cell = mesh.cells[i];
 		if(var.cells[i][id_vol] < minVolume_AMR) boolCellRefine[i] = false;
 		// if(var.cells[i][id_vol] < minVolume_AMR) boolCellUnrefine[i] = false;
 		
@@ -417,6 +463,11 @@ vector<bool>& boolCellPreserved
 		if(boolCellRefine[i]==true) ++nRefineCellPerBlockAMR;
 		if(nRefineCellPerBlockAMR > maxRefineCellPerBlockAMR) boolCellRefine[i] = false;
 		
+        
+        if(cell.x<boxMin[0] || cell.x>boxMax[0]) boolCellRefine[i] = false;
+        if(cell.y<boxMin[1] || cell.y>boxMax[1]) boolCellRefine[i] = false;
+        if(cell.z<boxMin[2] || cell.z>boxMax[2]) boolCellRefine[i] = false;
+        
 	} 
 	
 	
@@ -550,9 +601,17 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 		mesh.repartitioning(cell_ip, maxLevel, to_new_cell_id, parcel_ip);
 		// if(rank==0) cout << "BB" << endl;
 		
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start gemetric only cell xyz" << endl;
 		controls.setGeometricOnlyCell_xyz(mesh);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| end gemetric only cell xyz" << endl;
 		
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset variables" << endl;
 		controls.resetVariableArray(mesh, var, cell_ip, to_new_cell_id, parcel_ip, "repart");
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| end reset variables" << endl;
 	}
 	
 	
@@ -564,16 +623,56 @@ void MASCH_Poly_AMR_Builder::polyAMR(
 	( (iter+1) %
 		stoi(controls.dynamicMeshMap["AMR.intervalRepart"]) == 0)
 	){
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values1" << endl;
 		controls.setGeometric(mesh, var);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values2" << endl;
 		var.setSparCSR(mesh, controls);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values3" << endl;
 		solver.calcGradient.init(mesh, controls, var);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values4" << endl;
 		
 		solver.updateProcRightCellPrimValues(mesh, controls, var, 0);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values5" << endl;
 		solver.updateCellAddiValues(mesh, controls, var, 0);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values6" << endl;
 		solver.updateProcRightCellAddiValues(mesh, controls, var, 0);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values7" << endl;
+        
+        // ======================================
+        solver.calcBoundFacePrimVal.clear();
+        
+        // controls.timeVaryingMappedFixedValueNCycle.clear();
+        controls.timeVaryingMappedFixedValueTimeCycle.clear();
+        // controls.timeVaryingMappedFixedValueTime1.clear();
+        // controls.timeVaryingMappedFixedValueTime2.clear();
+        controls.timeVaryingMappedFixedValueTimeOrder1.clear();
+        // controls.timeVaryingMappedFixedValueTimeOrder2.clear();
+        controls.timeVaryingMappedFixedValueTime.clear();
+        // controls.timeVaryingMappedFixedValueValue1.clear();
+        // controls.timeVaryingMappedFixedValueValue2.clear();
+        controls.timeVaryingMappedFixedValueFileName.clear();
+        controls.timeVaryingMappedFixedValueValueIter.clear();
+        
+        solver.setBoundaryFunctions(mesh, controls, var);
+        // ======================================
+        
 		solver.updateBoundaryFacePrimValues(mesh, controls, var, 0);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values8" << endl;
 		solver.gradientTerms(mesh, controls, var, 0);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values9" << endl;
 		solver.updateProcRightCellGradValues(mesh, controls, var, 0);
+        // MPI_Barrier(MPI_COMM_WORLD);
+		// if(rank==0) cout << "| start reset values10" << endl;
+        
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 		

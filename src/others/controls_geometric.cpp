@@ -27,6 +27,10 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 	int id_xRF = controls.getId_faceVar("x distance of between right cell and face");
 	int id_yRF = controls.getId_faceVar("y distance of between right cell and face");
 	int id_zRF = controls.getId_faceVar("z distance of between right cell and face");
+    
+	int id_xaLR = controls.getId_faceVar("x average of between left cell and right cell");
+	int id_yaLR = controls.getId_faceVar("y average of between left cell and right cell");
+	int id_zaLR = controls.getId_faceVar("z average of between left cell and right cell");
 	
 	int id_xSkew = controls.getId_faceVar("x skewness");
 	int id_ySkew = controls.getId_faceVar("y skewness");
@@ -184,6 +188,9 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			var.faces[i][id_xRF] = face.x - mesh.cells[iR].x;
 			var.faces[i][id_yRF] = face.y - mesh.cells[iR].y;
 			var.faces[i][id_zRF] = face.z - mesh.cells[iR].z;
+			var.faces[i][id_xaLR] = 0.5*(mesh.cells[iR].x + mesh.cells[iL].x);
+			var.faces[i][id_yaLR] = 0.5*(mesh.cells[iR].y + mesh.cells[iL].y);
+			var.faces[i][id_zaLR] = 0.5*(mesh.cells[iR].z + mesh.cells[iL].z);
 			
 			double dxFP = face.x-mesh.cells[iL].x;
 			double dyFP = face.y-mesh.cells[iL].y;
@@ -274,6 +281,10 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			// var.faces[i][id_xRF] = face.x - mesh.cells[iR].x;
 			// var.faces[i][id_yRF] = face.y - mesh.cells[iR].y;
 			// var.faces[i][id_zRF] = face.z - mesh.cells[iR].z;
+            
+			var.faces[i][id_xaLR] = face.x;//0.5*(face.x + mesh.cells[iL].x);
+			var.faces[i][id_yaLR] = face.y;//0.5*(face.y + mesh.cells[iL].y);
+			var.faces[i][id_zaLR] = face.z;//0.5*(face.z + mesh.cells[iL].z);
 			
 			double dxFP = face.x-mesh.cells[iL].x;
 			double dyFP = face.y-mesh.cells[iL].y;
@@ -329,6 +340,10 @@ void MASCH_Control::setGeometric(MASCH_Mesh& mesh, MASCH_Variables& var){
 			var.faces[i][id_xLF] = face.x - mesh.cells[iL].x;
 			var.faces[i][id_yLF] = face.y - mesh.cells[iL].y;
 			var.faces[i][id_zLF] = face.z - mesh.cells[iL].z;
+            
+			var.faces[i][id_xaLR] = face.x;//0.5*(face.x + mesh.cells[iL].x);
+			var.faces[i][id_yaLR] = face.x;//0.5*(face.y + mesh.cells[iL].y);
+			var.faces[i][id_zaLR] = face.x;//0.5*(face.z + mesh.cells[iL].z);
 		}
 	}
 	

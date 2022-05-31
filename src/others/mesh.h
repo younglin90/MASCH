@@ -41,10 +41,14 @@ public:
 	
 	// vector<double> var;
 	
-	vector<int> istencil;
+	vector<int> iStencils;
+	vector<int> recv_iStencils;
 	
 	// MPI 연결 포인트
 	vector<pair<int,int>> connPoints;
+    
+    
+    
 };
 
 

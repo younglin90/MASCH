@@ -177,7 +177,7 @@ void MASCH_Solver::solveAMGCL(
 		
 		
 		Solver::params prm;
-		
+		 
 		// prm.precond.direct_coarse = true;
 		// prm.precond.npre = 1;
 		// prm.precond.npost = 5;
@@ -193,7 +193,7 @@ void MASCH_Solver::solveAMGCL(
 		// // // prm.solver.s = 8;
 		// // // prm.solver.omega = 0.7;
 		prm.solver.maxiter = 50;//1000;
-		prm.solver.tol = 1.e-7;
+		prm.solver.tol = 1.e-8;
 		// // // prm.solver.ns_search = true;
 		// // // prm.solver.replacement = true;
 		// // // prm.solver.smoothing = true;

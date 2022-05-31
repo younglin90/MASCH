@@ -4,9 +4,28 @@ invwall {
 viswall {
 	type = zeroGradient;
 }
-suboutlet {
+inlet{
+	type = zeroGradient; ////fixedMean; //fixedValue;
+}
+outlet {
+	type = switchMach;
+	value = 140000.0; 
+}
+mixinlet {
+	type = zeroGradient;
+
+
+//        type = timeVaryingMappedFixedValue;
+//        file = (1 2 3 4 5);
+//        time = (0.0 0.25e-5 0.5e-5 0.75e-5 0.10e-5); //(0.0 2.5e-5 5.e-5 7.5e-5 10.e-5);
+//        timeCycle = 1.25e-5; //12.5e-5;
+
+
+
+}
+liqinlet {
 	type = zeroGradient;
 }
-subinlet {
+function {
 	type = zeroGradient;
 }

@@ -101,6 +101,11 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 	int id_xLR = controls.getId_faceVar("x distance of between left and right cell");
 	int id_yLR = controls.getId_faceVar("y distance of between left and right cell");
 	int id_zLR = controls.getId_faceVar("z distance of between left and right cell");
+    
+    
+	int id_xaLR = controls.getId_faceVar("x average of between left cell and right cell");
+	int id_yaLR = controls.getId_faceVar("y average of between left cell and right cell");
+	int id_zaLR = controls.getId_faceVar("z average of between left cell and right cell");
 	
 	int id_xLF = controls.getId_faceVar("x distance of between left cell and face");
 	int id_yLF = controls.getId_faceVar("y distance of between left cell and face");
@@ -129,8 +134,11 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 	
 	using funcType = double(MASCH_NVD::*)(double,double,double,double,double,double);
 	vector<funcType> NVD_scheme;
+    vector<bool> boolLimiterMLP;
+    
 	{
 		string type = controls.fvSchemeMap["highOrderScheme.p"];
+        string sMLP = controls.fvSchemeMap["highOrderScheme.MLP.p"];
 		{
 			if(type=="minmod") { NVD_scheme.push_back(&MASCH_NVD::minmod); }
 			else if(type=="vanLeer") { NVD_scheme.push_back(&MASCH_NVD::vanLeer); }
@@ -152,10 +160,21 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 			// else if(type=="SAISH") { NVD_scheme.push_back(&MASCH_NVD::SAISH); }
 			// else if(type=="MSTACS") { NVD_scheme.push_back(&MASCH_NVD::MSTACS); }
 			else{ NVD_scheme.push_back(&MASCH_NVD::none); }
+            
+            
+            if(sMLP=="yes") { boolLimiterMLP.push_back(true); }
+            else if(sMLP=="no") { boolLimiterMLP.push_back(false);}
+            else { 
+                boolLimiterMLP.push_back(false); 
+                cout << "#WARNING, not defined highOrderScheme.MLP.p" << endl; 
+            }
+            
+            
 		}
 	}
 	{
 		vector<string> types = load.extractVector(controls.fvSchemeMap["highOrderScheme.U"]);
+		vector<string> sMLPs = load.extractVector(controls.fvSchemeMap["highOrderScheme.MLP.U"]);
 		for(int i=0; i<types.size(); ++i){
 			string type = types[i];
 			if(type=="minmod") { NVD_scheme.push_back(&MASCH_NVD::minmod); }
@@ -178,10 +197,21 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 			// else if(type=="SAISH") { NVD_scheme.push_back(&MASCH_NVD::SAISH); }
 			// else if(type=="MSTACS") { NVD_scheme.push_back(&MASCH_NVD::MSTACS); }
 			else{ NVD_scheme.push_back(&MASCH_NVD::none); }
+            
+            
+            string sMLP = sMLPs[i];
+            if(sMLP=="yes") { boolLimiterMLP.push_back(true); }
+            else if(sMLP=="no") { boolLimiterMLP.push_back(false);}
+            else { 
+                boolLimiterMLP.push_back(false); 
+                cout << "#WARNING, not defined highOrderScheme.MLP.U" << endl; 
+            }
+            
 		}
 	}
 	{
 		string type = controls.fvSchemeMap["highOrderScheme.T"];
+		string sMLP = controls.fvSchemeMap["highOrderScheme.MLP.T"];
 		{
 			if(type=="minmod") { NVD_scheme.push_back(&MASCH_NVD::minmod); }
 			else if(type=="vanLeer") { NVD_scheme.push_back(&MASCH_NVD::vanLeer); }
@@ -203,33 +233,45 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 			// else if(type=="SAISH") { NVD_scheme.push_back(&MASCH_NVD::SAISH); }
 			// else if(type=="MSTACS") { NVD_scheme.push_back(&MASCH_NVD::MSTACS); }
 			else{ NVD_scheme.push_back(&MASCH_NVD::none); }
+            
+            
+            if(sMLP=="yes") { boolLimiterMLP.push_back(true); }
+            else if(sMLP=="no") { boolLimiterMLP.push_back(false);}
+            else { 
+                boolLimiterMLP.push_back(false); 
+                cout << "#WARNING, not defined highOrderScheme.MLP.T" << endl; 
+            }
+            
+            
 		}
 	}
 	{
 		vector<string> types = load.extractVector(controls.fvSchemeMap["highOrderScheme.Y"]);
-		for(int i=0; i<types.size(); ++i){
-			string type = types[i];
-			if(type=="minmod") { NVD_scheme.push_back(&MASCH_NVD::minmod); }
-			else if(type=="vanLeer") { NVD_scheme.push_back(&MASCH_NVD::vanLeer); }
-			else if(type=="QUICK") { NVD_scheme.push_back(&MASCH_NVD::QUICK); }
-			else if(type=="boundedCD") { NVD_scheme.push_back(&MASCH_NVD::boundedCD); }
-			else if(type=="OSHER") { NVD_scheme.push_back(&MASCH_NVD::OSHER); }
-			else if(type=="SMART") { NVD_scheme.push_back(&MASCH_NVD::SMART); }
-			else if(type=="modifiedSMART") { NVD_scheme.push_back(&MASCH_NVD::modifiedSMART); }
-			else if(type=="STOIC") { NVD_scheme.push_back(&MASCH_NVD::STOIC); }
-			else if(type=="modifiedSTOIC") { NVD_scheme.push_back(&MASCH_NVD::modifiedSTOIC); }
-			else if(type=="MUSCL") { NVD_scheme.push_back(&MASCH_NVD::MUSCL); }
-			else if(type=="SUPERBEE") { NVD_scheme.push_back(&MASCH_NVD::SUPERBEE); }
-			else if(type=="modifiedSUPERBEE") { NVD_scheme.push_back(&MASCH_NVD::modifiedSUPERBEE); }
-			
-			else if(type=="HRIC") { NVD_scheme.push_back(&MASCH_NVD::HRIC); }
-			else if(type=="CICSAM") { NVD_scheme.push_back(&MASCH_NVD::CICSAM); }
-			else if(type=="STACS") { NVD_scheme.push_back(&MASCH_NVD::STACS); }
-			else if(type=="FBICS") { NVD_scheme.push_back(&MASCH_NVD::FBICS); }
-			else if(type=="SAISH") { NVD_scheme.push_back(&MASCH_NVD::SAISH); }
-			else if(type=="MSTACS") { NVD_scheme.push_back(&MASCH_NVD::MSTACS); }
-			else{ NVD_scheme.push_back(&MASCH_NVD::none); }
-		}
+        if(nSp>1){
+            for(int i=0; i<types.size(); ++i){
+                string type = types[i];
+                if(type=="minmod") { NVD_scheme.push_back(&MASCH_NVD::minmod); }
+                else if(type=="vanLeer") { NVD_scheme.push_back(&MASCH_NVD::vanLeer); }
+                else if(type=="QUICK") { NVD_scheme.push_back(&MASCH_NVD::QUICK); }
+                else if(type=="boundedCD") { NVD_scheme.push_back(&MASCH_NVD::boundedCD); }
+                else if(type=="OSHER") { NVD_scheme.push_back(&MASCH_NVD::OSHER); }
+                else if(type=="SMART") { NVD_scheme.push_back(&MASCH_NVD::SMART); }
+                else if(type=="modifiedSMART") { NVD_scheme.push_back(&MASCH_NVD::modifiedSMART); }
+                else if(type=="STOIC") { NVD_scheme.push_back(&MASCH_NVD::STOIC); }
+                else if(type=="modifiedSTOIC") { NVD_scheme.push_back(&MASCH_NVD::modifiedSTOIC); }
+                else if(type=="MUSCL") { NVD_scheme.push_back(&MASCH_NVD::MUSCL); }
+                else if(type=="SUPERBEE") { NVD_scheme.push_back(&MASCH_NVD::SUPERBEE); }
+                else if(type=="modifiedSUPERBEE") { NVD_scheme.push_back(&MASCH_NVD::modifiedSUPERBEE); }
+                
+                else if(type=="HRIC") { NVD_scheme.push_back(&MASCH_NVD::HRIC); }
+                else if(type=="CICSAM") { NVD_scheme.push_back(&MASCH_NVD::CICSAM); }
+                else if(type=="STACS") { NVD_scheme.push_back(&MASCH_NVD::STACS); }
+                else if(type=="FBICS") { NVD_scheme.push_back(&MASCH_NVD::FBICS); }
+                else if(type=="SAISH") { NVD_scheme.push_back(&MASCH_NVD::SAISH); }
+                else if(type=="MSTACS") { NVD_scheme.push_back(&MASCH_NVD::MSTACS); }
+                else{ NVD_scheme.push_back(&MASCH_NVD::none); }
+            }
+        }
 	}
 	
 	if(NVD_scheme.size() != 5+nSp-1) cout << "#WARNING : NVD_scheme not matching nEq" << endl;
@@ -281,9 +323,19 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 			id_xLNv,id_yLNv,id_zLNv,id_xRNv,id_yRNv,id_zRNv,
 			id_lim_p,id_lim_u,id_lim_v,id_lim_w,
 			id_xLF,id_yLF,id_zLF,id_xRF,id_yRF,id_zRF,
-            id_gammaYL,id_gammaYR](
-			double* fields, double* cellsL, double* cellsR, double* faces)->int{
+            id_gammaYL,id_gammaYR,
+            boolLimiterMLP,
+            id_xaLR,id_yaLR,id_zaLR](
+			double* fields, double* cellsL, double* cellsR, double* faces,
+            // double* cellL_xyz, double* cellR_xyz,
+            vector<vector<double>>& point_xyz, 
+            vector<vector<double>>& point_max,
+            vector<vector<double>>& point_min)->int{
+                
 				auto NVD_scheme_i = NVD_scheme.data();
+                auto point_max_i = point_max.data();
+                auto point_min_i = point_min.data();
+                
 				double nvec[3];
 				nvec[0] = faces[id_nx]; nvec[1] = faces[id_ny]; nvec[2] = faces[id_nz];
 				double area = faces[id_area];
@@ -297,6 +349,8 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 				RNv[0] = faces[id_xRNv]; RNv[1] = faces[id_yRNv]; RNv[2] = faces[id_zRNv];
 				double xyzLR[3];
 				xyzLR[0] = faces[id_xLR]; xyzLR[1] = faces[id_yLR]; xyzLR[2] = faces[id_zLR];
+				double axyzLR[3];
+				axyzLR[0] = faces[id_xaLR]; axyzLR[1] = faces[id_yaLR]; axyzLR[2] = faces[id_zaLR];
 				
 				double xyzLF[3],xyzRF[3];
 				xyzLF[0] = faces[id_xLF]; xyzLF[1] = faces[id_yLF]; xyzLF[2] = faces[id_zLF];
@@ -400,37 +454,39 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 				
 				
 				
-				cellsL[id_lim_p] = min(cellsL[id_lim_p], 
-					solver.limiter_MLP(pL,pL_max,pL_min, 
-						dpdxL*xyzLF[0] + dpdyL*xyzLF[1] + dpdzL*xyzLF[2], eta));
-				cellsR[id_lim_p] = min(cellsR[id_lim_p], 
-					solver.limiter_MLP(pR,pR_max,pR_min, 
-						dpdxR*xyzRF[0] + dpdyR*xyzRF[1] + dpdzR*xyzRF[2], eta));
+				// cellsL[id_lim_p] = min(cellsL[id_lim_p], 
+					// solver.limiter_MLP(pL,pL_max,pL_min, 
+						// dpdxL*xyzLF[0] + dpdyL*xyzLF[1] + dpdzL*xyzLF[2], eta));
+				// cellsR[id_lim_p] = min(cellsR[id_lim_p], 
+					// solver.limiter_MLP(pR,pR_max,pR_min, 
+						// dpdxR*xyzRF[0] + dpdyR*xyzRF[1] + dpdzR*xyzRF[2], eta));
 						
-				cellsL[id_lim_u] = min(cellsL[id_lim_u], 
-					solver.limiter_MLP(uL,uL_max,uL_min, 
-						dudxL*xyzLF[0] + dudyL*xyzLF[1] + dudzL*xyzLF[2], eta));
-				cellsR[id_lim_u] = min(cellsR[id_lim_u], 
-					solver.limiter_MLP(uR,uR_max,uR_min, 
-						dudxR*xyzRF[0] + dudyR*xyzRF[1] + dudzR*xyzRF[2], eta));
+				// cellsL[id_lim_u] = min(cellsL[id_lim_u], 
+					// solver.limiter_MLP(uL,uL_max,uL_min, 
+						// dudxL*xyzLF[0] + dudyL*xyzLF[1] + dudzL*xyzLF[2], eta));
+				// cellsR[id_lim_u] = min(cellsR[id_lim_u], 
+					// solver.limiter_MLP(uR,uR_max,uR_min, 
+						// dudxR*xyzRF[0] + dudyR*xyzRF[1] + dudzR*xyzRF[2], eta));
 						
-				cellsL[id_lim_v] = min(cellsL[id_lim_v], 
-					solver.limiter_MLP(vL,vL_max,vL_min, 
-						dvdxL*xyzLF[0] + dvdyL*xyzLF[1] + dvdzL*xyzLF[2], eta));
-				cellsR[id_lim_v] = min(cellsR[id_lim_v], 
-					solver.limiter_MLP(vR,vR_max,vR_min, 
-						dvdxR*xyzRF[0] + dvdyR*xyzRF[1] + dvdzR*xyzRF[2], eta));
+				// cellsL[id_lim_v] = min(cellsL[id_lim_v], 
+					// solver.limiter_MLP(vL,vL_max,vL_min, 
+						// dvdxL*xyzLF[0] + dvdyL*xyzLF[1] + dvdzL*xyzLF[2], eta));
+				// cellsR[id_lim_v] = min(cellsR[id_lim_v], 
+					// solver.limiter_MLP(vR,vR_max,vR_min, 
+						// dvdxR*xyzRF[0] + dvdyR*xyzRF[1] + dvdzR*xyzRF[2], eta));
 						
-				cellsL[id_lim_w] = min(cellsL[id_lim_w], 
-					solver.limiter_MLP(wL,wL_max,wL_min, 
-						dwdxL*xyzLF[0] + dwdyL*xyzLF[1] + dwdzL*xyzLF[2], eta));
-				cellsR[id_lim_w] = min(cellsR[id_lim_w], 
-					solver.limiter_MLP(wR,wR_max,wR_min, 
-						dwdxR*xyzRF[0] + dwdyR*xyzRF[1] + dwdzR*xyzRF[2], eta));
+				// cellsL[id_lim_w] = min(cellsL[id_lim_w], 
+					// solver.limiter_MLP(wL,wL_max,wL_min, 
+						// dwdxL*xyzLF[0] + dwdyL*xyzLF[1] + dwdzL*xyzLF[2], eta));
+				// cellsR[id_lim_w] = min(cellsR[id_lim_w], 
+					// solver.limiter_MLP(wR,wR_max,wR_min, 
+						// dwdxR*xyzRF[0] + dwdyR*xyzRF[1] + dwdzR*xyzRF[2], eta));
 						
-				
+                double phi_max[5],phi_min[5];
 		
 				for(int ii=0; ii<2; ++ii){
+                    
+                    double dudxyz[3], dvdxyz[3], dwdxyz[3];
 				
 					double phiL2[5+nSp], phiL1[5+nSp], phiR1[5+nSp];
 					// double tmp_limGrad = 1.0;
@@ -520,6 +576,19 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 							// phiL1[tmp_i] = max(0.0,min(1.0,phiL1[tmp_i]));
 							// phiR1[tmp_i] = max(0.0,min(1.0,phiR1[tmp_i]));
 						// }
+                        
+                        phi_max[0] = pL_max; phi_min[0] = pL_min;
+                        phi_max[1] = uL_max; phi_min[1] = uL_min;
+                        phi_max[2] = vL_max; phi_min[2] = vL_min;
+                        phi_max[3] = wL_max; phi_min[3] = wL_min;
+                        phi_max[4] = TL_max; phi_min[4] = TL_min;
+                        
+                        
+                        dudxyz[0] = dudxL; dudxyz[1] = dudyL; dudxyz[2] = dudzL;
+                        dvdxyz[0] = dvdxL; dvdxyz[1] = dvdyL; dvdxyz[2] = dvdzL;
+                        dwdxyz[0] = dwdxL; dwdxyz[1] = dwdyL; dwdxyz[2] = dwdzL;
+                        
+                        
 						
 					}
 					else{
@@ -605,21 +674,300 @@ void MASCH_Solver::setHOReconFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& contr
 							// phiL1[tmp_i] = max(0.0,min(1.0,phiL1[tmp_i]));
 							// phiR1[tmp_i] = max(0.0,min(1.0,phiR1[tmp_i]));
 						// }
+                        
+                        phi_max[0] = pR_max; phi_min[0] = pR_min;
+                        phi_max[1] = uR_max; phi_min[1] = uR_min;
+                        phi_max[2] = vR_max; phi_min[2] = vR_min;
+                        phi_max[3] = wR_max; phi_min[3] = wR_min;
+                        phi_max[4] = TR_max; phi_min[4] = TR_min;
+                        
+                        
+                        dudxyz[0] = dudxR; dudxyz[1] = dudyR; dudxyz[2] = dudzR;
+                        dvdxyz[0] = dvdxR; dvdxyz[1] = dvdyR; dvdxyz[2] = dvdzR;
+                        dwdxyz[0] = dwdxR; dwdxyz[1] = dwdyR; dwdxyz[2] = dwdzR;
 						
 						
 					}
-					 
+					
+					// cout << NVD_scheme.size() << endl;
+                    
+                    // w_c = 0 이어야지 sharp 해짐
+                    double w_c1 = min(abs(pL_min)/(abs(pR_max)+1.e-200),abs(pR_min)/(abs(pL_max)+1.e-200));
+                    // double w_c = min(abs(pL)/(abs(pR)+1.e-200),abs(pR)/(abs(pL)+1.e-200));
+                    // w_c1 = 1.0 - w_c1*w_c1*w_c1;
+                    w_c1 = 1.0 - pow(w_c1,4.0);
+                    w_c1 = max(0.0,min(1.0,w_c1));
+                    
+                    
+                    
+                    w_c1 = 0.0;
+                    
+                    
+                    
 					for(int i=0; i<5; ++i) {
-                        double tmp_gam = (solver.NVD.*NVD_scheme_i[i])(phiL2[i],phiL1[i],phiR1[i],0.0,0.0,0.0);
+                        
+                        phiL2[i] = max(phi_min[i],min(phi_max[i],phiL2[i]));
+                        
+                        double tmp_gam = (solver.NVD.*NVD_scheme_i[i])(phiL2[i],phiL1[i],phiR1[i],0.0,0.0,w_c1);
+                        
+                        if(boolLimiterMLP[i]==true){
+                            
+                            int tmp_it1 = 1;
+                            int tmp_it2 = 0;
+                            double tmp_duvwdxyz[3];
+                            if(i==1){
+                                tmp_it1 = 1; tmp_it2 = 0;
+                                // tmp_duvwdxyz[0] = dudxyz[0];
+                                // tmp_duvwdxyz[1] = dudxyz[1];
+                                // tmp_duvwdxyz[2] = dudxyz[2];
+                                tmp_duvwdxyz[0] = 0.5*(dudxL+dudxR);
+                                tmp_duvwdxyz[1] = 0.5*(dudyL+dudyR);
+                                tmp_duvwdxyz[2] = 0.5*(dudzL+dudzR);
+                            }
+                            else if(i==2){
+                                tmp_it1 = 2; tmp_it2 = 1;
+                                // tmp_duvwdxyz[0] = dvdxyz[0];
+                                // tmp_duvwdxyz[1] = dvdxyz[1];
+                                // tmp_duvwdxyz[2] = dvdxyz[2];
+                                tmp_duvwdxyz[0] = 0.5*(dvdxL+dvdxR);
+                                tmp_duvwdxyz[1] = 0.5*(dvdyL+dvdyR);
+                                tmp_duvwdxyz[2] = 0.5*(dvdzL+dvdzR);
+                            }
+                            else if(i==3){
+                                tmp_it1 = 3; tmp_it2 = 2;
+                                // tmp_duvwdxyz[0] = dwdxyz[0];
+                                // tmp_duvwdxyz[1] = dwdxyz[1];
+                                // tmp_duvwdxyz[2] = dwdxyz[2];
+                                tmp_duvwdxyz[0] = 0.5*(dwdxL+dwdxR);
+                                tmp_duvwdxyz[1] = 0.5*(dwdyL+dwdyR);
+                                tmp_duvwdxyz[2] = 0.5*(dwdzL+dwdzR);
+                            }
+                            else if(i==4){
+                                tmp_it1 = 4; tmp_it2 = 3;
+                                // tmp_duvwdxyz[0] = dwdxyz[0];
+                                // tmp_duvwdxyz[1] = dwdxyz[1];
+                                // tmp_duvwdxyz[2] = dwdxyz[2];
+                                tmp_duvwdxyz[0] = 0.5*(dTdxL+dTdxR);
+                                tmp_duvwdxyz[1] = 0.5*(dTdyL+dTdyR);
+                                tmp_duvwdxyz[2] = 0.5*(dTdzL+dTdzR);
+                            }
+                            else{
+                                cout << "#WARNING, NO!!" << endl;
+                            }
+                            
+                            double lim_r = (phiR1[tmp_it1]-phiL1[tmp_it1]);
+                            if(lim_r!=0.0) lim_r = (phiL1[tmp_it1]-phiL2[tmp_it1])/lim_r;
+                            
+                            double tildeCd = (phiR1[tmp_it1]-phiL2[tmp_it1]);
+                            if(tildeCd!=0.0) tildeCd = (phiL1[tmp_it1]-phiL2[tmp_it1])/tildeCd;
+                            
+                            
+                            
+                            // tmp_gam = (1.0+2.0*lim_r)/3.0;
+                            
+                            
+                            
+                            int point_size = point_xyz.size();
+                            int tmp_iter3 = 0;
+                            double alpha_MLP = 100.0;
+                            for(auto& xyz : point_xyz){
+                                double tmp_k = 0.0;
+                                tmp_k += 0.5*(phiR1[tmp_it1] - phiL1[tmp_it1]);
+                                tmp_k += tmp_duvwdxyz[0]*(xyz[0]-axyzLR[0]);
+                                tmp_k += tmp_duvwdxyz[1]*(xyz[1]-axyzLR[1]);
+                                tmp_k += tmp_duvwdxyz[2]*(xyz[2]-axyzLR[2]);
+                                // if(ii==0){
+                                    // tmp_k += tmp_duvwdxyz[0]*(xyz[0]-(axyzLR[0]-0.5*xyzLR[0]));
+                                    // tmp_k += tmp_duvwdxyz[1]*(xyz[1]-(axyzLR[1]-0.5*xyzLR[1]));
+                                    // tmp_k += tmp_duvwdxyz[2]*(xyz[2]-(axyzLR[2]-0.5*xyzLR[2]));
+                                // }
+                                // else{
+                                    // tmp_k += tmp_duvwdxyz[0]*(xyz[0]-(axyzLR[0]+0.5*xyzLR[0]));
+                                    // tmp_k += tmp_duvwdxyz[1]*(xyz[1]-(axyzLR[1]+0.5*xyzLR[1]));
+                                    // tmp_k += tmp_duvwdxyz[2]*(xyz[2]-(axyzLR[2]+0.5*xyzLR[2]));
+                                // }
+                                
+                                // TVD
+                                double tmp_al;
+                                if(tmp_k>=0.0){
+                                    tmp_al = abs(point_max_i[tmp_iter3][tmp_it2]-phiL1[tmp_it1])/
+                                                max(abs(tmp_k)*min(1.0,lim_r),1.e-200);
+                                }
+                                else{
+                                    tmp_al = abs(point_min_i[tmp_iter3][tmp_it2]-phiL1[tmp_it1])/
+                                                max(abs(tmp_k)*min(1.0,lim_r),1.e-200);
+                                }
+                                alpha_MLP = min(alpha_MLP,tmp_al);
+                                
+                                
+                                // // NVD
+                                // double tmp_al;
+                                // if(tmp_k>=0.0){
+                                    // tmp_al = abs(point_max_i[tmp_iter3][tmp_it2]-phiL1[tmp_it1])/
+                                                // max(abs(tmp_k)*tildeCd,1.e-200) * (1.0-tildeCd) + 1.0;
+                                // }
+                                // else{
+                                    // tmp_al = abs(point_min_i[tmp_iter3][tmp_it2]-phiL1[tmp_it1])/
+                                                // max(abs(tmp_k)*(1.0-tildeCd),1.e-200) * (1.0-tildeCd) + 1.0;
+                                // }
+                                // alpha_MLP = min(alpha_MLP,tmp_al); 
+                                
+                                
+                                // // barth's limiter, MLP-u1 new
+                                // tmp_k = 0.0;
+                                // if(ii==0){
+                                    // tmp_k += tmp_duvwdxyz[0]*(xyz[0]-(axyzLR[0]-0.5*xyzLR[0]));
+                                    // tmp_k += tmp_duvwdxyz[1]*(xyz[1]-(axyzLR[1]-0.5*xyzLR[1]));
+                                    // tmp_k += tmp_duvwdxyz[2]*(xyz[2]-(axyzLR[2]-0.5*xyzLR[2]));
+                                // }
+                                // else{
+                                    // tmp_k += tmp_duvwdxyz[0]*(xyz[0]-(axyzLR[0]+0.5*xyzLR[0]));
+                                    // tmp_k += tmp_duvwdxyz[1]*(xyz[1]-(axyzLR[1]+0.5*xyzLR[1]));
+                                    // tmp_k += tmp_duvwdxyz[2]*(xyz[2]-(axyzLR[2]+0.5*xyzLR[2]));
+                                // }
+                                // double tmp_al = 1.0;
+                                // if(tmp_k>0.0){
+                                    // tmp_al = (point_max_i[tmp_iter3][tmp_it2]-phiL1[tmp_it1])/tmp_k;
+                                // }
+                                // else if(tmp_k<0.0){
+                                    // tmp_al = (point_min_i[tmp_iter3][tmp_it2]-phiL1[tmp_it1])/tmp_k;
+                                // }
+                                // alpha_MLP = min(alpha_MLP,tmp_al);
+                                
+                                
+                                
+                                
+                                // // MLP-u2 new
+                                // tmp_k = 0.0;
+                                // if(ii==0){
+                                    // tmp_k += tmp_duvwdxyz[0]*(xyz[0]-(axyzLR[0]-0.5*xyzLR[0]));
+                                    // tmp_k += tmp_duvwdxyz[1]*(xyz[1]-(axyzLR[1]-0.5*xyzLR[1]));
+                                    // tmp_k += tmp_duvwdxyz[2]*(xyz[2]-(axyzLR[2]-0.5*xyzLR[2]));
+                                // }
+                                // else{
+                                    // tmp_k += tmp_duvwdxyz[0]*(xyz[0]-(axyzLR[0]+0.5*xyzLR[0]));
+                                    // tmp_k += tmp_duvwdxyz[1]*(xyz[1]-(axyzLR[1]+0.5*xyzLR[1]));
+                                    // tmp_k += tmp_duvwdxyz[2]*(xyz[2]-(axyzLR[2]+0.5*xyzLR[2]));
+                                // }
+                                // double tmp_al = 1.0;
+                                // double Delta_minus = tmp_k;
+                                // if(Delta_minus>0.0){
+                                    // double Delta_plus = point_max_i[tmp_iter3][tmp_it2] - phiL1[tmp_it1];
+                                    // tmp_al = 1.0/Delta_minus*
+                                        // ((Delta_plus*Delta_plus+eta*eta)*
+                                        // Delta_minus+2.0*Delta_minus*Delta_minus*Delta_plus)/
+                                        // (Delta_plus*Delta_plus+2.0*Delta_minus*Delta_minus+
+                                        // Delta_minus*Delta_plus+eta*eta);
+                                // }
+                                // else if(Delta_minus<0.0){
+                                    // double Delta_plus = point_min_i[tmp_iter3][tmp_it2] - phiL1[tmp_it1];
+                                    // tmp_al = 1.0/Delta_minus*
+                                        // ((Delta_plus*Delta_plus+eta*eta)*
+                                        // Delta_minus+2.0*Delta_minus*Delta_minus*Delta_plus)/
+                                        // (Delta_plus*Delta_plus+2.0*Delta_minus*Delta_minus+
+                                        // Delta_minus*Delta_plus+eta*eta);
+                                // }
+                                // alpha_MLP = min(alpha_MLP,tmp_al);
+                                
+                                
+                                
+                                
+                                ++tmp_iter3;
+                            }
+                            
+                            // TVD
+                            double lim_TVD_MLP = max(0.0,min(alpha_MLP*lim_r,alpha_MLP));
+                            tmp_gam = max(tmp_gam, 1.0-0.5*lim_TVD_MLP);
+                            
+                            
+                            // // NVD
+                            // double tildeCf = max(tildeCd,min(alpha_MLP*tildeCd,
+                                    // (2.0-alpha_MLP)*tildeCd+(alpha_MLP-1.0)));
+                            // double gamma_f0 = (1.0 - tildeCd);
+                            // if(gamma_f0!=0.0) gamma_f0 = (tildeCf - tildeCd) / gamma_f0;
+                            // gamma_f0 = max(0.0,min(1.0,gamma_f0));
+                            // tmp_gam = max(tmp_gam, 1.0-gamma_f0);
+                            
+                            
+                            
+                            // // barth's limiter, venka, MLP-u2
+                            // double lim_TVD_MLP = max(0.0,min(1.0,alpha_MLP));
+                            // tmp_gam = 1.0-0.5*lim_TVD_MLP;
+                            
+                            
+                            
+                        }
+                        
                         tmp_gam = max(0.0,min(1.0,tmp_gam));
-                        if(ii==0) {
-                            faces[id_gammaYL[i]] = tmp_gam;
-                        }
-                        else{
-                            faces[id_gammaYR[i]] = tmp_gam;
-                        }
+                        
+                        
+                        if(ii==0) { faces[id_gammaYL[i]] = tmp_gam; }
+                        else{ faces[id_gammaYR[i]] = tmp_gam; }
+                        
+                        
+                        
                         phiL1[i] = tmp_gam*phiL1[i] + (1.0-tmp_gam)*phiR1[i];
+                        
+                        
+                        
+                        
+                        // {
+                            // double tmp_duvwdxyz[3];
+                            // if(i==1){
+                                // // tmp_it1 = 1; tmp_it2 = 0;
+                                // tmp_duvwdxyz[0] = dudxyz[0];
+                                // tmp_duvwdxyz[1] = dudxyz[1];
+                                // tmp_duvwdxyz[2] = dudxyz[2];
+                                // // tmp_duvwdxyz[0] = 0.5*(dudxL+dudxR);
+                                // // tmp_duvwdxyz[1] = 0.5*(dudyL+dudyR);
+                                // // tmp_duvwdxyz[2] = 0.5*(dudzL+dudzR);
+                            // }
+                            // else if(i==2){
+                                // // tmp_it1 = 2; tmp_it2 = 1;
+                                // tmp_duvwdxyz[0] = dvdxyz[0];
+                                // tmp_duvwdxyz[1] = dvdxyz[1];
+                                // tmp_duvwdxyz[2] = dvdxyz[2];
+                                // // tmp_duvwdxyz[0] = 0.5*(dvdxL+dvdxR);
+                                // // tmp_duvwdxyz[1] = 0.5*(dvdyL+dvdyR);
+                                // // tmp_duvwdxyz[2] = 0.5*(dvdzL+dvdzR);
+                            // }
+                            // else if(i==3){
+                                // // tmp_it1 = 3; tmp_it2 = 2;
+                                // tmp_duvwdxyz[0] = dwdxyz[0];
+                                // tmp_duvwdxyz[1] = dwdxyz[1];
+                                // tmp_duvwdxyz[2] = dwdxyz[2];
+                                // // tmp_duvwdxyz[0] = 0.5*(dwdxL+dwdxR);
+                                // // tmp_duvwdxyz[1] = 0.5*(dwdyL+dwdyR);
+                                // // tmp_duvwdxyz[2] = 0.5*(dwdzL+dwdzR);
+                            // }
+                            // double tmp_k = 0.0;
+                            // if(ii==0){
+                                // tmp_k += tmp_duvwdxyz[0]*xyzLR[0];
+                                // tmp_k += tmp_duvwdxyz[1]*xyzLR[1];
+                                // tmp_k += tmp_duvwdxyz[2]*xyzLR[2];
+                            // }
+                            // else{
+                                // tmp_k -= tmp_duvwdxyz[0]*xyzLR[0];
+                                // tmp_k -= tmp_duvwdxyz[1]*xyzLR[1];
+                                // tmp_k -= tmp_duvwdxyz[2]*xyzLR[2];
+                            // }
+                            // phiL1[i] = phiL1[i] + (1.0-tmp_gam)*tmp_k;
+                        // }
                     }
+                    
+                        
+					 
+					// for(int i=0; i<5; ++i) {
+                        // double tmp_gam = (solver.NVD.*NVD_scheme_i[i])(phiL2[i],phiL1[i],phiR1[i],0.0,0.0,w_c);
+                        // tmp_gam = max(0.0,min(1.0,tmp_gam));
+                        // if(ii==0) {
+                            // faces[id_gammaYL[i]] = tmp_gam;
+                        // }
+                        // else{
+                            // faces[id_gammaYR[i]] = tmp_gam;
+                        // }
+                        // phiL1[i] = tmp_gam*phiL1[i] + (1.0-tmp_gam)*phiR1[i];
+                    // }
 					
 					{
                         // w_c = 0 이어야지 sharp 해짐

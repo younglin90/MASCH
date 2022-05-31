@@ -56,8 +56,9 @@ public:
 		vector<string>& inp_cell, vector<string>& inp_bcFace);
 	void leastSquare(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
 		vector<string>& inp_cell, vector<string>& inp_bcFace, 
-		vector<string>& minmaxInp_cell_name, 
-		vector<string>& maxOut_cell_name, vector<string>& minOut_cell_name);
+		vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<string>& minOut_cell_name,
+        vector<string>& minmaxInp_point_name, vector<string>& maxOut_point_name, vector<string>& minOut_point_name);
+        
 	void leastSquare_zeroGradient(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
 		vector<string>& inp_cell);
 };
@@ -71,12 +72,52 @@ public:
 	// // void calcHeatAndMassTransferModel(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 // };
 
+
+
+class MASCH_SEM {
+private:
+
+public:
+    bool boolExcute = false;
+
+	int nEddies = 0;
+	double sigma = 0.0;
+	double Lt = 0.0;
+	double kinetic_energy = 0.0; 
+	double dissipation_rate = 0.0;
+	double deltaMax = 0.0;
+	double delta = 0.0;
+	double dR = 0.0;
+
+	//double dt = 0.0;
+	double U, vol_b;
+	int nEddy;
+	vector<double> n, dx;
+
+	vector<double> str, end, setU, Rij, Aij;
+	vector<double> xk, epsk;
+
+	double tmp_sart_15, tmp_sigma_13, tmp_u_d_coeff;
+
+
+	void initialSetting(int in0, double in1, double in2, 
+		vector<double> v0, vector<double> v1, vector<double> v2, vector<double> v3);
+        
+	vector<double> calcFluctuationVelocities(
+		double tmp_x, double tmp_y, double tmp_z);
+        
+	void updateEddyMotion(double inp_dt);
+};
+
+
+
 class MASCH_Solver {
 private:
 public:
 	MASCH_NVD NVD;
 	MASCH_Math math;
 	MASCH_Gradient calcGradient;
+    MASCH_SEM sem;
 	// MASCH_DPM dpm;
 	
 	double limiter_MLP(double phi, double phi_max, double phi_min, double Delta_minus, double eta);
@@ -127,6 +168,7 @@ public:
 	vector<vector<string>> gradLSIds_cell_name, gradLSIds_bcFace_name;
 	// min max 관련
 	vector<vector<string>> minmaxInp_cell_name, maxOut_cell_name, minOut_cell_name;
+	vector<vector<string>> minmaxInp_point_name, maxOut_point_name, minOut_point_name;
 	
 	// 곡률 관련
 	vector<vector<string>> curvatureIds_cell_name, curvatureIds_bcFace_name;
@@ -134,7 +176,10 @@ public:
 	// vector<unsigned short> gradLSIds_inp, gradLSIds_x_out, gradLSIds_y_out, gradLSIds_z_out;
 	
 	// high-order recon. 관련
-	using HO_Funct_type = function<int(double* fields, double* cellsL, double* cellsR, double* faces)>;
+	using HO_Funct_type = function<int(double* fields, double* cellsL, double* cellsR, double* faces,
+                                    vector<vector<double>>& point_xyz, 
+                                    vector<vector<double>>& point_max,
+                                    vector<vector<double>>& point_min)>;
 	vector<HO_Funct_type> calcHO_FaceVal;
 	
 	// implicit 인지
@@ -181,7 +226,7 @@ public:
 	
 	// DPM 관련
 	vector<function<int(double* fields, vector<vector<double>>&)>> calcDPM_injection;
-	vector<function<int(double* cells, double* fields, double* parcels, double* fluxB)>> calcDPM_parcelLoop;
+	vector<function<int(int icell, double* cells, double* fields, double* parcels, double* fluxA, double* fluxB)>> calcDPM_parcelLoop;
 	
 	// vector<function<int(double* inpL, double* inpR, double* inpF)>> reconstruction;
 	// vector<function<double(double* inpL, double* inpR, double* inpF)>> faceValue;
@@ -197,7 +242,7 @@ public:
 	void setBoundaryFunctions(
 		MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	
-	void setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls);
+	void setFunctions(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void setOldVFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setGradFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setMinMaxCellValuesFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
@@ -212,7 +257,7 @@ public:
 	void setTimeStepFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setUpdatePrimFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	void setSegEqUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
-	void setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
+	void setDPMFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var);
 	void setMeanCellValuesFunctionsUDF(MASCH_Mesh& mesh, MASCH_Control& controls);
 	
 	void fvm(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq);

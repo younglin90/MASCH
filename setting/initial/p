@@ -1,6 +1,6 @@
-//type = fixedValue;
-//value = 101325.0;
-        type = function;
-        file = ./setting/lib_initial.so;
-        name = p_initial;
+type = fixedValue;
+value = 140000.0;
+//        type = function;
+//        file = ./setting/lib_initial.so;
+//        name = p_initial;
 

@@ -974,7 +974,8 @@ vector<string>& inp_cell, vector<string>& inp_bcFace){
 
 void MASCH_Gradient::leastSquare(MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, 
 vector<string>& inp_cell, vector<string>& inp_bcFace, 
-vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<string>& minOut_cell_name){
+vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<string>& minOut_cell_name,
+vector<string>& minmaxInp_point_name, vector<string>& maxOut_point_name, vector<string>& minOut_point_name){
 	
 	// controls.log.push("test1");
 	int rank = MPI::COMM_WORLD.Get_rank(); 
@@ -1040,6 +1041,21 @@ vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<st
 	}
 	
 
+
+
+	int inp_minmax_point_size = minmaxInp_point_name.size();
+	vector<int> id_inp_point_minmax, id_oup_point_max, id_oup_point_min;
+    iter_tmp2 = 0;
+	for(auto& item : minmaxInp_point_name){
+		id_inp_point_minmax.push_back(controls.getId_cellVar(item));
+		id_oup_point_max.push_back(controls.getId_pointVar("maximum "+item));
+		id_oup_point_min.push_back(controls.getId_pointVar("minimum "+item));
+		
+		++iter_tmp2;
+	}
+
+
+
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	// cout << inp << endl;
@@ -1051,22 +1067,29 @@ vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<st
 	// cout << var.faces[0].size() << endl;
 
 	auto cells = mesh.cells.data();
+	auto points = mesh.points.data();
 	auto faces = mesh.faces.data();
 	auto cellVar = var.cells.data();
+	auto pointVar = var.points.data();
 	auto faceVar = var.faces.data();
 	
 	// processor faces
 	vector<vector<double>> recv_value(inp_size);
 	vector<vector<double>> recv_value2(inp_minmax_size);
+	vector<vector<double>> recv_value3(inp_minmax_point_size);
 	if(size>1){
 
 		vector<vector<double>> send_value(inp_size);
 		vector<vector<double>> send_value2(inp_minmax_size);
+		vector<vector<double>> send_value3(inp_minmax_point_size);
 		for(int j=0; j<inp_size; ++j){
 			send_value[j].reserve(mesh.send_StencilCellsId.size());
 		}
 		for(int j=0; j<inp_minmax_size; ++j){
 			send_value2[j].reserve(mesh.send_StencilCellsId.size());
+		}
+		for(int j=0; j<inp_minmax_point_size; ++j){
+			send_value3[j].reserve(mesh.send_StencilCellsId.size());
 		}
 		for(auto& icell : mesh.send_StencilCellsId){
 			auto cellVar_i = cellVar[icell].data();
@@ -1075,6 +1098,9 @@ vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<st
 			}
 			for(int j=0; j<inp_minmax_size; ++j){
 				send_value2[j].push_back(cellVar_i[id_inp_minmax[j]]);
+			}
+			for(int j=0; j<inp_minmax_point_size; ++j){
+				send_value3[j].push_back(cellVar_i[id_inp_point_minmax[j]]);
 			}
 		}
 		for(int j=0; j<inp_size; ++j){
@@ -1089,11 +1115,65 @@ vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<st
 						   recv_value2[j].data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
 						   MPI_COMM_WORLD);
 		}
+		for(int j=0; j<inp_minmax_point_size; ++j){
+			recv_value3[j].resize(mesh.recv_displsStencilCells[size]);
+			MPI_Alltoallv( send_value3[j].data(), mesh.send_countsStencilCells.data(), mesh.send_displsStencilCells.data(), MPI_DOUBLE, 
+						   recv_value3[j].data(), mesh.recv_countsStencilCells.data(), mesh.recv_displsStencilCells.data(), MPI_DOUBLE, 
+						   MPI_COMM_WORLD);
+		}
 		
 	}
 
 	
 	
+    //=================================
+    // 포인트 min max
+	for(int i=0, SIZE=mesh.points.size(); i<SIZE; ++i){
+		auto& point = points[i];
+		auto pointVar_i = pointVar[i].data();
+		
+		double maxVal[inp_minmax_point_size];
+		double minVal[inp_minmax_point_size];
+		for(int j=0; j<inp_minmax_point_size; ++j){
+			maxVal[j] = -1.e200;
+			minVal[j] = 1.e200;
+		}
+		
+		for(auto& icell : point.iStencils){
+			auto& cellSten = cells[icell];
+			auto cellStenVar_i = cellVar[icell].data();
+			
+			// min & max
+			for(int j=0; j<inp_minmax_point_size; ++j){
+				double tmp_val = cellStenVar_i[id_inp_point_minmax[j]];
+				maxVal[j] = max(tmp_val,maxVal[j]);
+				minVal[j] = min(tmp_val,minVal[j]);
+			}
+		}
+		
+		for(auto& icell : point.recv_iStencils){
+			// min & max
+			for(int j=0; j<inp_minmax_point_size; ++j){
+				double tmp_val = recv_value3[j][icell];
+				maxVal[j] = max(tmp_val,maxVal[j]);
+				minVal[j] = min(tmp_val,minVal[j]);
+			}
+		}
+
+		// min & max
+		for(int j=0; j<inp_minmax_point_size; ++j){
+			pointVar_i[id_oup_point_max[j]] = maxVal[j];
+			pointVar_i[id_oup_point_min[j]] = minVal[j];
+		}
+			
+		
+	}
+    //=================================
+		
+    
+    
+    
+    
 	// controls.log.pop();
 	// controls.log.push("test2");
 	
@@ -1114,6 +1194,11 @@ vector<string>& minmaxInp_cell_name, vector<string>& maxOut_cell_name, vector<st
 			cellVar_i[lim_phi_id] = 1.0;
 		}
 	}
+    
+    
+    
+    
+    
 	
 	// controls.log.pop();
 	// controls.log.push("test3");

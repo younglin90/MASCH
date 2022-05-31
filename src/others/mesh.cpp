@@ -839,6 +839,13 @@ void MASCH_Mesh::setCellStencils(){
 	int size = MPI::COMM_WORLD.Get_size(); 
 	
 	MASCH_MPI mpi;
+    
+    
+	for(int i=0, SIZE=mesh.points.size(); i<SIZE; ++i){
+		auto& point = mesh.points[i];
+        point.iStencils.clear();
+    }
+    
 	
 	vector<vector<int>> pointStencils(mesh.points.size()); 
 	for(int i=0, SIZE=mesh.cells.size(); i<SIZE; ++i){
@@ -848,6 +855,9 @@ void MASCH_Mesh::setCellStencils(){
 		for(auto& ipoint : cell.ipoints){
 			auto& point = mesh.points[ipoint];
 			pointStencils[ipoint].push_back(i);
+            
+			point.iStencils.push_back(i);
+            
 		}
 	}
 	
@@ -913,6 +923,7 @@ void MASCH_Mesh::setCellStencils(){
 	// if(rank==0) cout << "C3" << endl;
 	
 	vector<vector<int>> save_recv_cellStencils(mesh.cells.size()); 
+	vector<vector<int>> save_recv_pointStencils(mesh.points.size()); 
 	if(size>1){ 
 		vector<vector<int>> recv_real_cells_idLocal(size); 
 		vector<vector<int>> recv_real_points_id(size);
@@ -942,11 +953,29 @@ void MASCH_Mesh::setCellStencils(){
 				int recv_icell = str + recv_real_cells_idLocal[ip][iter];
 				for(auto& icell : pointStencils[ipoint]){
 					if(find(save_recv_cellStencils[icell].begin(),
-					save_recv_cellStencils[icell].end(),
-					recv_icell)==save_recv_cellStencils[icell].end()){
-						save_recv_cellStencils[icell].push_back(recv_icell);
+                            save_recv_cellStencils[icell].end(),
+                            recv_icell)==
+                       save_recv_cellStencils[icell].end()){
+					
+                        save_recv_cellStencils[icell].push_back(recv_icell);
+                        
 					}
+                    
 				}
+                
+                // =============================
+                // 포인트
+                if(find(save_recv_pointStencils[ipoint].begin(),
+                        save_recv_pointStencils[ipoint].end(),
+                        recv_icell)==
+                   save_recv_pointStencils[ipoint].end()){
+                
+                    save_recv_pointStencils[ipoint].push_back(recv_icell);
+                    
+                }
+                // =============================
+                
+                
 				++iter;
 			}
 		}
@@ -1000,6 +1029,99 @@ void MASCH_Mesh::setCellStencils(){
 	}
 	// MPI_Barrier(MPI_COMM_WORLD);
 	// if(rank==0) cout << "C7" << endl;
+    
+    
+
+    // =============================
+    // 포인트
+	// send_points_StencilCellsId.clear();
+	// send_points_countsStencilCells.clear();
+	// send_points_displsStencilCells.clear();
+	// recv_points_countsStencilCells.clear();
+	// recv_points_displsStencilCells.clear();
+    
+	// send_points_countsStencilCells.resize(size,0);
+	// for(int ip=0; ip<size; ++ip){
+		// int iter = 0;
+		// for(auto& icell : send_real_cells[ip]){
+			// send_points_StencilCellsId.push_back(icell);
+			// ++iter;
+		// }
+		// send_countsStencilCells[ip] = iter;
+	// }
+	// send_displsStencilCells.resize(size+1,0);
+	// for(int ip=0, iter=0; ip<size; ++ip){
+		// send_displsStencilCells[ip+1] = send_displsStencilCells[ip] + send_countsStencilCells[ip];
+	// }
+	// if(size>1){ 
+		// recv_countsStencilCells.resize(size,0);
+		// recv_displsStencilCells.resize(size+1,0);
+				
+		// MPI_Alltoall(
+		// send_countsStencilCells.data(), 1, MPI_INT, 
+		// recv_countsStencilCells.data(), 1, MPI_INT, MPI_COMM_WORLD);
+		
+		// for(int ip=0; ip<size; ++ip) recv_displsStencilCells[ip+1] = recv_displsStencilCells[ip] + recv_countsStencilCells[ip];
+	// }
+	
+    
+	for(int i=0, SIZE=mesh.points.size(); i<SIZE; ++i){
+		mesh.points[i].recv_iStencils.clear();
+		for(auto& icell : save_recv_pointStencils[i]){
+			mesh.points[i].recv_iStencils.push_back(icell);
+		}
+	}
+    // =============================
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    // // 포인트 stencil
+    
+	// vector<vector<int>> save_recv_pointStencils(mesh.points.size()); 
+	// if(size>1){ 
+		// vector<vector<int>> recv_real_points_idLocal(size); 
+		// vector<vector<int>> recv_real_points_id(size);
+		// vector<vector<int>> recv_n_cells(size);
+		// mpi.Alltoallv(send_real_cells_idLocal, recv_real_cells_idLocal);
+		// mpi.Alltoallv(send_real_points_id, recv_real_points_id);
+		// mpi.Alltoallv(send_n_cells, recv_n_cells);
+		// vector<int> str_n_cells(size+1,0);
+		// for(int ip=0; ip<size; ++ip){
+			// str_n_cells[ip+1] = str_n_cells[ip] + recv_n_cells[ip][0];
+		// }
+		// for(int ip=0; ip<size; ++ip){
+			// int str = str_n_cells[ip];
+			// int iter=0;
+			// for(auto& ipoint : recv_real_points_id[ip]){
+				// int recv_icell = str + recv_real_cells_idLocal[ip][iter];
+				// for(auto& icell : pointStencils[ipoint]){
+					// if(find(save_recv_cellStencils[icell].begin(),
+                        // save_recv_cellStencils[icell].end(),
+                        // recv_icell)==save_recv_cellStencils[icell].end()){
+						// save_recv_cellStencils[icell].push_back(recv_icell);
+					// }
+				// }
+				// ++iter;
+			// }
+		// }
+		
+		
+	// }
+    
+	// for(int i=0, SIZE=mesh.points.size(); i<SIZE; ++i){
+		// mesh.points[i].recv_iStencils.clear();
+		// for(auto& ipoint : save_recv_pointStencils[i]){
+			// mesh.points[i].recv_iStencils.push_back(ipoint);
+		// }
+	// }
+    
+    
 	
 	
 }

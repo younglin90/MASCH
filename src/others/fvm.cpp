@@ -222,9 +222,13 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	
 	// solver.calcGradient.leastSquare(mesh, controls, var, 
 		// solver.gradLSIds_cell_name[iSegEq], solver.gradLSIds_bcFace_name[iSegEq]);
+	// solver.calcGradient.leastSquare(mesh, controls, var, 
+		// solver.gradLSIds_cell_name[iSegEq], solver.gradLSIds_bcFace_name[iSegEq], 
+		// solver.minmaxInp_cell_name[iSegEq], solver.maxOut_cell_name[iSegEq], solver.minOut_cell_name[iSegEq]);
 	solver.calcGradient.leastSquare(mesh, controls, var, 
 		solver.gradLSIds_cell_name[iSegEq], solver.gradLSIds_bcFace_name[iSegEq], 
-		solver.minmaxInp_cell_name[iSegEq], solver.maxOut_cell_name[iSegEq], solver.minOut_cell_name[iSegEq]);
+		solver.minmaxInp_cell_name[iSegEq], solver.maxOut_cell_name[iSegEq], solver.minOut_cell_name[iSegEq], 
+		solver.minmaxInp_point_name[iSegEq], solver.maxOut_point_name[iSegEq], solver.minOut_point_name[iSegEq]);
 	
 }
 
@@ -250,12 +254,21 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 	auto cellVar = var.cells.data();
 	auto faceVar = var.faces.data();
 	auto fieldVar = var.fields.data();
+	auto pointVar = var.points.data();
 	auto procRightCellVar = var.procRightCells.data();
 	auto calcAddSolPtr = solver.calcFaceAddiVal.data();
 	int calcAddSolSize = solver.calcFaceAddiVal.size();
 	auto sol = solver.calcHO_FaceVal[iSegEq];
 	auto solAddi = solver.calcFaceAddiVal[iSegEq];
-	for(int i=0, ip=0; i<mesh.faces.size(); ++i){
+    
+    int point_max_min_size = solver.minmaxInp_point_name[iSegEq].size();
+	vector<int> id_oup_point_max, id_oup_point_min;
+	for(auto& item : solver.minmaxInp_point_name[iSegEq]){
+		id_oup_point_max.push_back(controls.getId_pointVar("maximum "+item));
+		id_oup_point_min.push_back(controls.getId_pointVar("minimum "+item));
+	}
+    
+	for(int i=0, ip=0, SIZE=mesh.faces.size(); i<SIZE; ++i){
 		auto& face = mesh.faces[i];
 		
 		if(face.getType()==MASCH_Face_Types::BOUNDARY) continue;
@@ -263,16 +276,37 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 		int iL = face.iL; int iR = face.iR;
 		auto faceVar_i = faceVar[i].data();
 		auto cellVar_iL = cellVar[iL].data();
-		
+        
+        int point_size = face.ipoints.size();
+        vector<vector<double>> point_xyz(point_size,vector<double>(3,0.0));
+        vector<vector<double>> point_max(point_size,vector<double>(point_max_min_size,0.0));
+        vector<vector<double>> point_min(point_size,vector<double>(point_max_min_size,0.0));
+        int tmp_iter = 0;
+        for(auto& ipoint : face.ipoints){
+            point_xyz[tmp_iter][0] = mesh.points[ipoint].x;
+            point_xyz[tmp_iter][1] = mesh.points[ipoint].y;
+            point_xyz[tmp_iter][2] = mesh.points[ipoint].z;
+            
+            auto pointVar_i = pointVar[ipoint].data();
+            
+            for(int j=0; j<point_max_min_size; ++j){
+                point_max[tmp_iter][j] = pointVar_i[id_oup_point_max[j]];
+                point_min[tmp_iter][j] = pointVar_i[id_oup_point_min[j]];
+            }
+            ++tmp_iter;
+        }
+        
 		// 하이 오더 리컨스트럭션
 		if(face.getType()==MASCH_Face_Types::INTERNAL){
 			// for(auto& sol : solver.calcHO_FaceVal){
-				sol(var.fields.data(),cellVar_iL,cellVar[iR].data(),faceVar_i);
+				sol(var.fields.data(),cellVar_iL,cellVar[iR].data(),faceVar_i,
+                    point_xyz, point_max, point_min);
 			// }
 		}
 		else if(face.getType()==MASCH_Face_Types::PROCESSOR){
 			// for(auto& sol : solver.calcHO_FaceVal){
-				sol(var.fields.data(),cellVar_iL,procRightCellVar[ip++].data(),faceVar_i);
+				sol(var.fields.data(),cellVar_iL,procRightCellVar[ip++].data(),faceVar_i,
+                    point_xyz, point_max, point_min);
 			// }
 		}
 		
@@ -1166,8 +1200,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
     
     
     
-    // update time varying boundary values
-    solver.updateTimeVaryingMappedFixedValue(mesh, controls, var);
+    // // update time varying boundary values
+    // solver.updateTimeVaryingMappedFixedValue(mesh, controls, var);
     
     
     
@@ -1198,6 +1232,8 @@ MASCH_Mesh& mesh, MASCH_Control& controls, MASCH_Variables& var, int iSegEq){
 		}
 		++iter;
 	}
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	
 		// // cout << var.faces[0].size() << endl;
 	// auto cells = mesh.cells.data();

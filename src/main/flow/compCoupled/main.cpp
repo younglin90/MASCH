@@ -58,6 +58,7 @@ int main(int argc, char* argv[]) {
 	
 	// 초기조건 대입하고 저장 후 종료
 	if(controls.mapArgv.find("-init") != controls.mapArgv.end()){
+        controls.startFrom = "0";
 		load.meshFiles("./grid/0/", controls, mesh);
 		controls.setGeometricOnlyCell_xyz(mesh);
 		controls.saveAfterInitial(mesh);
@@ -67,6 +68,8 @@ int main(int argc, char* argv[]) {
 	
 	// 메쉬 파일 로드
 	load.meshFiles(controls.getLoadFolderName(), controls, mesh);
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
 	// dpm 갯수 & 필수 정보 로드
 	load.dpmSizeFiles(controls.getLoadFolderName(), controls, mesh);
 	
@@ -79,7 +82,7 @@ int main(int argc, char* argv[]) {
 	solver.setBoundaryFunctions(mesh, controls, var);
 	
 	// 솔버 펑션 셋팅
-	solver.setFunctions(mesh, controls);
+	solver.setFunctions(mesh, controls, var);
 	// 그레디언트 계산시 필요한 값 셋팅
 	solver.calcGradient.init(mesh, controls, var);
 	
@@ -142,6 +145,9 @@ int main(int argc, char* argv[]) {
 		
 		// time-step 계산
 		solver.calcTempSteps(mesh, controls, var, 0); //solver.calcTempSteps(mesh, controls, var, iSegEq);
+        
+        // cout.precision(15);
+        // cout << var.fields[controls.fieldVar["time-step"].id] << endl;
 		
 		controls.iterPseudo=0;
 		for(int iterOuter=0; iterOuter<maxIterOuter_fvm; ++iterOuter){
@@ -159,6 +165,13 @@ int main(int argc, char* argv[]) {
 			
 			++controls.iterPseudo;
 		}
+        
+        // SEM particle 업데이트
+        if(solver.sem.boolExcute == true){
+            solver.sem.updateEddyMotion(
+                var.fields[controls.fieldVar["time-step"].id]);
+                
+        }
 			
 		// if(controls.nameParcels.size()!=0)
 		{

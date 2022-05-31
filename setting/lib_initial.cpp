@@ -13,9 +13,9 @@ using namespace std;
 
 extern "C" int p_initial(double time, double x, double y, double z, int* inp_id, double* cells);
 int p_initial(double time, double x, double y, double z, int* inp_id, double* cells){
-	cells[inp_id[0]] = 1.e5;
-	if(x<0.017){
-		cells[inp_id[0]] = 129680.0;
+	cells[inp_id[0]] = 29000.0;
+	if(y<0){
+		cells[inp_id[0]] = 29000.0;
 	}
 	
 	return 0;
@@ -24,23 +24,76 @@ int p_initial(double time, double x, double y, double z, int* inp_id, double* ce
 extern "C" int U_initial(double time, double x, double y, double z, int* inp_id, double* cells);
 int U_initial(double time, double x, double y, double z, int* inp_id, double* cells){
 
-	cells[inp_id[0]] = 0.0;
-	cells[inp_id[1]] = 0.0;
-	cells[inp_id[2]] = 0.0;
-	if(x<0.017){
-        cells[inp_id[0]] = 65.7;
-        cells[inp_id[1]] = 0.0;
-        cells[inp_id[2]] = 0.0;
+
+
+        double Uuniform = 674.0;
+
+                vector<double> ynBd(13,0.0);
+                vector<double> Ubd(13,0.0);
+
+                ynBd[0] = -100.0;
+                ynBd[1] = 1.e-12;
+                ynBd[2] = 0.3359173126615005;
+                ynBd[3] = 0.6976744186046524;
+                ynBd[4] = 1.1369509043927657;
+                ynBd[5] = 1.757105943152455;
+                ynBd[6] = 2.4806201550387605;
+                ynBd[7] = 3.2816537467700266;
+                ynBd[8] = 4.211886304909561;
+                ynBd[9] = 5.116279069767443;
+                ynBd[10] = 6.124031007751938;
+                ynBd[11] = 6.511627906976744;
+                ynBd[12] = 7.881136950904393;
+
+                Ubd[0] = 0.0;
+                Ubd[1] = 0.0;
+                Ubd[2] = 0.2320108557119938;
+                Ubd[3] = 0.40308578111645904;
+                Ubd[4] = 0.5654341535093637;
+                Ubd[5] = 0.7161246307708455;
+                Ubd[6] = 0.8174621024695246;
+                Ubd[7] = 0.8839608354699895;
+                Ubd[8] = 0.9330139594860032;
+                Ubd[9] = 0.9704691646799513;
+                Ubd[10] = 0.9904862579281182;
+                Ubd[11] = 0.9932751563132562;
+                Ubd[12] = 0.9957791672289447;
+
+                double Unormal = 0.0;
+                double yn = y/0.001;
+
+                for(int i=0; i<12; ++i){
+                        if(ynBd[i]<yn && yn<=ynBd[i+1]){
+                           Unormal = Ubd[i] + (Ubd[i+1]-Ubd[i])/(ynBd[i+1]-ynBd[i])*(yn-ynBd[i]);
+                        }
+                }
+                if(ynBd[12]<yn) Unormal = 1.0;
+
+                 cells[inp_id[0]] = Unormal * Uuniform;
+                cells[inp_id[1]] = 0.0;
+                cells[inp_id[2]] = 0.0;
+
+                //if( yn <= 0.3359 ) cout << fU << endl;
+                //                //        }
+                //                                //
+                //
+
+		cells[inp_id[0]] = 105.2;
+
+	if(y<0){
+
+		cells[inp_id[0]] = 0.0;
 	}
 	
+
 	return 0;
 }
 
 extern "C" int T_initial(double time, double x, double y, double z, int* inp_id, double* cells);
 int T_initial(double time, double x, double y, double z, int* inp_id, double* cells){
 	cells[inp_id[0]] = 300.0;
-	if(x<0.017){
-		cells[inp_id[0]] = 323.29;
+	if(y<0){
+		cells[inp_id[0]] = 300.0;
 	}
 	
 	return 0;
@@ -48,22 +101,10 @@ int T_initial(double time, double x, double y, double z, int* inp_id, double* ce
 
 extern "C" int Y_initial(double time, double x, double y, double z, int* inp_id, double* cells);
 int Y_initial(double time, double x, double y, double z, int* inp_id, double* cells){
-
-	double r = 2.5*0.001*0.5;
-
-	double dx = x-19.0*0.001;
-	double dy = y-15.0*0.001;
-	double dz = z-15.0*0.001;
-
-
 	cells[inp_id[0]] = 0.0;
-
-	if(dx*dx+dy*dy+dz*dz<=r*r){
-
-		cells[inp_id[0]] = 1.0;
+	if(y<0){
+		cells[inp_id[0]] = 0.0;
 	}
-
-
 	
 	return 0;
 }

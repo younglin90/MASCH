@@ -20,6 +20,29 @@ void MASCH_Load::settingFiles(string folderName, MASCH_Control& controls){
 	controls.againWhenDiverge = (controls.controlDictMap["againWhenDiverge"]);
 	controls.multiCFL = stod(controls.controlDictMap["multiCFL"]);
 	controls.minTimeStep = stod(controls.controlDictMap["minTimeStep"]);
+    
+    
+    
+    // =======
+    if(controls.startFrom == "latestTime"){
+        
+        ifstream inputFile;
+        string openFileName;
+        openFileName = "./save/latestTime";
+        inputFile.open(openFileName);
+        // if(inputFile.fail()){
+            // cerr << "Unable to open file for reading : " << openFileName << endl;
+            // MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
+        // }
+        string nextToken;
+        while(getline(inputFile, nextToken)){
+            controls.startFrom = nextToken;
+            break;
+        }
+    }
+    // =======
+    
+    
 	
 	// 세이브 컨트롤
 	controls.saveControl = (controls.controlDictMap["saveControl"]);
